@@ -23,7 +23,7 @@ export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 function Section({ id, n, title, children }: { id: string; n: string; title: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="column pt-24 md:pt-32">
+    <section id={id} className="column pt-14 md:pt-20">
       <p className="meta">{n}</p>
       <h2 className="mt-2 text-[34px] font-semibold leading-tight tracking-tight md:text-[40px]">{title}</h2>
       <div className="mt-6 space-y-5 text-[17px] leading-[1.65] md:text-lg">{children}</div>
@@ -82,7 +82,7 @@ export default function Home() {
       <main id="top">
         {/* ── Hero ── */}
         {/* room above and below the intro: the field grows into those bands, across the column */}
-        <section id="hero" className="column pb-28 pt-28 md:pb-40 md:pt-40">
+        <section id="hero" className="column pb-16 pt-24 md:pb-24 md:pt-32">
           <div id="hero-copy">
           <p className="text-muted">Pre-checkout guard for AI shopping agents</p>
           <h1 className="mt-4 text-[44px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[64px]">
