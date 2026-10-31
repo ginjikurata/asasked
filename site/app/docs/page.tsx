@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GitHubLink } from "@/components/Chrome";
 import { PageHead } from "@/components/PageHead";
-import { VI_URL } from "@/lib/content";
+import { GITHUB_URL, PYPI_URL, RELEASE_URL, VERSION, VI_URL } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Docs",
@@ -10,15 +10,33 @@ export const metadata: Metadata = {
   alternates: { canonical: "/docs" },
 };
 
-// Every snippet and every output below was run against the repository as it is (2026-10-27).
-const INSTALL = `git clone ${VI_URL}.git
-git clone <this repository>       # public at launch
+// Install commands follow README.md and docs/install.md, the source of truth for them.
+const INSTALL = `pip install asasked`;
+
+const EXTRAS: [string, string][] = [
+  ["asasked[anthropic]", "Claude as an extractor; Gemini and OpenAI-compatible endpoints need nothing extra"],
+  ["asasked[mcp]", "the MCP server, asasked-mcp"],
+  ["asasked[claude-agent]", "the hook for Claude Agent SDK"],
+  ["asasked[openai-agents]", "the guardrail for OpenAI Agents SDK"],
+  ["asasked[langchain]", "the middleware for LangChain 1.x"],
+];
+
+const MCP = `# A. nothing to install first, with uv
+uvx --from "asasked[mcp,anthropic]" asasked-mcp
+
+# B. installed with pip
+pip install "asasked[mcp,anthropic]"
+which asasked-mcp                  # the full path to put in the app's config`;
+
+const SOURCE = `git clone ${VI_URL}.git
+git clone ${GITHUB_URL}.git
 cd asasked
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ../verifiable-intent -e ".[dev]"
 pip install -e ".[anthropic]"     # if Claude extracts`;
 
-const ENV = `# copy .env.example; the two extractors to compare
+const ENV = `# environment variables; in a checkout, copy .env.example
+# the two extractors to compare
 LLM_AGREE_PROVIDERS=gemini,anthropic
 
 LLM_API_KEY=...             # Gemini, Google's own API
@@ -108,10 +126,53 @@ export default function DocsPage() {
       <article className="doc column">
         <h2 id="install"><a href="#install">1. Install</a></h2>
         <p>
-          Python 3.10 or newer. The only required dependency is <code>cryptography</code>; the Verifiable Intent
-          reference SDK is expected as a sibling checkout.
+          Python 3.10 or newer. The guard is one package,{" "}
+          <a href={PYPI_URL} className="link">
+            asasked on PyPI
+          </a>
+          ; its only required dependency is <code>cryptography</code>. The same files are attached to the{" "}
+          <a href={RELEASE_URL} className="link">
+            v{VERSION} release
+          </a>{" "}
+          on GitHub, for installing without PyPI.
         </p>
         <Code>{INSTALL}</Code>
+        <p>Extras add what you use:</p>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>extra</th>
+                <th>adds</th>
+              </tr>
+            </thead>
+            <tbody>
+              {EXTRAS.map(([e, a]) => (
+                <tr key={e}>
+                  <td>
+                    <code>{e}</code>
+                  </td>
+                  <td>{a}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>As an MCP server.</strong> <code>asasked-mcp</code> is a local (stdio) server with one tool,{" "}
+          <code>check_order</code>, that the agent calls before paying. It is a second opinion the agent chooses to
+          ask for, not a lock: if payment goes through your own code, call the guard there instead.
+        </p>
+        <Code>{MCP}</Code>
+        <p>
+          Ready configs for Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI and Gemini CLI are in{" "}
+          <GitHubLink path="/blob/main/docs/install.md">docs/install.md</GitHubLink>.
+        </p>
+        <p>
+          <strong>From source,</strong> to run the sandbox store and reproduce the benchmark (sections 5–7). Checkout
+          in the store builds a real Verifiable Intent chain, so the reference SDK is expected as a sibling checkout:
+        </p>
+        <Code>{SOURCE}</Code>
 
         <h2 id="models"><a href="#models">2. Choose the extractors</a></h2>
         <p>

@@ -6,7 +6,18 @@ import { HeroSlip } from "@/components/HeroSlip";
 import { LoadingGate } from "@/components/LoadingGate";
 import { ReprintButton } from "@/components/PixelField";
 import { RunGrid } from "@/components/RunGrid";
-import { GUARD_STEPS, LIMITATIONS, RESULTS, STORE, UNSAID, VI_CONSTRAINTS, VI_URL } from "@/lib/content";
+import {
+  GUARD_STEPS,
+  LIMITATIONS,
+  PYPI_URL,
+  RELEASE_URL,
+  RESULTS,
+  STORE,
+  UNSAID,
+  VERSION,
+  VI_CONSTRAINTS,
+  VI_URL,
+} from "@/lib/content";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
@@ -186,7 +197,8 @@ export default function Home() {
             of the dataset are open source.
           </p>
           <pre className="overflow-x-auto rounded-lg border border-line bg-paper p-4 font-mono text-[12.5px] leading-relaxed">
-{`from asasked.guard import Guard
+{`# pip install asasked
+from asasked import Guard
 
 guard = Guard(request="Black ASICS in size 42, "
                       "I need to be able to return them.",
@@ -206,6 +218,21 @@ guard.check(cart, mandate, find)
             <li>
               <GitHubLink path="/tree/main/data">data/</GitHubLink>{" "}
               <span className="text-faint">— the open half of the dataset</span>
+            </li>
+            <li>
+              <a href={PYPI_URL} className="link">
+                pypi.org/project/asasked
+              </a>{" "}
+              <span className="text-faint">
+                — the package, release{" "}
+                <a href={RELEASE_URL} className="link">
+                  v{VERSION}
+                </a>
+              </span>
+            </li>
+            <li>
+              <GitHubLink path="/blob/main/docs/install.md">docs/install.md</GitHubLink>{" "}
+              <span className="text-faint">— MCP server and agent-app configs</span>
             </li>
           </ul>
         </Section>

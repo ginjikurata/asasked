@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { PageHead } from "@/components/PageHead";
 import { CHANGELOG } from "@/lib/changelog";
-import { GITHUB_URL } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Changelog",
@@ -17,6 +16,10 @@ export default function ChangelogPage() {
           Changes to the guard, the dataset, the sandbox store and the benchmark, newest first. When a result was
           affected, the entry says so.
         </p>
+        <p className="text-muted">
+          The public repository starts on 31 October 2026. The commit ids below come from the development history
+          before it, so they are not in the repository.
+        </p>
       </PageHead>
       <div className="column space-y-14">
         {CHANGELOG.map((day) => (
@@ -29,14 +32,7 @@ export default function ChangelogPage() {
                 <li key={i} className="receipt px-4 pt-3">
                   <div className="flex items-baseline justify-between gap-3 font-mono text-[12px]">
                     <span className="uppercase tracking-wider text-faint">{c.area}</span>
-                    {c.commit &&
-                      (GITHUB_URL ? (
-                        <a href={`${GITHUB_URL}/commit/${c.commit}`} className="link text-faint">
-                          {c.commit}
-                        </a>
-                      ) : (
-                        <span className="text-faint">{c.commit}</span>
-                      ))}
+                    {c.commit && <span className="text-faint">{c.commit}</span>}
                   </div>
                   <p className="mt-2 text-[16px] leading-relaxed">{c.text}</p>
                 </li>

@@ -1,15 +1,8 @@
 import Link from "next/link";
-import { CONCORD_URL, GITHUB_URL, NAV, STATUS, VI_URL } from "@/lib/content";
+import { CONCORD_URL, GITHUB_URL, NAV, PYPI_URL, RELEASE_URL, STATUS, VERSION, VI_URL } from "@/lib/content";
 
-/** Link to the public repository, or a visible placeholder until it is opened. */
+/** Link into the public repository. */
 export function GitHubLink({ path = "", children }: { path?: string; children: React.ReactNode }) {
-  if (!GITHUB_URL) {
-    return (
-      <span className="text-faint" title="The repository opens at launch">
-        {children} <span className="font-mono text-xs">[at launch]</span>
-      </span>
-    );
-  }
   return (
     <a href={`${GITHUB_URL}${path}`} className="link">
       {children}
@@ -45,13 +38,16 @@ export function Header() {
             <span className="text-pass">●</span> {STATUS}
           </span>
         </div>
-        <nav aria-label="Sections" className="hidden items-center gap-6 text-sm lg:flex">
+        <nav aria-label="Sections" className="hidden shrink-0 items-center gap-6 whitespace-nowrap text-sm lg:flex">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className="text-muted hover:text-ink">
               {item.label}
             </Link>
           ))}
           <GitHubLink>GitHub</GitHubLink>
+          <a href={PYPI_URL} className="link">
+            PyPI
+          </a>
         </nav>
       </div>
     </header>
@@ -74,7 +70,16 @@ export function Footer() {
           <a href={CONCORD_URL} className="link text-ink">
             Concord
           </a>
-          . Open source, Apache-2.0.
+          . Open source, Apache-2.0:{" "}
+          <GitHubLink>code on GitHub</GitHubLink>,{" "}
+          <a href={PYPI_URL} className="link">
+            <code className="font-mono">pip install asasked</code>
+          </a>
+          , latest release{" "}
+          <a href={RELEASE_URL} className="link">
+            v{VERSION}
+          </a>
+          .
         </p>
         <p>
           An independent project built on top of{" "}

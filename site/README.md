@@ -15,7 +15,8 @@ npm run build && npm run start
 
 | What | Where |
 | --- | --- |
-| Texts, numbers, links | `lib/content.ts` — facts only, each checkable against this repository |
+| Texts, numbers, links | `lib/content.ts` — facts only, each checkable against this repository; `GITHUB_URL`, `PYPI_URL` and `VERSION` (keep it equal to `pyproject.toml`) |
+| Install commands | `app/docs/page.tsx`, copied from `../README.md` and `../docs/install.md` — change them together |
 | Colours and fonts | `app/globals.css` (`@theme` tokens, dark mode under `prefers-color-scheme`) |
 | Page | `app/page.tsx`; header, footer and the GitHub link in `components/Chrome.tsx` |
 | Spec | `app/spec/page.tsx` renders `../spec/guard.md` at build time — the site and the spec cannot differ |
@@ -23,7 +24,7 @@ npm run build && npm run start
 | Background | `components/PixelField.tsx` (payment network), sprites in `lib/sprites.ts` |
 
 **Before launch** `LAUNCHED = false`: the site sends `noindex` and `robots.txt` disallows
-everything, and links to the code render as `[at launch]` until `GITHUB_URL` is set.
+everything. Deploying and setting `LAUNCHED = true` is the owner's call.
 `RESULTS.preliminary` shows a note that model results are being re-run.
 
 **At deploy:** `/legal` and `/privacy` say the site runs on the Concord server (UltaHost,
