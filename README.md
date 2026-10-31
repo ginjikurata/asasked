@@ -1,5 +1,7 @@
 # AsAsked
 
+[![PyPI](https://img.shields.io/pypi/v/asasked)](https://pypi.org/project/asasked/)
+
 Verifiable Intent proves an agent stayed inside its formal limits. It does not
 check whether the agent bought what the person actually asked for.
 
@@ -20,6 +22,9 @@ is measured in, and the original demonstration of the gap in the standard.
 ```bash
 pip install asasked
 ```
+
+Setup for Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI, Gemini CLI
+and agent frameworks, model keys and downloads: [docs/install.md](docs/install.md).
 
 ```python
 from asasked import Guard
@@ -77,6 +82,8 @@ your own code, call `Guard` there instead.
 {"mcpServers": {"asasked": {"command": "asasked-mcp",
                             "env": {"CLAUDE_API_KEY": "..."}}}}
 ```
+
+Configs for each app: [docs/install.md](docs/install.md#the-mcp-server).
 
 **In front of your checkout.** To make sure the agent can't pay around the
 guard, put the guard into the payment step itself. While the cart doesn't
