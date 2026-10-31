@@ -6,6 +6,45 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-10-31",
+    changes: [
+      {
+        area: "guard",
+        commit: "662dfe0",
+        text:
+          "A requirement no fact field holds (\"gluten-free\", \"fits an iPhone 15\") is kept in the person's words instead of dropped. The model does not judge whether the item meets it: a must becomes a question to the person, a nice-to-have becomes a note.",
+      },
+      {
+        area: "guard",
+        commit: "cb7ac18",
+        text:
+          "Stricter colour and size matching: colour is compared word by word in English and Russian, the first colour of an item being its main one; a size system counts only when both sides name it. today defaults to the current date.",
+      },
+      {
+        area: "guard",
+        text:
+          "The guard as an MCP server (asasked-mcp, tool check_order), guard.protect and ready hooks for the Claude Agent SDK, OpenAI Agents SDK and LangChain that check a cart before the payment tool runs.",
+      },
+      {
+        area: "benchmark",
+        commit: "b28e907",
+        text:
+          "Real-model results with and without the guard, from runs of 26 and 30 October on v1 (200 tasks) and v2 (50 open tasks). On v1 models bought wrong 4 times in 1,000 with or without the guard. On v2 wrong purchases fell from 12 of 250 to 1, at the cost of 19 right carts stopped in 255 checks. The runs predate the guard changes above.",
+      },
+      {
+        area: "dataset",
+        commit: "5eafe8b",
+        text:
+          "Dataset v2: 7 templates where strong models made mistakes in a pilot; 50 open tasks in data/tasks_v2.jsonl, a hidden half from a seed outside the repository. Hidden tasks that repeat a public pilot are not counted.",
+      },
+      {
+        area: "guard",
+        commit: "16a137b",
+        text: "Public repository and the package on PyPI: pip install asasked, version 0.1.1.",
+      },
+    ],
+  },
+  {
     date: "2026-10-27",
     changes: [
       {

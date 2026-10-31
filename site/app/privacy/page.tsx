@@ -5,7 +5,7 @@ import { OPERATOR } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
-  description: "What asasked.dev does with your data: nothing it does not need to deliver the page.",
+  description: "What asasked.dev does with your data: only what it needs to deliver the pages and run the live demo.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -14,8 +14,9 @@ export default function PrivacyPage() {
     <main>
       <PageHead kicker={`Privacy · last updated ${OPERATOR.updated}`} title="Privacy policy">
         <p className="text-muted">
-          In short: this site is a set of pages to read. It has no forms, no accounts and no analytics, sets no cookies
-          and stores nothing in your browser. If you email us, we use your message to reply.
+          In short: no accounts, no analytics, no cookies, and nothing stored in your browser. If you type a request
+          into the live demo, it is sent to AI model providers to run the demo and is not stored. If you email us, we
+          use your message to reply.
         </p>
       </PageHead>
       <article className="doc column">
@@ -34,10 +35,27 @@ export default function PrivacyPage() {
           <li>No third parties in the page: no ads, videos, maps or social widgets. Fonts come from our own server.</li>
         </ul>
         <p>
-          The pages run scripts for the pixel background, the demo and the dataset filter, and to load the next page
-          from our own server when you follow a link. They send nothing to anyone. The background reacts to your cursor
-          position on your screen; it is not recorded or sent anywhere. If any of this changes, we will update this
-          policy before the change goes live.
+          The pages run scripts for the pixel background, the demos and the dataset filter, and to load the next page
+          from our own server when you follow a link. Apart from the live demo below, they send nothing to anyone. The
+          background reacts to your cursor position on your screen; it is not recorded or sent anywhere. If any of this
+          changes, we will update this policy before the change goes live.
+        </p>
+
+        <h2 id="live"><a href="#live">If you use the live demo</a></h2>
+        <p>
+          The “Try it” box on the home page has a real AI agent shop for you in the sandbox store. What you type there
+          (your request and any answers to the agent&apos;s questions, up to 300 characters each) goes to our server
+          and from there to AI models: one shops, two others check the cart. We reach them through AnyModel
+          (anymodel.org), a service that forwards the text to the model providers, currently Anthropic (Claude),
+          Google (Gemini) and DeepSeek. They process it under their own terms. Please don&apos;t type personal details
+          into the box; a shopping request does not need any.
+        </p>
+        <p>
+          We do not store your requests or the agent&apos;s replies: a run is kept in memory only until it ends. To
+          enforce the limit of requests per day, our server counts requests per visitor under a one-way hash of your
+          IP address; the address itself never reaches the demo service, and the counts are kept in memory and reset
+          every day. The legal basis is our legitimate interest in running the demo you asked for and keeping its
+          costs bounded.
         </p>
 
         <h2 id="server"><a href="#server">What any web server receives</a></h2>
@@ -58,8 +76,8 @@ export default function PrivacyPage() {
         <h2 id="rights"><a href="#rights">Your rights</a></h2>
         <p>
           Where data protection law such as the GDPR applies, we rely on our legitimate interest in delivering the site
-          and answering messages you choose to send. You may have the right to ask what we hold about you, have it
-          corrected or deleted, restrict or object to its use, and receive it in a portable format. Write to us to use
+          and the demo you choose to use, and in answering messages you choose to send. You may have the right to ask
+          what we hold about you, have it corrected or deleted, restrict or object to its use, and receive it in a portable format. Write to us to use
           any of these rights; you can also complain to the data protection authority where you live.
         </p>
         <p>

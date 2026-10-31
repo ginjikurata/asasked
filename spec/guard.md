@@ -1,6 +1,6 @@
 # AsAsked pre-checkout guard — specification
 
-**Status:** draft 0.1 (2026-10-26). Describes the reference implementation in
+**Status:** draft 0.1, revised 2026-10-31. Describes the reference implementation in
 `src/asasked/guard.py` and `src/asasked/coherence.py`; where the two disagree,
 that is a bug in one of them.
 
@@ -42,6 +42,7 @@ person did not state is `null` (or `false` for `needs_refundable`).
 | Field | Type | Meaning |
 |---|---|---|
 | `brand` | string | Brand chosen. An excluded brand ("anything but Wilson") is not a choice: `null`. |
+| `brand_not` | list of strings | Brands the person excluded ("anything but Wilson"). |
 | `model` | string | Product model or line as named ("EZONE 98"), without the brand. |
 | `color` | string | Colour chosen. A colour that is only excluded: `null`. |
 | `size_label` | string | Size as stated ("42", "4 3/8"). |
@@ -52,6 +53,8 @@ person did not state is `null` (or `false` for `needs_refundable`).
 | `needs_refundable` | boolean | The person wants to be able to return or exchange. |
 | `deadline_days` | integer | Days until a stated deadline, relative to a given *today*. |
 | `lines` | list | Several variants in one order ("size 40 for my wife and 43 for me"): one entry per variant with its own `model`, `color`, `size_label`, `quantity`; everything else is shared. Empty otherwise. |
+| `other` | list of strings | Requirements no field above holds ("gluten-free", "fits an iPhone 15"), in the person's words, that the person made a must. |
+| `other_optional` | list of strings | The same, marked by the person as nice to have. |
 | `soft` | set of field names | Fields the person themselves marked as optional ("black ideally, white is fine"). |
 | `disputed` | set of field names | Fields the extractors disagreed on (§4). |
 
@@ -74,8 +77,15 @@ person did not state is `null` (or `false` for `needs_refundable`).
      marked `disputed`; for `needs_refundable`, `true`;
    - `lines` that differ between extractors → the first non-empty set, and
      `lines` is marked `disputed`;
+   - `other` → the longest list any extractor returned; if some extractor
+     returned none, `other` is marked `disputed`. `other_optional` → the
+     union, without repeats of `other`;
    - `soft` → the union.
-3. The extractor MUST be given today's date, so that "by Saturday" becomes a
+
+   A single extractor is allowed: then nothing is disputed, and every fact
+   blocks unless the person marked it optional.
+3. The extractor MUST be given today's date (the reference implementation
+   defaults to the current date), so that "by Saturday" becomes a
    number of days. When the deadline is a named weekday, the extractor returns
    the weekday and the number of days is counted by code, inclusive of that
    day (from Monday, "by Friday" is 4): two models counting the same weekday
@@ -89,20 +99,34 @@ person did not state is `null` (or `false` for `needs_refundable`).
 
 Every check compares one fact with the cart. The item attributes it needs
 (brand, name, colour, size, level, returnability, delivery time, units, price)
-must be available to the guard from the catalog or checkout data.
+come from the catalog or checkout data. If the person stated a fact and the
+item has no value for the attribute it needs, the check does not run; it
+returns an `unchecked` finding, always `warn`, so the person sees what could
+not be checked.
 
 | Code | Finding when |
 |---|---|
-| `brand` | item brand ≠ `brand` |
+| `brand` | item brand ≠ `brand` (case-insensitive) |
+| `brand-excluded` | item brand is in `brand_not` |
 | `model` | the words of `model` (minus the brand) are not all in the item name |
-| `color` | item colour ≠ `color` |
-| `size` | item has a size and it ≠ `size_label` |
+| `color` | the words of `color` are not all in the item's **first** colour (below) |
+| `size` | item has a size and it ≠ `size_label` (below) |
 | `level` | item level is not `level` and not `any` |
 | `refund` | `needs_refundable` and the item is final sale |
 | `deadline` | item delivery time > `deadline_days` |
 | `price` | `price_preference = cheap`, a single-item cart, and an item that fits every stated fact is more than 15% cheaper among the allowed items |
 | `explicit-max` | cart total > `explicit_max_cents` |
 | `quantity` | total units in the cart ≠ `quantity` (both more and fewer) |
+| `other` | one finding per entry of `other` (`block`) and of `other_optional` (`warn`): the guard cannot check free text against the item, so the person decides |
+| `unchecked` | a stated fact the item has no attribute for (always `warn`) |
+
+**Colour** is compared by word, in English and Russian ("Triple Black" and
+"Чёрный" are black, "gray" is "grey"). An item with several colours
+("White/Black") counts as its first one: black as a second colour is a
+finding, and the reason says so. **Size** ignores filler ("size 42" = "42"),
+a decimal comma ("42,5" = "42.5") and S/M/L spelled out ("Medium" = "M"); a
+size system ("EU", "US", "UK"…) counts only when both the item and the person
+name one, so "EU 42" = "42" but "US 9" ≠ "EU 9".
 
 **With `lines`.** Cart items are assigned to lines so that the number of
 blocking findings, missing lines and extra items is smallest. Every check above
@@ -114,7 +138,12 @@ then runs per pair, using the line's own fields over the shared ones;
 | `missing` | a line has no cart item assigned |
 | `extra` | a cart item is not assigned to any line |
 
-If `lines` is disputed, every finding that comes from the lines is `warn`.
+If the extractors disagreed on a field of a line, findings on that field are
+`warn`. If they disagreed on how many items the person asked for, every field
+taken from the lines is `warn`, and so is `extra`; `missing` still blocks, as
+an order missing half of what was asked is worse than one extra question. If
+there are too many lines and items to assign exhaustively, the guard returns
+a `lines` finding (`block`): the order goes to the person.
 
 **Severity.** A finding is `warn` if its field is in `soft` or in `disputed`,
 otherwise `block`.
@@ -141,6 +170,13 @@ is to make sure they were asked.
 - **Store or checkout side, enforced:** checkout runs the guard itself. On
   `ask`, the order is held until the agent has consulted the person; a changed
   cart is checked again.
+- **As an MCP tool:** `asasked-mcp` serves one tool, `check_order(request,
+  cart, answers, today)`, that returns the decision, reasons and question; the
+  agent passes back the person's answers on the next call.
+- **Wrapped around a payment function:** `Guard.protect(pay, cart)` returns a
+  payment function that checks the cart first and, on `ask`, does not pay and
+  returns the question to the agent instead. Hooks built on it exist for the
+  Claude Agent SDK, the OpenAI Agents SDK and LangChain.
 - **With Verifiable Intent:** the guard runs before the agent creates the
   final L3 mandates. The request and, optionally, the extracted facts can
   travel in L2 next to `prompt_summary`, so the same check is reproducible by
@@ -165,19 +201,32 @@ verified by a human without trusting a model.
   every other stated fact, with a fixed 15% threshold.
 - **Extraction quality bounds the guard.** Two extractors reduce silent errors
   but do not remove them; disputed facts only warn.
+- **Free-text requirements are not checked.** An `other` requirement is
+  always put to the person, even when the item plainly meets it.
 - **Measured in a sandbox.** The numbers below come from our own catalog and
   tasks; see the README's limitations.
 
-## 10. Measured behaviour (sandbox, 2026-10-26)
+## 10. Measured behaviour (sandbox, runs of 2026-10-26 and 2026-10-30)
 
-20 labelled tasks, catalog v1, facts extracted by Claude Sonnet 5 and Gemini 3
-Flash. A naive agent (buys the first search result) made 17 wrong purchases
-without the guard and 0 with it. The guard flagged 17 of 17 wrong carts, missed
-none, and stopped no right cart. With four model agents (GPT-6 Sol, DeepSeek V4
-Flash, MiniMax M3, Nemotron 3.5 Lightning) it never stopped a right purchase.
-An earlier run had one wrong purchase left: the guard flagged it, and the
-simulated person approved it against their own stated intent; the simulator's
-instructions were tightened after that.
+Agents bought from our sandbox store with the guard off and enforced, one run
+per task, scored against human-reviewed labels. These runs predate the
+changes of 2026-10-31 (`other`, stricter colour and size matching) and have
+not been repeated since.
+
+- **Naive agent** (buys the first search result), dataset v1, 200 tasks: 198
+  wrong purchases without the guard, 11 with it. The guard stopped 187 wrong
+  carts, missed 12 and stopped no right one.
+- **Five model agents**, dataset v1, 200 tasks each: 4 wrong purchases in
+  1,000 without the guard and 4 with it. Across 821 checks the guard caught 1
+  wrong cart, missed 3 and stopped 5 right ones. These agents mostly fail by
+  buying nothing, which the guard does not address.
+- **The same five agents**, dataset v2 (templates chosen where strong models
+  made mistakes), 50 open tasks each: wrong purchases fell from 12 of 250 to 1,
+  almost all of them one model's. Across 255 checks the guard caught 5 wrong
+  carts, missed 1 and stopped 19 right ones, each costing one extra question
+  to the person.
+
+Per-model tables are in the README.
 
 ## 11. Conformance
 

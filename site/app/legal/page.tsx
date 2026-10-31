@@ -50,7 +50,7 @@ export default function LegalPage() {
         <h2 id="privacy"><a href="#privacy">Privacy</a></h2>
         <p>
           How the site handles personal data is described in the <Link href="/privacy">privacy policy</Link>. In short:
-          no forms, no accounts, no analytics, no cookies.
+          no accounts, no analytics, no cookies; requests typed into the live demo go to AI model providers and are not stored.
         </p>
       </article>
     </main>

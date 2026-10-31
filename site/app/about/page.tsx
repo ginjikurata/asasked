@@ -41,7 +41,8 @@ export default function AboutPage() {
         <ul>
           <li>
             <strong>Every number can be checked.</strong> Figures on this site come from the repository and its
-            runs; the examples are real output of the sandbox and the guard.
+            runs; the examples are real output of the sandbox and the guard. The run logs themselves are not published
+            yet.
           </li>
           <li>
             <strong>The decision is code, not a model.</strong> A model only turns words into facts. Whether a cart
@@ -52,18 +53,15 @@ export default function AboutPage() {
             purchase, not only what it catches.
           </li>
           <li>
-            <strong>Limits are stated.</strong> One sport, a catalog we built, a single reviewer, preliminary
-            numbers — said on the page, not left out.
-          </li>
-          <li>
-            <strong>Half the dataset stays hidden,</strong> so results on it cannot be tuned.
+            <strong>Limits are stated.</strong> One sport, a catalog we built, a single reviewer, a benchmark run
+            once per task — said on the page, not left out.
           </li>
         </ul>
 
         <h2 id="status"><a href="#status">Status</a></h2>
         <p>
-          Draft. The <Link href="/spec">spec</Link> is version 0.1. Benchmark results on this site are preliminary
-          (run of {RESULTS.runDate}); real models are being re-run after three fixes to the test bench. Code:{" "}
+          Draft. The <Link href="/spec">spec</Link> is version 0.1. Benchmark results on this site come from runs of{" "}
+          {RESULTS.runDates}, before the guard changes of 31 October; they have not been repeated since. Code:{" "}
           <GitHubLink>the repository</GitHubLink>.
         </p>
       </article>

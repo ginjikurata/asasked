@@ -355,7 +355,12 @@ export function LiveTry() {
         A real model ({run?.agent ?? "deepseek-v4-flash"}) shops in the sandbox store; the payment is checked by
         Verifiable Intent, the guard stands in front of it. No money moves. When the agent or the guard needs your
         answer, the run pauses and you can reply right here. Up to 5 requests a day — a request where the agent
-        didn&apos;t shop (a plain “hi”) doesn&apos;t count; answers don&apos;t count. Requests aren&apos;t stored.
+        didn&apos;t shop (a plain “hi”) doesn&apos;t count; answers don&apos;t count. What you type goes to AI model
+        providers and isn&apos;t stored; see the{" "}
+        <a href="/privacy" className="link">
+          privacy policy
+        </a>
+        .
       </p>
     </div>
   );

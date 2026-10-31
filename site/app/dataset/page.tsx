@@ -16,8 +16,10 @@ export default function DatasetPage() {
         <p className="text-muted">
           {STORE.tasks} tasks from {STORE.templates} trap templates over the sandbox catalog. Each has a request in a
           person&apos;s words, a label saying which purchase is right (or that buying nothing is), and at least one
-          trap the payment mandate would let through. Here is the open half; the other {STORE.hidden} tasks stay
-          hidden, so that results on them cannot be tuned.
+          trap the payment mandate would let through. Here is the open half; ten of its tasks are in Russian. The other{" "}
+          {STORE.hidden} are kept out of the repository, but the generator&apos;s seed is in it, so anyone can rebuild
+          them: treat all {STORE.tasks} as public. Dataset v2, {STORE.v2Open} open tasks from {STORE.v2Templates}{" "}
+          templates where strong models made mistakes, is in <code>data/tasks_v2.jsonl</code> in the repository.
         </p>
       </PageHead>
 

@@ -36,7 +36,7 @@ pip install -e ../verifiable-intent -e ".[dev]"
 pip install -e ".[anthropic]"     # if Claude extracts`;
 
 const ENV = `# environment variables; in a checkout, copy .env.example
-# the two extractors to compare
+# one extractor works; two are compared
 LLM_AGREE_PROVIDERS=gemini,anthropic
 
 LLM_API_KEY=...             # Gemini, Google's own API
@@ -90,7 +90,9 @@ const BENCH = `python scripts/run_agents.py --tasks v1-open --guard both \\
 python scripts/run_agents.py --tasks v1-open --guard both \\
     --agents claude-sonnet-5,gpt-6-sol --parallel 8
 python scripts/run_agents.py --tasks v1-open --guard both \\
-    --agents openai_compat:your/model`;
+    --agents openai_compat:your/model
+python scripts/run_agents.py --tasks v2-open --guard both \\
+    --agents claude-sonnet-5`;
 
 const FIELDS: [string, string][] = [
   ["name, brand", "what the item is; brand is compared case-insensitively"],
@@ -176,21 +178,24 @@ export default function DocsPage() {
 
         <h2 id="models"><a href="#models">2. Choose the extractors</a></h2>
         <p>
-          Turning words into facts is the only step that uses a model, and it uses two of them. Any two of Gemini,
-          Claude and an OpenAI-compatible endpoint will do. The decision itself is plain code.
+          Turning words into facts is the only step that uses a model. One model works; two are safer, because a
+          fact they disagree on only warns. Use Gemini, Claude or an OpenAI-compatible endpoint, alone or in any
+          pair. The decision itself is plain code.
         </p>
         <Code title=".env">{ENV}</Code>
 
         <h2 id="check"><a href="#check">3. Check a cart</a></h2>
         <p>
-          Facts are extracted once per request; each <code>check</code> compares them with a cart. Pass{" "}
-          <code>today</code>, so that “by Saturday” becomes a number of days.
+          Facts are extracted once per request; each <code>check</code> compares them with a cart. <code>today</code>{" "}
+          turns “by Saturday” into a number of days; it defaults to the current date.
         </p>
         <Code title="python">{CHECK}</Code>
         <Code title="result">{CHECK_OUT}</Code>
         <p>
           <code>reasons</code> block the purchase; <code>notes</code> are mismatches on facts the person marked as
-          optional, or that the two models disagreed on. If extraction fails, the guard answers <code>ask</code>:
+          optional, that the two models disagreed on, or that the item does not say (no <code>returnable</code>{" "}
+          field, say). A requirement no field holds, such as “gluten-free”, is kept in the person&apos;s words: if it
+          is a must, the guard asks; if not, it adds a note. If extraction fails, the guard answers <code>ask</code>:
           it fails closed. For tests or replays, pass <code>extract=</code> with ready facts instead of calling
           models.
         </p>
@@ -247,8 +252,9 @@ export default function DocsPage() {
         </p>
         <Code>{BENCH}</Code>
         <p>
-          The open half of the dataset is in the repository; see <Link href="/dataset">Dataset</Link>. The hidden
-          half is kept for evaluation.
+          The open half of the dataset is in the repository; see <Link href="/dataset">Dataset</Link>. So is the
+          open half of v2 (<code>--tasks v2-open</code>). The rest of v1 can be rebuilt from the seed in the
+          repository; the rest of v2 cannot.
         </p>
 
         <h2 id="tests"><a href="#tests">7. Tests</a></h2>

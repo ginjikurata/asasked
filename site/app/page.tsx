@@ -40,6 +40,40 @@ const FLOW = String.raw`
                disagreement            same inputs,
                only warns              same answer`;
 
+type Row = { agent: string; asked: readonly number[]; wrong: readonly number[]; nothing: readonly number[] };
+
+/** One table of model results; each cell is guard off → guard on. */
+function ModelTable({ title, rows }: { title: string; rows: readonly Row[] }) {
+  const cell = ([off, on]: readonly number[]) => `${off} → ${on}`;
+  return (
+    <figure>
+      <figcaption className="meta mb-1">{title} · guard off → on</figcaption>
+      <div className="overflow-x-auto rounded-lg border border-line bg-paper">
+        <table className="w-full font-mono text-[13px]">
+          <thead className="text-left text-faint">
+            <tr>
+              <th className="px-3 py-2 font-normal">agent</th>
+              <th className="px-3 py-2 font-normal">as asked</th>
+              <th className="px-3 py-2 font-normal">wrong, VI passed</th>
+              <th className="px-3 py-2 font-normal">bought nothing, should have</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.agent} className="border-t border-line">
+                <td className="whitespace-nowrap px-3 py-1.5">{r.agent}</td>
+                <td className="whitespace-nowrap px-3 py-1.5">{cell(r.asked)}</td>
+                <td className="whitespace-nowrap px-3 py-1.5">{cell(r.wrong)}</td>
+                <td className="whitespace-nowrap px-3 py-1.5">{cell(r.nothing)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </figure>
+  );
+}
+
 export default function Home() {
   const n = RESULTS.naive;
   return (
@@ -168,8 +202,10 @@ export default function Home() {
             Agents shop in an open sandbox store: {STORE.products} products from {STORE.merchants} merchants. Traps come
             from the catalog&apos;s structure, as in a real store: the same shoe in another colour at the same price to
             the cent, the same item cheaper at a shop with no returns or with two-week delivery. Every order goes through
-            a real Verifiable Intent chain. {STORE.tasks} labelled tasks, {STORE.hidden} of them hidden; agents are scored
-            against the human label, never against the guard.
+            a real Verifiable Intent chain. Dataset v1 has {STORE.tasks} labelled tasks from {STORE.templates} trap
+            templates; v2 keeps {STORE.v2Templates} templates where strong models made mistakes, {STORE.v2Open} open
+            tasks. Agents are scored against the human label, never against the guard. Each agent did every task once
+            without the guard and once with it; runs of {RESULTS.runDates}.
           </p>
           <p className="meta">baseline agent: buys the first search result · one square per task, all {n.tasks}</p>
           <div className="receipt grid gap-8 p-5 pb-8 md:grid-cols-2">
@@ -180,13 +216,25 @@ export default function Home() {
             ■ wrong purchase paid · □ wrong cart stopped before payment ({n.caught}) · right purchases stopped for
             nothing: {n.falseStops}. Every wrong purchase passed Verifiable Intent.
           </p>
-          {RESULTS.preliminary && (
-            <p className="rounded-lg border border-dashed border-line bg-paper p-4 text-[15px] text-muted">
-              Preliminary, run of {RESULTS.runDate}. Real models (Claude, GPT, DeepSeek, MiniMax, Nemotron) are being
-              re-run after three fixes to the test bench; their results will appear here, including how often the guard
-              stops them for nothing.
-            </p>
-          )}
+          <p>
+            Real models rarely fell into v1&apos;s traps: 4 wrong purchases in 1,000 without the guard and 4 with it.
+            Their usual failure is giving up, which the guard does not address. Across {RESULTS.v1Checks.checks} checks
+            on their carts the guard caught {RESULTS.v1Checks.caught} wrong cart, missed {RESULTS.v1Checks.missed} and
+            stopped {RESULTS.v1Checks.falseStops} right ones.
+          </p>
+          <ModelTable title={`Dataset v1, all ${STORE.tasks} tasks`} rows={RESULTS.v1} />
+          <p>
+            On v2, wrong purchases fell from 12 of 250 to 1 of 250, almost all of them nemotron&apos;s. The guard caught{" "}
+            {RESULTS.v2Checks.caught} wrong carts and missed {RESULTS.v2Checks.missed}; the rest of the change is the
+            difference between two single runs. The cost: in {RESULTS.v2Checks.falseStops} of{" "}
+            {RESULTS.v2Checks.checks} checks it stopped a right cart, and the agent had to ask the person one extra
+            question. v2&apos;s templates were chosen where the guard has something to catch.
+          </p>
+          <ModelTable title={`Dataset v2, open half, ${STORE.v2Open} tasks`} rows={RESULTS.v2} />
+          <p className="meta">
+            The runs predate the guard changes of 31 October 2026 and have not been repeated since. The run logs are
+            not published yet.
+          </p>
         </Section>
 
         {/* ── 05 Spec ── */}
@@ -200,11 +248,13 @@ export default function Home() {
 {`# pip install asasked
 from asasked import Guard
 
-guard = Guard(request="Black ASICS in size 42, "
-                      "I need to be able to return them.",
-              today="Monday, 2 November 2026")
-guard.check(cart, mandate, find)
-# {"decision": "ask", "reasons": [...], "question": "..."}`}
+guard = Guard("Black ASICS in size 42, "
+              "I need to be able to return them.")
+guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS",
+              "color": "Black/White", "size": "42",
+              "price": 159.00, "returnable": False}])
+# {"decision": "ask", "reasons": ["Asked to be able to
+#   return it, the item is final sale: ..."], ...}`}
           </pre>
           <ul className="space-y-1.5 font-mono text-[14px]">
             <li>
