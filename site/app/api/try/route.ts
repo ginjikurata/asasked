@@ -27,7 +27,9 @@ export async function POST(req: Request) {
     return Response.json({ error: `Keep it under ${MAX_CHARS} characters.` }, { status: 400 });
 
   // Caddy sets X-Forwarded-For to the client's address (an incoming one is not trusted).
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  // Take the last hop anyway: it is the one our own proxy wrote, so a visitor who sends
+  // a made-up header cannot pick their own id even if the proxy config changes.
+  const ip = req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() || "local";
   const visitor = createHash("sha256")
     .update(`${process.env.ASASKED_LIVE_SALT ?? "asasked"}:${ip}`)
     .digest("hex")

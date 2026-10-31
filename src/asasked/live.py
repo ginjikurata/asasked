@@ -21,9 +21,11 @@
 
 Деньги считает сам сервис: не больше LIVE_PER_VISITOR просьб на посетителя
 и LIVE_DAILY_CAP на всех за сутки (UTC), одновременно — LIVE_PARALLEL. Ответы
-на вопросы — та же просьба, отдельно не считаются. Просьба, после которой
-агент ничего не делал в магазине (например, «привет»), попытку не тратит —
-до FREE_PER_VISITOR таких в сутки.
+на вопросы — та же просьба, отдельно не считаются. Просьба, на которую агент
+только ответил или переспросил человека (например, «привет»), попытку
+посетителя не тратит — до FREE_PER_VISITOR таких в сутки. Общий дневной
+потолок она тратит всё равно: модель вызывалась, и потолок должен быть
+жёстким.
 Слушает только localhost: снаружи к нему ходит маршрут сайта /api/try.
 """
 
@@ -209,10 +211,6 @@ def suggestions(store: Store, facts: IntentFacts, categories: set[str], m: Manda
 # Разговор: одна просьба, агент, вопросы посетителю
 # ---------------------------------------------------------------------------
 
-_SHOPPING = {"search_products", "get_product", "add_to_cart", "remove_from_cart",
-             "view_cart", "check_before_checkout", "checkout"}
-
-
 class Conversation:
     """Одна просьба посетителя. Агент работает в своём потоке; вопрос человеку
     останавливает его, пока посетитель не ответит (или не уйдёт).
@@ -258,7 +256,9 @@ class Conversation:
             self._inbox.put(None)
 
     def shopped(self) -> bool:
-        return any(c["tool"] in _SHOPPING for c in self.session.transcript)
+        """Делал ли агент что-то кроме вопросов человеку. Любой другой вызов,
+        даже ошибочный, — это шаги модели, за которые заплачено."""
+        return any(c["tool"] != "ask_user" for c in self.session.transcript)
 
     def _next(self) -> dict:
         try:
@@ -414,14 +414,14 @@ class Limits:
             self._visitors[visitor] += 1
 
     def refund(self, visitor: str) -> bool:
-        """Возвращает попытку за просьбу без покупок — не больше free_per_visitor."""
+        """Возвращает посетителю попытку за просьбу без покупок — не больше
+        free_per_visitor. Общий дневной счёт не уменьшается."""
         with self._lock:
             self._roll()
             if self._free[visitor] >= self.free_per_visitor or not self._visitors[visitor]:
                 return False
             self._free[visitor] += 1
             self._visitors[visitor] -= 1
-            self._total -= 1
             return True
 
     def acquire(self) -> None:

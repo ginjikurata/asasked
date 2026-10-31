@@ -56,8 +56,12 @@ the agent to call it before paying. On *ask* the agent shows the person the
 question as it is, then checks again with their reply in `answers`. Facts
 are extracted once per request, so re-checking a corrected cart is
 instant. Model keys come from the environment, as above. A server can only
-answer when asked, so it cannot stop an agent that never calls it. If
-payment goes through your own code, call `Guard` there instead.
+answer when asked, so it cannot stop an agent that never calls it. It also
+has to take the agent's word for everything it is sent: the request and the
+person's replies in `answers` both come from the agent, so an agent could
+reword the request or answer for the person. The MCP server is a second
+opinion for an agent that wants one, not a lock. If payment goes through
+your own code, call `Guard` there instead.
 
 ```json
 {"mcpServers": {"asasked": {"command": "asasked-mcp",

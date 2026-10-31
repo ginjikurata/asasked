@@ -183,3 +183,13 @@ def test_v2_open_file_matches_generator():
     path = dataset.DATA_DIR / "tasks_v2.jsonl"
     rows = [json.loads(line) for line in path.open(encoding="utf-8")]
     assert rows == json.loads(json.dumps(build_v2(include_hidden=False), ensure_ascii=False))
+
+
+def test_v2_hidden_half_avoids_public_pilots(tmp_path, monkeypatch):
+    """Скрытая половина на своём (здесь — временном) секретном числе не
+    повторяет ответов пилотов: их числа открыты."""
+    from asasked.harness import dataset_v2 as v2
+    monkeypatch.setattr(dataset, "HIDDEN_DIR", tmp_path)
+    hidden = [t for t in v2.build_v2() if t["split"] == "hidden"]
+    pilots = v2.build_pilot() + v2.build_pilot2() + v2.build_pilot3()
+    assert hidden and not {v2._answer(t) for t in hidden} & {v2._answer(t) for t in pilots}

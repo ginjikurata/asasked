@@ -683,10 +683,13 @@ def _half(seed: int, split: str, taken: set[str]) -> list[dict]:
 
 def build_v2(include_hidden: bool = True) -> list[dict]:
     """Открытая половина, затем скрытая. Ответы скрытых задач не совпадают ни с
-    открытыми задачами v2, ни с опубликованными задачами v1."""
+    открытыми задачами v2, ни с опубликованными задачами v1, ни с пилотами
+    (их числа открыты, задачи пересобираются из кода)."""
     taken = {_answer(r) for r in d1.rows("open")}
     tasks = _half(OPEN_SEED_V2, "open", taken)
     if include_hidden:
+        # Пилоты — только для скрытой половины: открытая уже опубликована.
+        taken |= {_answer(r) for r in build_pilot() + build_pilot2() + build_pilot3()}
         tasks += _half(hidden_seed(), "hidden", taken)
     return tasks
 

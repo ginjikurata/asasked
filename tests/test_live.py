@@ -98,15 +98,27 @@ def test_greeting_does_not_use_up_an_attempt_but_answering_does():
     desk = Desk(limits, run=_asker("What would you like to buy?", search=True),
                 extract=lambda _t: IntentFacts())
     first = desk.start("hi", "v")
-    second = desk.start("hello", "v")          # первая не засчитана
-    assert limits.left() == 10
+    second = desk.start("hello", "v")          # первая не засчитана посетителю
+    assert limits.left() == 8                  # но общий потолок тратит
     with pytest.raises(LimitError):
         desk.answer(first["conversation"], "balls", "v")   # закрыта новой просьбой
     desk.answer(second["conversation"], "balls", "v")      # ответ — уже просьба
-    assert limits.left() == 9
+    assert limits.left() == 7
     with pytest.raises(LimitError) as spent:
         desk.start("hi again", "v")
     assert spent.value.code == 429
+
+
+@needs_vi
+def test_any_tool_call_but_a_question_uses_up_an_attempt():
+    def flailing(spec, session, request, max_steps):
+        for _ in range(5):
+            session.call("no_such_tool", {})      # ошибки — тоже шаги модели
+        return AgentResult(stop="done")
+    limits = Limits(daily_cap=10, per_visitor=1)
+    Desk(limits, run=flailing, extract=lambda _t: IntentFacts()).start("hi", "v")
+    with pytest.raises(LimitError):
+        limits.count("v")
 
 
 def test_nothing_found_and_no_wishes_means_no_suggestions():
@@ -147,9 +159,9 @@ def test_limits_per_visitor_daily_and_parallel():
 def test_refund_is_capped():
     limits = Limits(daily_cap=10, per_visitor=5, free_per_visitor=1)
     limits.count("a")
-    assert limits.refund("a") and limits.left() == 10
+    assert limits.refund("a") and limits.left() == 9      # общий счёт не возвращается
     limits.count("a")
-    assert not limits.refund("a") and limits.left() == 9
+    assert not limits.refund("a") and limits.left() == 8
     assert not limits.refund("nobody")
 
 
