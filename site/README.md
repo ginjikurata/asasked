@@ -23,8 +23,8 @@ npm run build && npm run start
 | Examples and open tasks | `lib/examples.json`, `lib/dataset-open.json`, written by `scripts/build_site_data.py` (open half only) |
 | Background | `components/PixelField.tsx` (payment network), sprites in `lib/sprites.ts` |
 
-**Before launch** `LAUNCHED = false`: the site sends `noindex` and `robots.txt` disallows
-everything. Deploying and setting `LAUNCHED = true` is the owner's call.
+**Launched** on 31 October 2026: `LAUNCHED = true`, so pages are indexable and `robots.txt`
+points to `sitemap.xml`. Setting it back to `false` hides the site from search engines again.
 `RESULTS.preliminary` shows a note that model results are being re-run.
 
 **At deploy:** `/legal` and `/privacy` say the site runs on the Concord server (UltaHost,

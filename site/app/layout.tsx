@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: "AsAsked — did the agent buy what you asked for?", template: "%s · AsAsked" },
   description,
-  // until launch no page is indexed: the product is not public yet
+  // indexed only once launched (LAUNCHED in lib/content.ts)
   robots: LAUNCHED ? undefined : { index: false, follow: false },
   openGraph: { type: "website", url: SITE_URL, title: "AsAsked", description },
 };

@@ -3,8 +3,8 @@
 
 export const SITE_URL = "https://asasked.dev";
 
-/** Until launch the site is not indexed (robots.ts). */
-export const LAUNCHED = false;
+/** Whether search engines may index the site (layout.tsx, robots.ts). Public since 31 October 2026. */
+export const LAUNCHED = true;
 
 export const GITHUB_URL = "https://github.com/ginjikurata/asasked";
 
