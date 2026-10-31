@@ -130,7 +130,7 @@ class _FakeHTTP:
     def __init__(self, replies):
         self.replies, self.bodies = list(replies), []
 
-    def __call__(self, req, timeout=None):
+    def __call__(self, req, timeout=None, context=None):
         import io
         import json
         import urllib.error
@@ -228,7 +228,7 @@ def test_openai_compat_retries_broken_response(monkeypatch):
     calls = {"n": 0}
     real = http_fake.__call__
 
-    def flaky(req, timeout=None):
+    def flaky(req, timeout=None, context=None):
         calls["n"] += 1
         if calls["n"] == 1:
             raise http.client.IncompleteRead(b"partial")

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "asasked"
-version = "0.1.2"
+version = "0.1.3"
 description = "Checks whether an AI agent's purchase matches what the person actually asked for"
 readme = "README.md"
 license = "Apache-2.0"

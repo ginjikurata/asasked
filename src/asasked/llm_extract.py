@@ -23,12 +23,35 @@ import http.client
 import json
 import os
 import re
+import ssl
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
 _ENV_LOADED = False
+
+# Certificate bundles to try when Python has none of its own. python.org
+# builds for macOS ship without one until "Install Certificates" is run, and
+# every HTTPS call then fails; macOS keeps a bundle at /etc/ssl/cert.pem.
+_SYSTEM_CA_FILES = ("/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt")
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """Python's default context, or one with a bundle found elsewhere when
+    Python has no certificates (SSL_CERT_FILE still wins: it is the default)."""
+    paths = ssl.get_default_verify_paths()
+    if paths.cafile or paths.capath:
+        return ssl.create_default_context()
+    try:
+        import certifi  # comes with httpx, so with the mcp and anthropic extras
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        pass
+    for cafile in _SYSTEM_CA_FILES:
+        if os.path.exists(cafile):
+            return ssl.create_default_context(cafile=cafile)
+    return ssl.create_default_context()
 
 # .env lives in the project root. Looking for it relative to the current
 # directory won't do: a script started outside the root would silently miss
@@ -322,7 +345,7 @@ def _call_gemini(request: str, system: str = SYSTEM_PROMPT) -> dict:
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=30, context=_ssl_context()) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
             break
         except urllib.error.HTTPError as e:
@@ -443,7 +466,7 @@ def _post_with_retries(url: str, body: dict, api_key: str | None = None) -> dict
             "User-Agent": "asasked/0.1",
         })
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with urllib.request.urlopen(req, timeout=60, context=_ssl_context()) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except (http.client.IncompleteRead, ConnectionResetError, TimeoutError) as e:
             # A proxy sometimes cuts the answer off midway: a reason to retry.

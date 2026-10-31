@@ -10,6 +10,11 @@ export const CHANGELOG: Day[] = [
     changes: [
       {
         area: "guard",
+        text:
+          "Version 0.1.3: Gemini and OpenAI-compatible models now work on Python installs that have no certificates of their own (python.org builds for macOS). Before, every check there failed and the guard answered ask.",
+      },
+      {
+        area: "guard",
         commit: "d467191",
         text: "Version 0.1.2 on PyPI: code comments, docstrings and script output in English. The guard's behaviour is unchanged.",
       },
