@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "asasked"
+version = "0.1.0"
+description = "Checks whether an AI agent's purchase matches what the person actually asked for"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = [
+    "cryptography>=42.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+anthropic = ["anthropic>=2.3"]
+mcp = ["mcp>=2.3"]
+claude-agent = ["claude-agent-sdk>=0.2"]
+openai-agents = ["openai-agents>=0.24"]
+langchain = ["langchain>=1.4"]
+review = ["openpyxl>=3.1"]
+
+[project.scripts]
+asasked-mcp = "asasked.mcp_server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/asasked"]
+
+# Без списка в архив исходников попало бы всё подряд: сайт с node_modules,
+# данные, черновики, локальные настройки.
+[tool.hatch.build.targets.sdist]
+only-include = ["src/asasked", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

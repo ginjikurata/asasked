@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+conformance_vectors.json
+.venv/
+*.egg-info/
+.pytest_cache/
+runs/
+.DS_Store
+~$*
+dist/
+build/
+drafts/

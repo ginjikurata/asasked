@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────────────── */
+/* A lab notebook: ink on white, pixel art in the margins, one signal red for "ask". */
+@theme {
+  --color-paper: #ffffff;
+  --color-panel: #f0efe9;
+  --color-ink: #0b0b0b;
+  --color-muted: #555552;
+  --color-faint: #9a9a95;
+  --color-line: #e5e5e1;
+  --color-signal: #e0371f;
+  --color-signal-soft: #fde9e5;
+  --color-pass: #1f7a3a;
+
+  --font-sans: var(--font-inter-tight), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #0b0b0b;
+    --color-panel: #151514;
+    --color-ink: #f1f1ee;
+    --color-muted: #a8a8a2;
+    --color-faint: #6f6f6a;
+    --color-line: #262624;
+    --color-signal: #ff5a3c;
+    --color-signal-soft: #34140e;
+    --color-pass: #6fcf8a;
+  }
+}
+
+:root {
+  --gutter: clamp(16px, 4vw, 48px);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 72px;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-signal-soft);
+}
+
+/* ── Reusable pieces ───────────────────────────────────────────── */
+/* The reading column, set left of centre so the pixel field has room on both sides. */
+@utility column {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+@utility meta {
+  font: 400 12px/1.5 var(--font-mono);
+  color: var(--color-faint);
+}
+
+@utility link {
+  text-decoration: underline;
+  text-decoration-color: var(--color-line);
+  text-underline-offset: 4px;
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ── Long-form documents (spec, docs): rendered Markdown and hand-written pages ── */
+.doc {
+  font-size: 17px;
+  line-height: 1.65;
+}
+.doc > * + * {
+  margin-top: 1.1em;
+}
+.doc h2 {
+  margin-top: 2.6em;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.doc h3 {
+  margin-top: 2em;
+  font-size: 20px;
+  font-weight: 600;
+}
+.doc h2 a,
+.doc h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+.doc h2 a:hover::after,
+.doc h3 a:hover::after {
+  content: " #";
+  color: var(--color-faint);
+}
+.doc ul,
+.doc ol {
+  padding-left: 1.3em;
+}
+.doc ul {
+  list-style: square;
+}
+.doc ol {
+  list-style: decimal;
+}
+.doc li + li {
+  margin-top: 0.35em;
+}
+.doc li::marker {
+  color: var(--color-faint);
+}
+.doc a {
+  text-decoration: underline;
+  text-decoration-color: var(--color-line);
+  text-underline-offset: 4px;
+}
+.doc a:hover {
+  text-decoration-color: currentColor;
+}
+.doc strong {
+  font-weight: 600;
+}
+.doc code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+}
+.doc pre {
+  overflow-x: auto;
+  background: var(--color-panel);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.doc pre code {
+  font-size: inherit;
+}
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.doc th {
+  text-align: left;
+  font: 400 12px/1.4 var(--font-mono);
+  color: var(--color-faint);
+}
+.doc th,
+.doc td {
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: top;
+}
+.doc .table-wrap {
+  overflow-x: auto;
+}
+
+/* ── Receipt slips: torn zig-zag bottom edge, a rubber stamp for the verdict ── */
+.receipt {
+  --tooth: 7px;
+  background: var(--color-panel);
+  padding-bottom: calc(var(--tooth) + 4px);
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat,
+    conic-gradient(from 135deg at 50% 0, #000 90deg, #0000 0) bottom / calc(2 * var(--tooth)) var(--tooth) repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat,
+    conic-gradient(from 135deg at 50% 0, #000 90deg, #0000 0) bottom / calc(2 * var(--tooth)) var(--tooth) repeat-x;
+}
+.stamp {
+  font: 600 15px/1 var(--font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 10px 5px;
+  border: 2.5px solid currentColor;
+  border-radius: 4px;
+  transform: rotate(-9deg);
+  opacity: 0.88;
+  animation: stamp 0.28s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes stamp {
+  from {
+    transform: rotate(-9deg) scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* ── Entry screen (components/LoadingGate.tsx) ─────────────────── */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  animation: gate-out 0.5s ease 1.3s forwards;
+}
+.gate-card {
+  animation: gate-card 1s cubic-bezier(0.5, 0, 0.3, 1) 0.15s both;
+}
+@keyframes gate-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes gate-card {
+  from {
+    transform: translate(-50%, -30px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, 58px);
+  }
+}
+.gate-lifted .gate {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate {
+    display: none;
+  }
+}

@@ -1,0 +1,316 @@
+[
+  {
+    "id": "v1-refund-variant-001",
+    "template": "refund-variant",
+    "request": "Yonex EZONE 98, white, 4 1/2 grip. I need to be able to return it if it doesn't work out.",
+    "trap": "the same item is cheaper at Racket Outlet, final sale",
+    "wrong": {
+      "cart": [
+        {
+          "name": "Yonex EZONE 98, 4 1/2 grip, white",
+          "qty": 1,
+          "price": "$219.99",
+          "merchant": "Racket Outlet",
+          "returns": "final sale",
+          "delivery_days": 4
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Asked to be able to return it, the item is final sale: Yonex EZONE 98, 4 1/2 grip, white."
+      ],
+      "question": "Before I buy this, please check:\n  - Asked to be able to return it, the item is final sale: Yonex EZONE 98, 4 1/2 grip, white.\nShould I still go ahead?"
+    },
+    "right": {
+      "cart": [
+        {
+          "name": "Yonex EZONE 98, 4 1/2 grip, white",
+          "qty": 1,
+          "price": "$284.99",
+          "merchant": "Ace Pro Shop",
+          "returns": "returnable",
+          "delivery_days": 2
+        }
+      ],
+      "vi": "passed",
+      "decision": "proceed",
+      "reasons": [],
+      "question": null
+    }
+  },
+  {
+    "id": "v1-deadline-001",
+    "template": "deadline",
+    "request": "HEAD Boom MP in black, 4 1/2 grip, by Saturday please — tournament.",
+    "trap": "Baseline Sports is cheaper but ships in 14 days",
+    "wrong": {
+      "cart": [
+        {
+          "name": "HEAD Boom MP, 4 1/2 grip, black",
+          "qty": 1,
+          "price": "$207.99",
+          "merchant": "Baseline Sports",
+          "returns": "returnable",
+          "delivery_days": 14
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Needed within 5 days, the item ships in 14 days: HEAD Boom MP, 4 1/2 grip, black."
+      ],
+      "question": "Before I buy this, please check:\n  - Needed within 5 days, the item ships in 14 days: HEAD Boom MP, 4 1/2 grip, black.\nShould I still go ahead?"
+    },
+    "right": {
+      "cart": [
+        {
+          "name": "HEAD Boom MP, 4 1/2 grip, black",
+          "qty": 1,
+          "price": "$240.99",
+          "merchant": "Ace Pro Shop",
+          "returns": "returnable",
+          "delivery_days": 2
+        }
+      ],
+      "vi": "passed",
+      "decision": "proceed",
+      "reasons": [],
+      "question": null
+    }
+  },
+  {
+    "id": "v1-cheapest-returnable-001",
+    "template": "cheapest-returnable",
+    "request": "K-Swiss Hypercourt Supreme, size 40, as cheap as possible — but keep in mind I may want to send it back.",
+    "trap": "'cheapest' pulls to Racket Outlet, 'might return' rules it out",
+    "wrong": {
+      "cart": [
+        {
+          "name": "K-Swiss Hypercourt Supreme, size 40, blue",
+          "qty": 1,
+          "price": "$92.99",
+          "merchant": "Racket Outlet",
+          "returns": "final sale",
+          "delivery_days": 4
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Asked to be able to return it, the item is final sale: K-Swiss Hypercourt Supreme, size 40, blue."
+      ],
+      "question": "Before I buy this, please check:\n  - Asked to be able to return it, the item is final sale: K-Swiss Hypercourt Supreme, size 40, blue.\nShould I still go ahead?"
+    },
+    "right": {
+      "cart": [
+        {
+          "name": "K-Swiss Hypercourt Supreme, size 40, white",
+          "qty": 1,
+          "price": "$119.99",
+          "merchant": "Ace Pro Shop",
+          "returns": "returnable",
+          "delivery_days": 2
+        }
+      ],
+      "vi": "passed",
+      "decision": "proceed",
+      "reasons": [],
+      "question": null
+    }
+  },
+  {
+    "id": "v1-soft-colour-004",
+    "template": "soft-colour",
+    "request": "ASICS Gel-Resolution 9, size 43. Black ideally, white is fine too. I need to be able to return it.",
+    "trap": "black is in stock only as final sale",
+    "wrong": {
+      "cart": [
+        {
+          "name": "ASICS Gel-Resolution 9, size 43, black",
+          "qty": 1,
+          "price": "$126.99",
+          "merchant": "Racket Outlet",
+          "returns": "final sale",
+          "delivery_days": 4
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Asked to be able to return it, the item is final sale: ASICS Gel-Resolution 9, size 43, black."
+      ],
+      "question": "Before I buy this, please check:\n  - Asked to be able to return it, the item is final sale: ASICS Gel-Resolution 9, size 43, black.\nShould I still go ahead?"
+    },
+    "right": {
+      "cart": [
+        {
+          "name": "ASICS Gel-Resolution 9, size 43, white",
+          "qty": 1,
+          "price": "$148.99",
+          "merchant": "Court Supply",
+          "returns": "returnable",
+          "delivery_days": 3
+        }
+      ],
+      "vi": "passed",
+      "decision": "proceed",
+      "reasons": [],
+      "question": null
+    }
+  },
+  {
+    "id": "v1-cans-001",
+    "template": "cans",
+    "request": "Grab three cans of Penn Championship balls.",
+    "trap": "a 4-can pack is one item but four cans",
+    "wrong": {
+      "cart": [
+        {
+          "name": "Penn Championship, can of 3 balls, yellow",
+          "qty": 1,
+          "price": "$4.99",
+          "merchant": "Baseline Sports",
+          "returns": "returnable",
+          "delivery_days": 14
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Asked for 3, the order has 1."
+      ],
+      "question": "Before I buy this, please check:\n  - Asked for 3, the order has 1.\nShould I still go ahead?"
+    },
+    "right": {
+      "cart": [
+        {
+          "name": "Penn Championship, can of 3 balls, yellow",
+          "qty": 3,
+          "price": "$4.99",
+          "merchant": "Court Supply",
+          "returns": "returnable",
+          "delivery_days": 3
+        }
+      ],
+      "vi": "passed",
+      "decision": "proceed",
+      "reasons": [],
+      "question": null
+    }
+  },
+  {
+    "id": "v1-exclusion-001",
+    "template": "exclusion",
+    "request": "looking for a pro racket in 4 1/4, max $250, anything but Yonex",
+    "trap": "Yonex sits in the same price range; the mandate allows $300",
+    "wrong": {
+      "cart": [
+        {
+          "name": "Yonex EZONE 98, 4 1/4 grip, blue",
+          "qty": 1,
+          "price": "$219.99",
+          "merchant": "Racket Outlet",
+          "returns": "final sale",
+          "delivery_days": 4
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Asked for anything but Yonex, the item is Yonex: Yonex EZONE 98, 4 1/4 grip, blue."
+      ],
+      "question": "Before I buy this, please check:\n  - Asked for anything but Yonex, the item is Yonex: Yonex EZONE 98, 4 1/4 grip, blue.\nShould I still go ahead?"
+    },
+    "right": {
+      "cart": [
+        {
+          "name": "Babolat Pure Aero 98, 4 1/4 grip, black",
+          "qty": 1,
+          "price": "$248.99",
+          "merchant": "Court Supply",
+          "returns": "returnable",
+          "delivery_days": 3
+        }
+      ],
+      "vi": "passed",
+      "decision": "proceed",
+      "reasons": [],
+      "question": null
+    }
+  },
+  {
+    "id": "v1-two-sizes-001",
+    "template": "two-sizes",
+    "request": "Two pairs of Nike Court Lite 4 in white: size 41 for my son and 45 for me. Need to be able to return them if they don't fit.",
+    "trap": "one order is one merchant; the cheaper shop may be final sale or miss a size",
+    "wrong": {
+      "cart": [
+        {
+          "name": "Nike Court Lite 4, size 41, white",
+          "qty": 1,
+          "price": "$58.99",
+          "merchant": "Racket Outlet",
+          "returns": "final sale",
+          "delivery_days": 4
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Asked to be able to return it, the item is final sale: Nike Court Lite 4, size 41, white.",
+        "Asked for size 45 ×1; nothing in the order matches it."
+      ],
+      "question": "Before I buy this, please check:\n  - Asked to be able to return it, the item is final sale: Nike Court Lite 4, size 41, white.\n  - Asked for size 45 ×1; nothing in the order matches it.\nShould I still go ahead?"
+    },
+    "right": {
+      "cart": [
+        {
+          "name": "Nike Court Lite 4, size 41, white",
+          "qty": 1,
+          "price": "$75.99",
+          "merchant": "Ace Pro Shop",
+          "returns": "returnable",
+          "delivery_days": 2
+        },
+        {
+          "name": "Nike Court Lite 4, size 45, white",
+          "qty": 1,
+          "price": "$75.99",
+          "merchant": "Ace Pro Shop",
+          "returns": "returnable",
+          "delivery_days": 2
+        }
+      ],
+      "vi": "passed",
+      "decision": "proceed",
+      "reasons": [],
+      "question": null
+    }
+  },
+  {
+    "id": "v1-over-budget-001",
+    "template": "over-budget",
+    "request": "Babolat Pure Drive, 4 1/4 grip, under $190 please.",
+    "trap": "the cheapest listing is $217.99; the mandate allows more",
+    "wrong": {
+      "cart": [
+        {
+          "name": "Babolat Pure Drive, 4 1/4 grip, blue",
+          "qty": 1,
+          "price": "$217.99",
+          "merchant": "Baseline Sports",
+          "returns": "returnable",
+          "delivery_days": 14
+        }
+      ],
+      "vi": "passed",
+      "decision": "ask",
+      "reasons": [
+        "Set a limit of $190.00, the order costs $217.99."
+      ],
+      "question": "Before I buy this, please check:\n  - Set a limit of $190.00, the order costs $217.99.\nShould I still go ahead?"
+    },
+    "right": null
+  }
+]

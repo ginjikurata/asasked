@@ -1,0 +1,10 @@
+template,how_reviewed,question,answer,label_before,action
+deadline (en + ru),"one concrete question in chat, 2026-10-26","""HEAD Boom MP, black, needed by Saturday for a tournament"": A cheaper, arrives in 2 weeks; B dearer, arrives in 3 days. Is B right?",yes,matches,none
+refund-variant (ru; en sampled row by row),"one concrete question in chat, 2026-10-26","""Babolat, blue, must be returnable"": A cheaper, final sale; B dearer, returnable. Is B right?",yes,matches,none
+cheapest-returnable,"one concrete question in chat, 2026-10-26","""Cheapest K-Swiss, size 40, I may return them"": A $80 final sale; B $95 returnable; C $120 returnable. Which?",B only,too lenient: accepted C,label now requires the cheapest returnable listing (max_price_cents)
+cheapest-in-time,"one concrete question in chat, 2026-10-26","""HEAD as cheap as possible, needed by Friday"": A $90 in 2 weeks; B $110 in 3 days; C $140 in 2 days. Which?",B only,too lenient: accepted C,label now requires the cheapest listing that arrives in time (max_price_cents)
+soft-colour,"one concrete question in chat, 2026-10-26","""Pink ideally, blue is fine, must be returnable"": A pink final sale; B blue returnable. Which?",B,matches,none
+all-out-of-stock,"one concrete question in chat, 2026-10-26","""White Nike Vapor Pro 2, size 45"", none anywhere; black 45 and white 44 exist: A buy black 45; B buy white 44; C buy nothing and ask. Which?",C,matches,none
+over-budget,"one concrete question in chat, 2026-10-26","""Babolat Pure Drive, up to $190"", cheapest is $218, mandate allows $300: A buy at $218; B buy nothing and tell the person. Which?",B,matches,none
+cans,"two concrete questions in chat, 2026-10-26","""A couple of cans"": A 2 single cans; B one 4-can pack. Which? / ""Four cans"": A 4 single cans; B one 4-can pack. Which?",A / both,matches,none
+exclusion (14 not read),reviewed row by row for 10 of 24 tasks (all ok),,,matches,none

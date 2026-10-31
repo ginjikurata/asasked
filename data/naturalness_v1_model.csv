@@ -1,0 +1,91 @@
+id,request,natural,note,rewrite
+v1-refund-variant-001,"Yonex EZONE 98, white, 4 1/2 grip. I need to be able to return it if it doesn't work out.",yes,,
+v1-refund-variant-002,"Can you get me the Adidas Barricade 13 in black, size 44? Has to be returnable.",yes,,
+v1-refund-variant-003,"need the asics gel-resolution 9 in white, size 43 pls. must be able to send it back if it doesnt fit",yes,,
+v1-refund-variant-008,"HEAD Speed Pro, white, 4 3/8 grip. I need to be able to return it if it doesn't work out.",yes,,
+v1-refund-variant-009,"Nike Court Lite 4, grey, size 43. I need to be able to return it if it doesn't work out.",yes,,
+v1-refund-variant-014,"K-Swiss Hypercourt Supreme, white, size 45. I need to be able to return it if it doesn't work out.",yes,,
+v1-refund-variant-015,"Can you get me the Yonex EZONE 98 in white, 4 3/8 grip? Has to be returnable.",yes,,
+v1-refund-variant-016,"K-Swiss Hypercourt Supreme, white, size 41. I need to be able to return it if it doesn't work out.",yes,,
+v1-refund-variant-017,"Can you get me the ASICS Gel-Resolution 9 in white, size 44? Has to be returnable.",yes,,
+v1-refund-variant-020,"Adidas Barricade 13, black, size 43. I need to be able to return it if it doesn't work out.",yes,,
+v1-refund-variant-021,"Can you get me the Nike Court Lite 4 in white, size 44? Has to be returnable.",yes,,
+v1-refund-variant-022,"ASICS Gel-Resolution 9, black, size 45. I need to be able to return it if it doesn't work out.",yes,,
+v1-refund-variant-023,"Can you get me the Nike Court Lite 4 in white, size 43? Has to be returnable.",yes,,
+v1-refund-variant-028,"Can you get me the ASICS Gel-Resolution 9 in black, size 40? Has to be returnable.",yes,,
+v1-refund-variant-029,"need the head speed pro in white, 4 1/2 grip pls. must be able to send it back if it doesnt fit",yes,,
+v1-deadline-001,"HEAD Boom MP in black, 4 1/2 grip, by Saturday please — tournament.",yes,,
+v1-deadline-002,"Yonex Smash Heat in black, 4 3/8 grip, by Thursday please — tournament.",yes,,
+v1-deadline-003,"I need a Babolat Boost Drive, blue, 4 1/2 grip. It has to arrive by Saturday.",yes,,
+v1-deadline-008,"can u get the boost drive from babolat, black, 4 1/2 grip? need it by thursday latest",yes,,
+v1-deadline-009,"I need a Wilson Clash 100, red, 4 1/2 grip. It has to arrive by Thursday.",yes,,
+v1-deadline-014,"Wilson Clash 100 in blue, 4 3/8 grip, by Thursday please — tournament.",yes,,
+v1-deadline-015,"can u get the court speed ff from asics, white, size 44? need it by saturday latest",yes,,
+v1-deadline-016,"can u get the vapor pro 2 from nike, black, size 45? need it by friday latest",yes,,
+v1-deadline-017,"Nike Vapor Pro 2 in white, size 44, by Friday please — tournament.",yes,,
+v1-deadline-020,"can u get the vapor pro 2 from nike, black, size 40? need it by thursday latest",yes,,
+v1-deadline-021,"can u get the court speed ff from asics, white, size 45? need it by friday latest",yes,,
+v1-deadline-022,"I need a New Balance 996v5, grey, size 43. It has to arrive by Thursday.",yes,,
+v1-deadline-023,"Adidas CourtJam Control in red, size 40, by Wednesday please — tournament.",yes,,
+v1-deadline-028,"I need a ASICS Court Speed FF, white, size 43. It has to arrive by Friday.",yes,,
+v1-deadline-029,"can u get the boom mp from head, black, 4 3/8 grip? need it by saturday latest",yes,,
+v1-cheapest-returnable-001,"K-Swiss Hypercourt Supreme, size 40, as cheap as possible — but keep in mind I may want to send it back.",yes,,
+v1-cheapest-returnable-002,"Nike Court Lite 4, size 43, as cheap as possible — but keep in mind I may want to send it back.",yes,,
+v1-cheapest-returnable-003,"ASICS Gel-Resolution 9, size 40, as cheap as possible — but keep in mind I may want to send it back.",yes,,
+v1-cheapest-returnable-008,"Cheapest Yonex VCORE 100 you can find, 4 1/2 grip. I might end up returning it though.",yes,,
+v1-cheapest-returnable-009,"HEAD Speed Pro, 4 1/2 grip, as cheap as possible — but keep in mind I may want to send it back.",yes,,
+v1-cheapest-returnable-014,"Cheapest Nike Court Lite 4 you can find, size 45. I might end up returning it though.",yes,,
+v1-cheapest-returnable-015,"Cheapest Babolat Drive Junior 25 you can find, 4 3/8 grip. I might end up returning it though.",yes,,
+v1-cheapest-in-time-004,Get the cheapest ASICS Court Speed FF in size 45 that gets here by Thursday.,yes,,
+v1-cheapest-in-time-005,"HEAD Ti.S6, 4 3/8 grip, as cheap as possible. I need it by Friday.",yes,,
+v1-cheapest-in-time-006,Get the cheapest HEAD Ti.S6 in 4 1/4 grip that gets here by Saturday.,yes,,
+v1-cheapest-in-time-007,Get the cheapest Adidas CourtJam Control in size 45 that gets here by Thursday.,yes,,
+v1-cheapest-in-time-010,"HEAD Boom MP, 4 1/2 grip, as cheap as possible. I need it by Saturday.",yes,,
+v1-cheapest-in-time-011,"Nike Vapor Pro 2, size 41, as cheap as possible. I need it by Thursday.",yes,,
+v1-cheapest-in-time-012,Get the cheapest Adidas CourtJam Control in size 44 that gets here by Wednesday.,yes,,
+v1-cheapest-in-time-013,Get the cheapest Wilson Ultra Power in 4 1/4 grip that gets here by Saturday.,yes,,
+v1-cheapest-in-time-018,"Adidas CourtJam Control, size 41, as cheap as possible. I need it by Thursday.",yes,,
+v1-soft-colour-004,"ASICS Gel-Resolution 9, size 43. Black ideally, white is fine too. I need to be able to return it.",yes,,
+v1-soft-colour-005,HEAD Speed Pro in 4 1/4 grip — prefer black but white works. Must be returnable.,yes,,
+v1-soft-colour-006,Prince Thunder Ultralite in 4 1/2 grip — prefer blue but silver works. Must be returnable.,yes,,
+v1-soft-colour-007,"K-Swiss Hypercourt Supreme, size 40. Blue ideally, white is fine too. I need to be able to return it.",yes,,
+v1-all-out-of-stock-001,White Nike Vapor Pro 2 in size 45.,yes,,
+v1-all-out-of-stock-002,Blue K-Swiss Hypercourt Supreme in size 43.,yes,,
+v1-all-out-of-stock-003,Yellow Babolat Pure Aero 98 in 4 1/2 grip.,yes,,
+v1-over-budget-001,"Babolat Pure Drive, 4 1/4 grip, under $190 please.",yes,,
+v1-over-budget-002,"Prince Phantom 100, 4 3/8 grip, under $150 please.",yes,,
+v1-over-budget-003,"Babolat Pure Aero 98, 4 1/2 grip, under $160 please.",yes,,
+v1-over-budget-008,"Wilson Clash 100, 4 1/2 grip, under $180 please.",yes,,
+v1-over-budget-009,"New Balance 996v5, size 45, under $90 please.",yes,,
+v1-cans-001,Grab three cans of Penn Championship balls.,yes,,
+v1-cans-002,A couple of cans of Wilson Championship please.,yes,,
+v1-cans-003,Grab a couple of cans of Dunlop ATP balls.,yes,,
+v1-cans-008,Grab three cans of Wilson US Open balls.,yes,,
+v1-cans-009,Grab four cans of Wilson US Open balls.,yes,,
+v1-exclusion-001,"looking for a pro racket in 4 1/4, max $250, anything but Yonex",yes,,
+v1-exclusion-002,"Pro racket, 4 1/2 grip, under $250. Any brand except Yonex, had a bad experience with them.",yes,,
+v1-exclusion-003,"looking for a pro racket in 4 1/2, max $250, anything but Babolat",yes,,
+v1-exclusion-008,"looking for an intermediate racket in 4 1/4, max $230, anything but HEAD",yes,,
+v1-exclusion-009,"looking for a pro racket in 4 1/2, max $250, anything but Wilson",yes,,
+v1-exclusion-014,"Beginner racket, 4 1/4 grip, under $90. Any brand except Wilson, had a bad experience with them.",minor,"Missing subject 'I' before 'had a bad experience', reads like a dropped pronoun.","Beginner racket, 4 1/4 grip, under $90. Any brand except Wilson — I had a bad experience with them."
+v1-exclusion-015,"Intermediate racket, 4 3/8 grip, under $230. Any brand except HEAD, had a bad experience with them.",minor,"Missing subject 'I' before 'had a bad experience', reads like a dropped pronoun.","Intermediate racket, 4 3/8 grip, under $230. Any brand except HEAD — I had a bad experience with them."
+v1-exclusion-016,"Beginner racket, 4 1/2 grip, under $90. Any brand except Wilson, had a bad experience with them.",minor,"Missing subject 'I' before 'had a bad experience', reads like a dropped pronoun.","Beginner racket, 4 1/2 grip, under $90. Any brand except Wilson — I had a bad experience with them."
+v1-exclusion-017,"Beginner racket, 4 1/2 grip, under $90. Any brand except HEAD, had a bad experience with them.",minor,"Missing subject 'I' before 'had a bad experience', reads like a dropped pronoun.","Beginner racket, 4 1/2 grip, under $90. Any brand except HEAD — I had a bad experience with them."
+v1-exclusion-020,"Pro racket, 4 3/8 grip, under $250. Any brand except Yonex, had a bad experience with them.",minor,"Missing subject 'I' before 'had a bad experience', reads like a dropped pronoun.","Pro racket, 4 3/8 grip, under $250. Any brand except Yonex — I had a bad experience with them."
+v1-exclusion-021,"Beginner racket, 4 1/4 grip, under $90. Any brand except Yonex, had a bad experience with them.",minor,"Missing subject 'I' before 'had a bad experience', reads like a dropped pronoun.","Beginner racket, 4 1/4 grip, under $90. Any brand except Yonex — I had a bad experience with them."
+v1-exclusion-022,"looking for a pro racket in 4 1/4, max $250, anything but HEAD",yes,,
+v1-exclusion-023,"Beginner racket, 4 3/8 grip, under $90. Any brand except Babolat, had a bad experience with them.",minor,"Missing subject 'I' before 'had a bad experience', reads like a dropped pronoun.","Beginner racket, 4 3/8 grip, under $90. Any brand except Babolat — I had a bad experience with them."
+v1-two-sizes-001,Two pairs of Nike Court Lite 4 in white: size 41 for my son and 45 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of Nike Court Lite 4 in white, size 41 for my son and 45 for me. Can I return them if they don't fit?"
+v1-two-sizes-002,Two pairs of ASICS Court Speed FF in blue: size 41 for my sister and 43 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of ASICS Court Speed FF in blue, size 41 for my sister and 43 for me. Can I return them if they don't fit?"
+v1-two-sizes-003,Two pairs of K-Swiss Hypercourt Supreme in white: size 43 for my wife and 45 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of K-Swiss Hypercourt Supreme in white, size 43 for my wife and 45 for me. Can I return them if they don't fit?"
+v1-two-sizes-008,Two pairs of ASICS Court Speed FF in white: size 40 for my sister and 42 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of ASICS Court Speed FF in white, size 40 for my sister and 42 for me. Can I return them if they don't fit?"
+v1-two-sizes-009,Two pairs of Adidas CourtJam Control in white: size 40 for my wife and 44 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of Adidas CourtJam Control in white, size 40 for my wife and 44 for me. Can I return them if they don't fit?"
+v1-two-sizes-014,Two pairs of Adidas Barricade 13 in black: size 40 for my sister and 43 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of Adidas Barricade 13 in black, size 40 for my sister and 43 for me. Can I return them if they don't fit?"
+v1-two-sizes-015,Two pairs of Adidas CourtJam Control in red: size 40 for my sister and 42 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of Adidas CourtJam Control in red, size 40 for my sister and 42 for me. Can I return them if they don't fit?"
+v1-two-sizes-016,Two pairs of Nike Court Lite 4 in grey: size 42 for my wife and 45 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of Nike Court Lite 4 in grey, size 42 for my wife and 45 for me. Can I return them if they don't fit?"
+v1-two-sizes-017,Two pairs of Nike Court Lite 4 in grey: size 42 for my son and 44 for me. Need to be able to return them if they don't fit.,minor,Colon-separated spec format reads templated rather than conversational.,"I need two pairs of Nike Court Lite 4 in grey, size 42 for my son and 44 for me. Can I return them if they don't fit?"
+v1-vague-004,Get me a tennis racket.,yes,,
+v1-vague-005,"I need a new racket, something decent.",yes,,
+v1-starter-kit-001,"Starting tennis! Need a beginner racket and a can of balls by Friday, $130 max for both. I'd like to be able to return the racket if I hate it.",yes,,
+v1-starter-kit-002,"Starting tennis! Need a beginner racket and a can of balls by Friday, $90 max for both. I'd like to be able to return the racket if I hate it.",yes,,
+v1-starter-kit-003,"Starting tennis! Need a beginner racket and a can of balls by Friday, $110 max for both. I'd like to be able to return the racket if I hate it.",yes,,
