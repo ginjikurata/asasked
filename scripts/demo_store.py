@@ -1,9 +1,9 @@
-"""Демонстрация песочницы-магазина без языковой модели.
+"""Sandbox store demo without a language model.
 
-«Наивный» агент делает то, что делают многие: ищет, берёт первый результат
-и оформляет заказ. Мандат формально разрешает покупку, Verifiable Intent её
-пропускает — а проверка намерения находит, где агент не сделал того, о чём
-просили. Факты просьбы заданы вручную, чтобы демо работало без ключей.
+The "naive" agent does what many do: searches, takes the first result and
+checks out. The mandate formally allows the purchase and Verifiable Intent
+lets it through, while the intent check finds where the agent did not do
+what was asked. The request's facts are set by hand so the demo needs no keys.
 """
 
 from __future__ import annotations
@@ -46,27 +46,27 @@ def main() -> int:
         mandate = Mandate(f"A {task['category']}", allow, task.get("qty", 1), 100, task["max_cents"])
         session = store.new_session(mandate)
 
-        # первый результат, который удалось положить в корзину
+        # the first result that could be put in the cart
         qty = task.get("qty", 1)
         for first in session.call("search_products", {"query": task["query"]})["results"]:
             if "error" not in session.call("add_to_cart", {"sku": first["sku"], "quantity": qty}):
                 break
         result = session.call("checkout", {"confirm": True})
 
-        print(f"\n{B}Человек:{X} «{task['request']}»")
-        print(f"{D}Агент купил:{X} {first['name']} ×{qty}, {first['merchant']}")
+        print(f"\n{B}Person:{X} \"{task['request']}\"")
+        print(f"{D}Agent bought:{X} {first['name']} ×{qty}, {first['merchant']}")
         vi_ok = result["status"] == "placed"
-        print(f"  Verifiable Intent: {G + 'пропускает' if vi_ok else R + 'отклоняет'}{X}")
+        print(f"  Verifiable Intent: {G + 'passes' if vi_ok else R + 'rejects'}{X}")
         verdict = check_coherence(task["facts"], session.order.purchase,
                                   (mandate.amount_min_cents, mandate.amount_max_cents),
                                   mandate.allowlist, find=store.find)
-        print(f"  Сверка намерения:  {G + 'совпадает' if verdict.coherent else Y + 'расходится'}{X}")
+        print(f"  Intent check:      {G + 'matches' if verdict.coherent else Y + 'diverges'}{X}")
         for f in verdict.findings:
             mark = Y if f.severity == BLOCK else D
             print(f"    {mark}·{X} {f.text}")
         gaps += vi_ok and not verdict.coherent
 
-    print(f"\n{B}Итог:{X} VI пропустил и при этом куплено не то: {gaps} из {len(TASKS)}.")
+    print(f"\n{B}Result:{X} VI let it through and the wrong thing was bought: {gaps} of {len(TASKS)}.")
     return 0
 
 

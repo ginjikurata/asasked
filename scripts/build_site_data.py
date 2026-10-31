@@ -1,16 +1,16 @@
-"""Данные для сайта: примеры для «Try it» и открытая половина датасета.
+"""Site data: the "Try it" examples and the open half of the dataset.
 
-    python scripts/build_site_data.py   # → site/lib/examples.json, site/lib/dataset-open.json
+    python scripts/build_site_data.py   # -> site/lib/examples.json, site/lib/dataset-open.json
 
-Примеры: для одной открытой задачи каждого шаблона наивный агент (без модели)
-покупает первое, что нашёл поиск, — это соблазнительная неправильная корзина,
-и VI её пропускает. Затем детерминированная сверка решает по ней и по
-правильной покупке из разметки. Факты берутся из разметки задачи (в жизни их
-извлекают две модели) — так пример воспроизводим без сети и без ключей.
+Examples: for one open task of each template, a naive agent (no model) buys
+the first thing search found. That is the tempting wrong cart, and VI lets it
+through. Then the deterministic check decides on it and on the right purchase
+from the label. The facts come from the task's label (in real use two models
+extract them), so the example is reproducible with no network and no keys.
 
-Датасет: открытые задачи с меткой словами — для страницы /dataset.
+Dataset: open tasks with the label in words, for the /dataset page.
 
-Только открытая половина датасета: скрытая на сайт не попадает.
+The open half of the dataset only: the hidden one never reaches the site.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ SITE_LIB = Path(__file__).resolve().parent.parent / "site" / "lib"
 OUT = SITE_LIB / "examples.json"
 DATASET_OUT = SITE_LIB / "dataset-open.json"
 
-# по первой открытой английской задаче шаблона — с понятной с первого взгляда ловушкой
+# the first open English task of each template, with a trap that is clear at a glance
 TEMPLATES = ["refund-variant", "deadline", "cheapest-returnable", "soft-colour", "cans",
              "exclusion", "two-sizes", "over-budget"]
 
@@ -61,12 +61,12 @@ def main() -> int:
     picks = [next(i for i, r in rows.items() if r["template"] == t and r["lang"] == "en"
                   and r["split"] == "open") for t in TEMPLATES]
     for task_id in picks:
-        task = tasks[task_id]  # только открытая половина: скрытой здесь нет
+        task = tasks[task_id]  # the open half only: the hidden one is not here
         rec = run_task(AGENTS["naive"], task, store=store)
         order = rec["order"]
         if not (order and order.get("placed")) or rec["score"]["as_asked"]:
-            raise SystemExit(f"{task_id}: наивный агент не купил ловушку, пример не годится")
-        # «правильно — ничего не покупать» (дороже бюджета, нет в наличии): правой корзины нет
+            raise SystemExit(f"{task_id}: the naive agent did not buy the trap, the example is unusable")
+        # "the right thing is to buy nothing" (over budget, out of stock): no right cart
         right = rows[task_id]["right_purchase"]
         right = [tuple(x) for x in right] if right else None
         examples.append({
@@ -84,7 +84,7 @@ def main() -> int:
     print("→", OUT)
 
     open_rows = [r for r in rows.values() if r["split"] == "open"]
-    assert all(r["split"] == "open" for r in open_rows)  # скрытая половина сюда не попадает
+    assert all(r["split"] == "open" for r in open_rows)  # the hidden half never gets here
     dataset = [{
         "id": r["id"], "template": r["template"], "lang": r["lang"], "request": r["request"],
         "label": describe(r["label"]), "should_ask": bool(r["label"].get("should_ask")),

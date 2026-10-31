@@ -1,12 +1,12 @@
-"""Прогон живых формулировок через extract_intent.
+"""Run live wordings through extract_intent.
 
-Для фраз с expect — автоматическая сверка по названным полям.
-Для фраз без expect — печатаем сырой результат, сверяем глазами: там,
-где у просьбы нет единственно верного ответа, автоматическая проверка
-только создала бы иллюзию точности.
+Phrases with expect are checked automatically on the named fields.
+Phrases without expect are printed raw and checked by eye: where a request
+has no single right answer, an automatic check would only create an illusion
+of precision.
 
     python scripts/run_stress_test.py --lang en --provider anthropic
-    python scripts/run_stress_test.py --provider both   # сверка двух моделей
+    python scripts/run_stress_test.py --provider both   # compare two models
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def main() -> int:
             return extract_intent_agreed(phrase, deadline_days=None)
         return extract_intent(phrase, deadline_days=None, provider=args.provider)
 
-    print(f"{D}Набор: {args.lang}, фраз: {len(cases)}, провайдер: {args.provider}{X}")
+    print(f"{D}Set: {args.lang}, phrases: {len(cases)}, provider: {args.provider}{X}")
     errors = []
     disputed = []
     checked_pass = []
@@ -57,7 +57,7 @@ def main() -> int:
             continue
 
         if facts.disputed:
-            print(f"  {Y}модели разошлись:{X} {', '.join(sorted(facts.disputed))}")
+            print(f"  {Y}models disagreed:{X} {', '.join(sorted(facts.disputed))}")
             disputed.append((case, facts))
 
         mismatches = []
@@ -73,7 +73,7 @@ def main() -> int:
             mismatches.append(("soft_fields", sorted(case.expect_soft), sorted(facts.soft)))
 
         if case.expect is None and not case.expect_soft:
-            print(f"  {D}(без автосверки — читаем глазами){X}")
+            print(f"  {D}(no automatic check, read by eye){X}")
             print(f"  {facts}")
             review_only.append((case, facts))
             if case.note:
@@ -81,13 +81,13 @@ def main() -> int:
             continue
 
         if mismatches:
-            print(f"  {R}расхождение:{X}")
+            print(f"  {R}mismatch:{X}")
             for key, exp, act in mismatches:
-                print(f"    {key}: ожидали {exp!r}, получили {act!r}")
+                print(f"    {key}: expected {exp!r}, got {act!r}")
             checked_fail.append((case, facts, mismatches))
         else:
             checked_keys = list(case.expect or {}) + (["soft:" + ",".join(sorted(case.expect_soft))] if case.expect_soft else [])
-            print(f"  {G}совпало{X} ({', '.join(checked_keys)})")
+            print(f"  {G}matched{X} ({', '.join(checked_keys)})")
             checked_pass.append((case, facts))
 
         if case.note:
@@ -95,21 +95,21 @@ def main() -> int:
 
     total = len(cases)
     print(f"\n{B}{'=' * 78}{X}")
-    print(f"{B}Итог:{X} всего {total}, "
-          f"{G}прошли проверку{X} {len(checked_pass)}, "
-          f"{R}разошлись с ожиданием{X} {len(checked_fail)}, "
+    print(f"{B}Result:{X} total {total}, "
+          f"{G}passed the check{X} {len(checked_pass)}, "
+          f"{R}differed from expected{X} {len(checked_fail)}, "
           f"{R}ExtractionError{X} {len(errors)}, "
-          f"{D}без автосверки (на ручной разбор){X} {len(review_only)}")
+          f"{D}no automatic check (for manual review){X} {len(review_only)}")
     if args.provider == "both":
-        print(f"{Y}Модели разошлись хотя бы в одном поле:{X} {len(disputed)} из {total}")
+        print(f"{Y}Models disagreed on at least one field:{X} {len(disputed)} of {total}")
 
     if checked_fail:
-        print(f"\n{B}Разошлись с ожиданием:{X}")
+        print(f"\n{B}Differed from expected:{X}")
         for case, facts, mismatches in checked_fail:
             print(f"  [{case.id}] {', '.join(f'{k}: {exp!r}!={act!r}' for k, exp, act in mismatches)}")
 
     if errors:
-        print(f"\n{B}Упали с ExtractionError:{X}")
+        print(f"\n{B}Failed with ExtractionError:{X}")
         for case, err in errors:
             print(f"  [{case.id}] {err}")
 

@@ -1,15 +1,15 @@
-"""Задачи для прогона агентов: просьба человека, мандат и разметка.
+"""Tasks for agent runs: the person's request, the mandate and the label.
 
-Разметка — это ответ человека-разметчика на вопрос «какая покупка была бы
-правильной». Агента оценивают по ней, а не по движку AsAsked: иначе вышло бы
-«сами себя проверяем». Движок прогоняется рядом, и его точность на тех же
-задачах видна отдельно.
+The label is a human labeller's answer to "which purchase would be right".
+The agent is scored against it, not against the AsAsked engine: otherwise we
+would be "checking ourselves". The engine runs alongside, and its accuracy on
+the same tasks is shown separately.
 
-Наборы: pilot — 8 задач, по одной на каждую ловушку каталога v1 (топовые
-модели проходят его почти без ошибок); hard — 12 задач ближе к жизни:
-путаные просьбы, несколько условий сразу, мягкие оговорки, корзина из
-нескольких товаров, конфликт бюджета и требований. Полный датасет (200 задач,
-открытая и скрытая части) собирается отдельно.
+Sets: pilot is 8 tasks, one per catalog v1 trap (top models pass it with
+almost no mistakes); hard is 12 tasks closer to real life: confused
+requests, several conditions at once, soft caveats, a cart of several items,
+budget conflicting with requirements. The full dataset (200 tasks, an open
+and a hidden part) is built separately.
 """
 
 from __future__ import annotations
@@ -27,27 +27,27 @@ TODAY = "Monday, 2 November 2026"
 @dataclass
 class Task:
     id: str
-    request: str                     # слова человека, как их получает агент
-    category: str | tuple[str, ...]  # мандат: какие товары вообще разрешены
-    max_cents: int                   # мандат: верх коридора суммы
-    quantity_cap: int = 1            # мандат: предел количества
-    user_reply: str | None = None    # что человек ответит на ask_user
-    facts: IntentFacts = field(default_factory=IntentFacts)  # для движка
-    ok_skus: frozenset = frozenset() # разметка: какие артикулы правильные
-    ok_quantity: int | None = 1      # разметка: сколько штук; None — любое
-    should_ask: bool = False         # разметка: правильно было переспросить
+    request: str                     # the person's words, as the agent gets them
+    category: str | tuple[str, ...]  # mandate: which products are allowed at all
+    max_cents: int                   # mandate: the top of the amount band
+    quantity_cap: int = 1            # mandate: the quantity limit
+    user_reply: str | None = None    # what the person answers to ask_user
+    facts: IntentFacts = field(default_factory=IntentFacts)  # for the engine
+    ok_skus: frozenset = frozenset() # label: which skus are right
+    ok_quantity: int | None = 1      # label: how many; None means any
+    should_ask: bool = False         # label: asking back was right
     trap: str = ""
-    # Полное намерение человека, включая несказанное, — для симулятора
-    # (harness.user_sim). Пусто — на вопросы отвечает user_reply.
+    # The person's full intent, including the unsaid, for the simulator
+    # (harness.user_sim). Empty means user_reply answers questions.
     persona: str = ""
-    # Разметка для покупок, которые не описать одним набором артикулов
-    # (несколько товаров, сумма, упаковки): покупка -> правильная ли.
+    # A label for purchases one set of skus cannot describe (several
+    # items, a total, packs): purchase -> whether it is right.
     ok_check: Callable[[list[tuple[str, int]]], bool] | None = None
 
     def mandate(self) -> Mandate:
-        # Перевод просьбы в мандат намеренно «с потерями», как в жизни:
-        # разрешена вся категория в пределах суммы, а детали просьбы —
-        # цвет, размер, возврат, срок — в мандат не попадают.
+        # Turning the request into a mandate is deliberately "lossy", as in
+        # real life: the whole category within the amount is allowed, and the
+        # request's details (colour, size, returns, deadline) do not reach it.
         cats = (self.category,) if isinstance(self.category, str) else self.category
         allow = tuple(p["sku"] for p in CATALOG
                       if p["category"] in cats and p["price_cents"] <= self.max_cents)
@@ -57,7 +57,7 @@ class Task:
 
     @property
     def no_purchase_ok(self) -> bool:
-        """Правильного товара нет — правильный исход: ничего не купить."""
+        """There is no right item: the right outcome is to buy nothing."""
         return not self.ok_skus and self.ok_check is None
 
 
@@ -155,14 +155,14 @@ PILOT = [
 ]
 
 # ---------------------------------------------------------------------------
-# Трудный набор
+# The hard set
 # ---------------------------------------------------------------------------
 
 _BY_SKU = {p["sku"]: p for p in CATALOG}
 
 
 def _one(pred) -> Callable:
-    """Ровно один товар в количестве 1, и он подходит под условие."""
+    """Exactly one item with quantity 1, and it meets the condition."""
     return lambda purchase: (len(purchase) == 1 and purchase[0][1] == 1
                              and pred(_BY_SKU[purchase[0][0]]))
 

@@ -1,14 +1,14 @@
-"""Модель оценивает, естественно ли звучат английские просьбы датасета v1.
+"""A model rates whether the English requests of dataset v1 sound natural.
 
     python scripts/check_naturalness.py data/review_v1_cos.csv data/naturalness_v1_model.csv
 
-Разметчик проверяет смысл и метку; естественность английского проверяет
-модель (CLAUDE_* в .env), и это так и называется — проверка моделью.
+The labeller checks meaning and the label; a model (CLAUDE_* in .env) checks
+whether the English is natural, and it is called exactly that: a model check.
 """
 import csv, json, sys, time
 from pathlib import Path
 
-from asasked import llm_extract as L  # подхватывает .env
+from asasked import llm_extract as L  # loads .env
 import anthropic
 
 SRC, OUT = Path(sys.argv[1]), Path(sys.argv[2])

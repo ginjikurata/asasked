@@ -1,4 +1,4 @@
-"""Окно «свой запрос»: разбор прогона, подсказки и лимиты — без модели и сети."""
+"""The "your own request" window: parsing a run, hints and limits, with no model or network."""
 
 import json
 import threading
@@ -25,8 +25,8 @@ def _run(request=REQUEST, facts=FACTS, answers=()):
 
 
 def _asker(*questions, search=False):
-    """Агент без магазина: задаёт вопросы по очереди и заканчивает
-    (search — потом ищет по ответам, то есть уже ходит по магазину)."""
+    """An agent with no store: asks questions in turn and finishes
+    (search: then it searches by the answers, that is, it already uses the store)."""
     def run(spec, session, request, max_steps):
         replies = [session.call("ask_user", {"question": q})["reply"] for q in questions]
         if search:
@@ -43,7 +43,7 @@ def test_guard_stops_final_sale_and_the_visitor_sees_the_question():
     assert "final sale" in out["question"]
     assert out["guard"]["decision"] == "ask"
     assert "the guard stopped the payment" in out["steps"][-1]["v"]
-    assert out["can_answer"] is False      # без ответов прогон закрыт
+    assert out["can_answer"] is False      # with no answers the run is closed
     assert {"k": "returns", "v": "must be returnable", "soft": False,
             "disputed": False} in out["heard"]
 
@@ -98,11 +98,11 @@ def test_greeting_does_not_use_up_an_attempt_but_answering_does():
     desk = Desk(limits, run=_asker("What would you like to buy?", search=True),
                 extract=lambda _t: IntentFacts())
     first = desk.start("hi", "v")
-    second = desk.start("hello", "v")          # первая не засчитана посетителю
-    assert limits.left() == 8                  # но общий потолок тратит
+    second = desk.start("hello", "v")          # the first one is not counted against the visitor
+    assert limits.left() == 8                  # but it uses up the shared cap
     with pytest.raises(LimitError):
-        desk.answer(first["conversation"], "balls", "v")   # закрыта новой просьбой
-    desk.answer(second["conversation"], "balls", "v")      # ответ — уже просьба
+        desk.answer(first["conversation"], "balls", "v")   # closed by a new request
+    desk.answer(second["conversation"], "balls", "v")      # the answer is already a request
     assert limits.left() == 7
     with pytest.raises(LimitError) as spent:
         desk.start("hi again", "v")
@@ -113,7 +113,7 @@ def test_greeting_does_not_use_up_an_attempt_but_answering_does():
 def test_any_tool_call_but_a_question_uses_up_an_attempt():
     def flailing(spec, session, request, max_steps):
         for _ in range(5):
-            session.call("no_such_tool", {})      # ошибки — тоже шаги модели
+            session.call("no_such_tool", {})      # errors are model steps too
         return AgentResult(stop="done")
     limits = Limits(daily_cap=10, per_visitor=1)
     Desk(limits, run=flailing, extract=lambda _t: IntentFacts()).start("hi", "v")
@@ -142,24 +142,24 @@ def test_limits_per_visitor_daily_and_parallel():
     limits = Limits(daily_cap=3, per_visitor=2, parallel=1)
     limits.take("a")
     with pytest.raises(LimitError) as busy:
-        limits.take("b")          # одно место — занято
+        limits.take("b")          # one slot, taken
     assert busy.value.code == 503
     limits.release()
     limits.take("a")
     limits.release()
     with pytest.raises(LimitError):
-        limits.take("a")          # у «a» кончились
+        limits.take("a")          # "a" has run out
     limits.take("b")
     limits.release()
     with pytest.raises(LimitError):
-        limits.take("c")          # кончился общий дневной потолок
+        limits.take("c")          # the shared daily cap has run out
     assert limits.left() == 0
 
 
 def test_refund_is_capped():
     limits = Limits(daily_cap=10, per_visitor=5, free_per_visitor=1)
     limits.count("a")
-    assert limits.refund("a") and limits.left() == 9      # общий счёт не возвращается
+    assert limits.refund("a") and limits.left() == 9      # the shared count is not refunded
     limits.count("a")
     assert not limits.refund("a") and limits.left() == 8
     assert not limits.refund("nobody")

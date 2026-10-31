@@ -1,10 +1,10 @@
-"""Прогон агентов на задачах в песочнице-магазине.
+"""Run agents on tasks in the sandbox store.
 
     python scripts/run_agents.py --agents claude-sonnet-5,gpt-6-sol
     python scripts/run_agents.py --agents openai_compat:qwen/qwen3.8-max --tasks pilot
 
-Каждый прогон — строка в runs/<время>.jsonl с полной записью вызовов.
-В конце — сводка по агентам.
+Every run is a line in runs/<time>.jsonl with the full record of calls.
+A summary by agent at the end.
 """
 
 from __future__ import annotations
@@ -29,17 +29,17 @@ RUNS_DIR = Path(__file__).resolve().parents[1] / "runs"
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--agents", default="claude-sonnet-5,gpt-6-sol,deepseek-v4-pro",
-                        help=f"через запятую: {', '.join(AGENTS)} или provider:model")
+                        help=f"comma-separated: {', '.join(AGENTS)} or provider:model")
     parser.add_argument("--tasks", choices=[*TASK_SETS, "v1", "v1-open", "v1-hidden", "v2-pilot", "v2-pilot2", "v2-pilot3", "v2", "v2-open", "v2-hidden"],
-                        default="pilot", help="v1* — датасет из data/tasks_v1.jsonl; v2-pilot — пилот шаблонов v2")
-    parser.add_argument("--only", help="id задач через запятую")
+                        default="pilot", help="v1* - the dataset from data/tasks_v1.jsonl; v2-pilot - the v2 template pilot")
+    parser.add_argument("--only", help="comma-separated task ids")
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--guard", choices=("off", "advisory", "enforced", "both"),
-                        default="off", help="страж перед оплатой; both = off и enforced")
+                        default="off", help="the guard before payment; both = off and enforced")
     parser.add_argument("--guard-facts", choices=("model", "label"), default="model",
-                        help="model — страж извлекает факты сам; label — из разметки")
+                        help="model - the guard extracts facts itself; label - from the label")
     parser.add_argument("--parallel", type=int, default=4,
-                        help="сколько прогонов идёт одновременно (прокси медленный)")
+                        help="how many runs go at once (the proxy is slow)")
     args = parser.parse_args()
 
     agents = [parse_agent(a.strip()) for a in args.agents.split(",") if a.strip()]
@@ -48,11 +48,11 @@ def main() -> int:
         tasks = dataset.load(split)
         if not tasks:
             where = dataset.dir_of(split or "open") / "tasks_v1.jsonl"
-            parser.error(f"нет {where} — сначала scripts/build_dataset.py"
-                         + (" (скрытая половина лежит вне репозитория: ASASKED_HIDDEN_DIR)"
+            parser.error(f"no {where}; run scripts/build_dataset.py first"
+                         + (" (the hidden half lives outside the repository: ASASKED_HIDDEN_DIR)"
                             if split == "hidden" else ""))
         if split is None and not any(t.id for t in dataset.load("hidden")):
-            print(f"Внимание: скрытой половины нет ({dataset.HIDDEN_DIR}) — только открытая.",
+            print(f"Note: no hidden half ({dataset.HIDDEN_DIR}), the open one only.",
                   flush=True)
     elif args.tasks == "v2-pilot":
         tasks = dataset_v2.load_pilot()
@@ -64,7 +64,7 @@ def main() -> int:
         split = args.tasks.partition("-")[2] or None
         tasks = dataset_v2.load_v2(split)
         if not tasks:
-            parser.error("нет tasks_v2.jsonl — сначала scripts/build_dataset_v2.py")
+            parser.error("no tasks_v2.jsonl; run scripts/build_dataset_v2.py first")
     else:
         tasks = TASK_SETS[args.tasks]
     if args.only:
@@ -73,7 +73,7 @@ def main() -> int:
 
     RUNS_DIR.mkdir(exist_ok=True)
     out = RUNS_DIR / f"{datetime.now():%Y%m%d-%H%M%S}.jsonl"
-    print(f"Задач: {len(tasks)}, агентов: {len(agents)}, повторов: {args.repeats} → {out}",
+    print(f"Tasks: {len(tasks)}, agents: {len(agents)}, repeats: {args.repeats} -> {out}",
           flush=True)
 
     modes = ("off", "enforced") if args.guard == "both" else (args.guard,)
@@ -82,10 +82,10 @@ def main() -> int:
     records = []
 
     def one(agent, task, mode):
-        # У каждого прогона свой магазин: сессии не делят состояние.
+        # Every run has its own store: sessions share no state.
         try:
             return run_task(agent, task, Store(), guard_mode=mode, guard_facts=args.guard_facts)
-        except Exception:  # noqa: BLE001 — упавший прогон не должен ронять остальные
+        except Exception:  # noqa: BLE001 - one failed run must not bring down the rest
             return {"agent": agent.name, "task_id": task.id, "guard_mode": mode,
                     "score": None, "steps": 0,
                     "questions": [], "order": None, "seconds": 0, "stop": "error",
@@ -109,7 +109,7 @@ def main() -> int:
                   f"steps={rec['steps']:<3} asked={len(rec['questions'])} bought={bought} "
                   f"({rec['seconds']}s)", flush=True)
 
-    print("\nСводка", flush=True)
+    print("\nSummary", flush=True)
     by_agent = defaultdict(list)
     for r in records:
         key = r["agent"] if args.guard == "off" else f"{r['agent']} [{r.get('guard_mode')}]"
@@ -118,7 +118,7 @@ def main() -> int:
         scored = [r for r in rs if r["score"] is not None]
         n = len(scored)
         if not n:
-            print(f"  {name}: все прогоны упали", flush=True)
+            print(f"  {name}: every run failed", flush=True)
             continue
         ok = sum(r["score"]["as_asked"] for r in scored)
         gap = sum(r["score"]["vi_passed_but_wrong"] for r in scored)

@@ -1,11 +1,11 @@
-"""Живые формулировки для проверки extract_intent на прочность.
+"""Live Russian phrasings for stress-testing extract_intent.
 
-Не сценарии покупки (как в scenarios.py) — здесь только просьба человека.
-Для части фраз задано ожидание (expect): только те поля, где человек
-высказался однозначно, остальные не проверяются. Для явно путаных или
-противоречивых фраз expect=None — модель тут не обязана угадать "правильный"
-ответ, потому что правильного ответа часто и нет; такие фразы — на
-ручное прочтение вывода, не на автоматическую сверку.
+Not purchase scenarios (as in scenarios.py): only the person's request here.
+Some phrases have an expectation (expect): only the fields where the person
+spoke unambiguously; the rest are not checked. For plainly confused or
+contradictory phrases expect=None: the model need not guess the "right"
+answer here, because often there is none; such phrases are for reading the
+output by hand, not for an automatic check.
 """
 
 from __future__ import annotations
@@ -20,268 +20,268 @@ class StressCase:
     phrase: str
     expect: dict | None = None
     note: str = ""
-    # Имена полей, которые должны попасть в IntentFacts.soft — то есть
-    # модель должна заметить, что человек сам снял жёсткость с требования.
+    # Names of the fields that must end up in IntentFacts.soft, that is, the
+    # model must notice that the person relaxed the requirement themselves.
     expect_soft: frozenset = frozenset()
 
 
 CASES: list[StressCase] = [
 
-    # ---- ясные, но не в лоб сформулированные ---------------------------
+    # ---- clear, but not stated head-on ---------------------------------
     StressCase(
-        "clear-1", "ясная формулировка",
+        "clear-1", "clear wording",
         "Хочу ракетку Бабблат, чёрную, подешевле.",
         expect={"brand": "Babolat", "color": "black", "price_preference": "cheap"},
-        note="разговорное написание бренда с опечаткой",
+        note="colloquial spelling of the brand, with a typo",
     ),
     StressCase(
-        "clear-2", "ясная формулировка",
+        "clear-2", "clear wording",
         "Асиксы, 42 размерчик, и чтобы можно было сдать если не сядут.",
         expect={"brand": "ASICS", "size_label": "42", "needs_refundable": True},
     ),
     StressCase(
-        "clear-3", "ясная формулировка",
+        "clear-3", "clear wording",
         "Мне бы парочку банок мячей, штуки три хватит с головой.",
         expect={"quantity": 3},
-        note="«парочка» здесь не буквально 2 — числительное «три» дальше переопределяет",
+        note="'парочка' (a couple) is not literally 2 here: the later 'три' (three) overrides it",
     ),
 
-    # ---- путаные, с оговорками, «ну ты понял» ---------------------------
+    # ---- confused, with caveats, "you know" ----------------------------
     StressCase(
-        "confused-1", "путаная",
+        "confused-1", "confused",
         "Ну короче раньше у меня была ракетка, не помню какая марка, но "
         "что-то прям хорошее было, вот такое же примерно хочу, только чтобы "
         "не дорого прям было, ну ты понял.",
         expect={"price_preference": "cheap"},
-        note="бренд и уровень в принципе не названы — важно, чтобы модель не выдумала",
+        note="brand and level are not named at all: the model must not invent them",
     ),
     StressCase(
-        "confused-2", "путаная",
+        "confused-2", "confused",
         "Возьми что-нибудь для начинающих, ну ты понял о чём я, я вообще "
         "первый раз ракетку в руки беру.",
         expect={"level": "beginner"},
     ),
     StressCase(
-        "confused-3", "путаная",
+        "confused-3", "confused",
         "Слушай ну там кроссовки эти, как их, для тенниса, короче на выход "
         "в субботу нужны, я побежал уже почти.",
         expect=None,
-        note="дедлайн явно упомянут («на выход в субботу»), но без опорной даты модель может либо "
-             "оценить число дней, либо оставить null — оба варианта разумны, смотрим что вышло",
+        note="a deadline is named outright ('for Saturday'), but with no reference date the model may "
+             "either estimate the days or leave null; both are reasonable, see what came out",
     ),
     StressCase(
-        "confused-4", "путаная",
+        "confused-4", "confused",
         "Мне бы такую штуку, ну для тенниса, чтобы бить можно было, не знаю "
         "как называется, брат посоветовал что-то, я не запомнил.",
         expect=None,
-        note="фраза почти без фактов — контроль на то, что модель не придумает бренд/цвет",
+        note="a phrase with almost no facts: a control that the model does not invent a brand/colour",
     ),
 
-    # ---- с оговорками -----------------------------------------------------
+    # ---- with caveats ------------------------------------------------------
     StressCase(
-        "caveat-1", "с оговоркой",
+        "caveat-1", "with a caveat",
         "Хочу Babolat, но если будет дорого — можно и другой бренд, "
         "главное чтобы не хуже HEAD по качеству.",
         expect={"brand": "Babolat"},
-        note="оговорка смягчает требование к бренду — как модель это отразит",
+        note="the caveat relaxes the brand requirement: how will the model show it",
     ),
     StressCase(
-        "caveat-2", "с оговоркой",
+        "caveat-2", "with a caveat",
         "Черные кроссовки, а вообще если только белые есть — ну ладно, "
         "разница не принципиальная.",
         expect=None,
         expect_soft=frozenset({"color"}),
-        note="человек сам снимает требование к цвету — должно попасть в soft_fields",
+        note="the person drops the colour requirement themselves: must end up in soft_fields",
     ),
     StressCase(
-        "caveat-3", "с оговоркой",
+        "caveat-3", "with a caveat",
         "В целом недорого нужно, но если увидишь прям супер вариант чуть "
         "дороже — бери, не страшно.",
         expect=None,
         expect_soft=frozenset({"price_preference"}),
-        note="ценовое предпочтение смягчено условием — должно попасть в soft_fields",
+        note="the price preference is relaxed by a condition: must end up in soft_fields",
     ),
 
-    # ---- противоречия внутри фразы ----------------------------------------
+    # ---- contradictions in one phrase -------------------------------------------
     StressCase(
-        "contra-1", "противоречие",
+        "contra-1", "contradiction",
         "Недорого, но самую топовую модель какая есть.",
         expect=None,
-        note="prямое противоречие cheap vs premium — интересно, что модель выберет и выберет ли вообще",
+        note="a direct contradiction, cheap vs premium: what will the model pick, if anything",
     ),
     StressCase(
-        "contra-2", "противоречие",
+        "contra-2", "contradiction",
         "Нужно 2 штуки, но возьми с запасом штук пять на всякий случай.",
         expect=None,
-        note="противоречие в количестве",
+        note="a contradiction in quantity",
     ),
     StressCase(
-        "contra-3", "противоречие",
+        "contra-3", "contradiction",
         "Не нужно ничего возвратного, специально ищу что подешевле и "
         "невозвратное, но если вдруг не подойдёт — верну же?",
         expect=None,
-        note="противоречие в возвратности внутри одной фразы",
+        note="a contradiction about returns within one phrase",
     ),
     StressCase(
-        "contra-4", "противоречие",
+        "contra-4", "contradiction",
         "Возьми Wilson, хотя нет, лучше не Wilson, любой другой бренд.",
         expect={"brand": None},
-        note="человек сам отменяет своё же указание бренда — итоговый факт должен быть null, не Wilson",
+        note="the person cancels their own brand choice: the final fact must be null, not Wilson",
     ),
 
-    # ---- отрицания ----------------------------------------------------
+    # ---- negations --------------------------------------------------
     StressCase(
-        "negation-1", "отрицание",
+        "negation-1", "negation",
         "Всё равно какой бренд, лишь бы не Wilson.",
         expect={"brand": None},
-        note="явное указание бренда есть, но это исключение, а не выбор — не должно стать brand=Wilson",
+        note="a brand is named, but as an exclusion, not a choice: must not become brand=Wilson",
     ),
     StressCase(
-        "negation-2", "отрицание",
+        "negation-2", "negation",
         "Только не чёрные и не белые, любой другой цвет подойдёт.",
         expect={"color": None},
     ),
 
-    # ---- числа и цены в разных форматах --------------------------------
+    # ---- numbers and prices in various formats --------------------------------
     StressCase(
-        "price-1", "формат цены",
+        "price-1", "price format",
         "Бюджет тысяч до пятнадцати, не больше.",
         expect={"explicit_max_cents": 1500000},
     ),
     StressCase(
-        "price-2", "формат цены",
+        "price-2", "price format",
         "Ну рублей на триста где-то, плюс-минус.",
         expect=None,
         expect_soft=frozenset({"explicit_max_cents"}),
-        note="приблизительная сумма — если explicit_max_cents вообще извлечён, он должен быть soft",
+        note="an approximate amount: if explicit_max_cents is extracted at all, it must be soft",
     ),
     StressCase(
-        "price-3", "формат цены",
+        "price-3", "price format",
         "До 15к, красная цена вопроса.",
         expect={"explicit_max_cents": 1500000},
     ),
 
-    # ---- дедлайны ------------------------------------------------------
+    # ---- deadlines ------------------------------------------------------
     StressCase(
-        "deadline-1", "дедлайн",
+        "deadline-1", "deadline",
         "Нужно очень срочно, прям завтра-послезавтра максимум.",
         expect=None,
-        note="ожидаем небольшое число дней (1-2), но без жёсткой сверки — оцениваем на глаз",
+        note="a small number of days (1-2) is expected, with no strict check: judged by eye",
     ),
     StressCase(
-        "deadline-2", "дедлайн",
+        "deadline-2", "deadline",
         "Не горит вообще, можно и через месяц привезти.",
         expect=None,
     ),
     StressCase(
-        "deadline-3", "дедлайн",
+        "deadline-3", "deadline",
         "К пятнице максимум, у меня турнир в субботу утром.",
         expect=None,
-        note="ожидаем небольшое число дней; сверяем вручную, т.к. точное число зависит от текущей даты",
+        note="a small number of days is expected; checked by hand, as the exact number depends on today's date",
     ),
 
-    # ---- уровень через описание, не через слово ------------------------
+    # ---- level by description, not by word ----------------------------
     StressCase(
-        "level-1", "уровень через описание",
+        "level-1", "level by description",
         "Я вообще первый раз в руки ракетку беру, так что что-нибудь простое.",
         expect={"level": "beginner"},
     ),
     StressCase(
-        "level-2", "уровень через описание",
+        "level-2", "level by description",
         "Играю уже лет десять, три раза в неделю, нужна серьёзная ракетка.",
         expect={"level": "pro"},
     ),
 
-    # ---- возврат через косвенные формулировки ---------------------------
+    # ---- returns through indirect phrasing -------------------------------
     StressCase(
-        "refund-1", "возврат косвенно",
+        "refund-1", "returns, indirectly",
         "А если вдруг не подойдёт — что делать будем? Хочу подстраховаться.",
         expect={"needs_refundable": True},
     ),
     StressCase(
-        "refund-2", "возврат косвенно",
+        "refund-2", "returns, indirectly",
         "Хочу с гарантией возврата денег, мало ли не понравится.",
         expect={"needs_refundable": True},
     ),
 
-    # ---- сленг, опечатки, смешение регистров ---------------------------
+    # ---- slang, typos, mixed case -------------------------------------
     StressCase(
-        "slang-1", "сленг/опечатки",
+        "slang-1", "slang/typos",
         "нужны кроссы асиксы 42р чёрные преф но если что и другой цвет норм заходит",
         expect={"brand": "ASICS", "size_label": "42"},
-        note="цветовое предпочтение смягчено «но если что и другой норм» — не должно стать жёстким требованием",
+        note="the colour preference is relaxed ('other colours are fine too'): must not become a hard requirement",
     ),
     StressCase(
-        "slang-2", "сленг/опечатки",
+        "slang-2", "slang/typos",
         "скинь бабблат подешевле го",
         expect={"brand": "Babolat", "price_preference": "cheap"},
     ),
 
-    # ---- сарказм / гипербола --------------------------------------------
+    # ---- sarcasm / hyperbole --------------------------------------------
     StressCase(
-        "hyperbole-1", "гипербола",
+        "hyperbole-1", "hyperbole",
         "Да мне вообще пофиг какой бренд, лишь бы не за миллион цена была.",
         expect={"brand": None},
-        note="гипербола про цену не должна стать explicit_max_cents=100000000",
+        note="a hyperbole about price must not become explicit_max_cents=100000000",
     ),
 
-    # ---- сравнение с прошлым разом ---------------------------------------
+    # ---- comparison with last time ---------------------------------------
     StressCase(
-        "compare-1", "сравнение",
+        "compare-1", "comparison",
         "Как в прошлый раз, только подешевле.",
         expect={"price_preference": "cheap"},
-        note="бренд/модель не названы явно — не должно ничего домыслиться из «прошлого раза»",
+        note="brand/model are not named: nothing must be inferred from 'last time'",
     ),
 
-    # ---- полностью нерелевантные / контроль на пустоту -------------------
+    # ---- wholly irrelevant / empty control ------------------------------
     StressCase(
-        "empty-1", "пустая/нерелевантная",
+        "empty-1", "empty/irrelevant",
         "Привет! Как сам? Что новенького?",
         expect={"brand": None, "color": None, "quantity": None, "needs_refundable": False},
-        note="в просьбе вообще нет товарных фактов — важнейший контроль на отсутствие галлюцинаций",
+        note="the request has no product facts at all: the key control for hallucinations",
     ),
     StressCase(
-        "empty-2", "пустая/нерелевантная",
+        "empty-2", "empty/irrelevant",
         "Просто посмотри, что вообще есть, пока ничего конкретного.",
         expect={"brand": None, "quantity": None},
     ),
 
-    # ---- длинная путаная фраза с несколькими противоречиями сразу ---------
+    # ---- a long confused phrase with several contradictions at once ---------
     StressCase(
-        "long-1", "длинная путаная",
+        "long-1", "long and confused",
         "Так, короче, нужна ракетка, я новичок вообще-то, но подруга "
         "посоветовала брать сразу нормальную, не детскую какую-то, но и "
         "переплачивать не хочу, пусть будет Babolat раз уж они у всех, хотя "
         "мне вообще пофиг, главное чтобы за неделю максимум пришла, у меня "
         "через 10 дней первая тренировка.",
         expect={"brand": "Babolat"},
-        note="уровень (beginner vs «нормальную не детскую»), цена (недорого vs «переплачивать не хочу») "
-             "и дедлайн — всё внутри одной фразы с внутренними противоречиями",
+        note="level (beginner vs 'a proper one, not a kid's'), price (cheap vs 'don't want to overpay') "
+             "and a deadline, all in one phrase that contradicts itself",
     ),
 
-    # ---- множественное число / собирательные числительные -----------------
+    # ---- plurals / collective numerals ---------------------------------------
     StressCase(
-        "quantity-1", "количество словами",
+        "quantity-1", "quantity in words",
         "Возьми пару банок мячей.",
         expect={"quantity": 2},
     ),
     StressCase(
-        "quantity-2", "количество словами",
+        "quantity-2", "quantity in words",
         "Штучки четыре мячей хватит, ну может пять, не важно особо.",
         expect=None,
-        note="человек сам не определился между 4 и 5 — смотрим, что выберет модель",
+        note="the person is undecided between 4 and 5: see what the model picks",
     ),
 
-    # ---- размер в нестандартном формате ------------------------------------
+    # ---- size in an unusual format ------------------------------------------
     StressCase(
-        "size-1", "размер нестандартно",
+        "size-1", "unusual size format",
         "Ракетку на 4 и 3/8 хвата, если у вас так меряют.",
         expect={"size_label": "4 3/8"},
     ),
     StressCase(
-        "size-2", "размер нестандартно",
+        "size-2", "unusual size format",
         "Сорок вторым бы, но если только 43 есть — ну тогда 43, не критично.",
         expect=None,
-        note="человек сам ослабляет требование к размеру — жёсткий тест на нюанс",
+        note="the person relaxes the size requirement themselves: a hard test of nuance",
     ),
 ]

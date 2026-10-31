@@ -1,4 +1,4 @@
-"""Страж как MCP-сервер: настоящий протокол, клиент в том же процессе, без моделей."""
+"""The guard as an MCP server: the real protocol, a client in the same process, no models."""
 
 import asyncio
 
@@ -17,7 +17,7 @@ SHOES = {"name": "Nike Pegasus 41", "brand": "Nike", "color": "Triple Black",
 
 @pytest.fixture
 def heard(monkeypatch):
-    """Извлечение без модели: размер 42, пока человек не согласился на 43."""
+    """Extraction with no model: size 42, until the person agreed to 43."""
     calls = []
 
     def extract(request):

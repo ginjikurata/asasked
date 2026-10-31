@@ -1,13 +1,14 @@
-"""Пилот шаблонов датасета v2: ловушки труднее, чем в v1.
+"""Pilot of dataset v2 templates: traps harder than in v1.
 
-В v1 сильные модели без стража покупали правильно почти всегда (до 199 из
-200), поэтому польза стража на них не видна. Здесь — новые шаблоны, каждый
-сначала пилотом (~5 задач): шаблон идёт в v2, только если сильные модели в
-нём ошибаются. Отбираются шаблоны целиком; отдельные задачи из шаблона не
-выбрасываются, иначе датасет подогнан под конкретные модели.
+In v1 strong models without the guard bought correctly almost always (up to
+199 of 200), so the guard's benefit does not show on them. Here are new
+templates, each first as a pilot (~5 tasks): a template goes into v2 only if
+strong models make mistakes in it. Whole templates are selected; single tasks
+are not dropped from a template, or the dataset would be fitted to particular
+models.
 
-Задачи собираются той же проверкой, что v1 (dataset.right_purchase,
-dataset.has_trap), и в тот же формат.
+Tasks are built with the same check as v1 (dataset.right_purchase,
+dataset.has_trap) and in the same format.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ PILOT_TAKE = 5
 BRAND_RU = {"Babolat": "Бабола", "HEAD": "Хэд", "Wilson": "Вилсон", "Yonex": "Йонекс",
             "Prince": "Принс", "ASICS": "Асиксы", "Nike": "Найки", "Adidas": "Адидасы",
             "New Balance": "Нью Бэлансы", "K-Swiss": "Кей-Свиссы"}
-# «в четверг», «в пятницу»: винительный падеж, в DAYS_RU — родительный.
+# Russian "в четверг", "в пятницу" take the accusative; DAYS_RU holds the genitive.
 DAYS_RU_ON = {"Thursday": "четверг", "Friday": "пятницу"}
 SHOE_SIZES = ["40", "41", "42", "43", "44", "45"]
 GRIPS = ["4 1/4", "4 3/8", "4 1/2"]
@@ -44,7 +45,7 @@ def _next_size(p: dict) -> str | None:
 
 
 def t_correction(rng):
-    """Человек передумал посреди просьбы: верно второе, а не первое."""
+    """The person changes their mind mid-request: the second thing is right, not the first."""
     out = []
     for fam, listings in FAMILIES.items():
         if listings[0]["category"] not in ("racket", "shoes"):
@@ -78,7 +79,7 @@ def t_correction(rng):
 
 
 def t_size_up(rng):
-    """Размер дан косвенно: «сейчас 42, возьми на размер больше»."""
+    """The size is given indirectly: "I wear 42 now, take one size up"."""
     out = []
     for fam, listings in FAMILIES.items():
         if listings[0]["category"] not in ("racket", "shoes"):
@@ -119,7 +120,7 @@ def t_size_up(rng):
 
 
 def t_gift_unsure(rng):
-    """Возврат не назван прямо, но следует из контекста: подарок, размер не точно."""
+    """Returns are not named directly but follow from context: a gift, the size is not certain."""
     out = []
     for fam, listings in FAMILIES.items():
         if not any(p["merchant_id"] == "m-outlet" for p in listings) or \
@@ -153,7 +154,7 @@ def t_gift_unsure(rng):
 
 
 def t_event_deadline(rng):
-    """Срок не назван прямо: он следует из события в просьбе."""
+    """The deadline is not named directly: it follows from an event in the request."""
     out = []
     for fam, listings in FAMILIES.items():
         if not any(p["merchant_id"] == "m-baseline" for p in listings) or \
@@ -194,7 +195,7 @@ def t_event_deadline(rng):
 
 
 def t_stacked(rng, lang="en"):
-    """Три условия сразу: самое дешёвое, с возвратом, успеть к сроку."""
+    """Three conditions at once: the cheapest, returnable, arrives in time."""
     out = []
     for fam, listings in FAMILIES.items():
         if listings[0]["category"] not in ("racket", "shoes"):
@@ -239,7 +240,7 @@ def t_stacked(rng, lang="en"):
 
 
 def t_two_items(rng):
-    """Две вещи, у каждой своё условие: ракетке — возврат, мячам — срок."""
+    """Two items, each with its own condition: returns for the racket, a deadline for the balls."""
     out = []
     rackets = [f for f, ls in FAMILIES.items() if ls[0]["category"] == "racket"]
     balls = [f for f, ls in FAMILIES.items() if ls[0]["category"] == "balls"]
@@ -275,14 +276,14 @@ def t_two_items(rng):
 
 
 # ---------------------------------------------------------------------------
-# Пилот, раунд 2: size-up, gift-unsure, stacked и stacked-ru сильные модели
-# прошли без ошибок. Здесь те же идеи, но каждое условие — из контекста, и их
-# несколько в одной просьбе.
+# Pilot, round 2: strong models passed size-up, gift-unsure, stacked and
+# stacked-ru without mistakes. Same ideas here, but every condition comes from
+# context, and there are several in one request.
 # ---------------------------------------------------------------------------
 
 
 def t_size_up_event(rng):
-    """Размер на один больше и срок из события — оба косвенно, в одной просьбе."""
+    """One size up and a deadline from an event, both indirect, in one request."""
     out = []
     for fam, listings in FAMILIES.items():
         if listings[0]["category"] != "shoes" or \
@@ -321,7 +322,7 @@ def t_size_up_event(rng):
 
 
 def t_gift_cheap(rng):
-    """«Подешевле» сказано прямо, возврат — только из контекста подарка."""
+    """"Cheaper" is said directly; returns follow only from the gift context."""
     out = []
     for fam, listings in FAMILIES.items():
         if not any(p["merchant_id"] == "m-outlet" for p in listings) or \
@@ -358,7 +359,7 @@ def t_gift_cheap(rng):
 
 
 def t_stacked_implicit(rng, lang="en"):
-    """Дешевле — прямо; срок — из события; возврат — из подарка с неточным размером."""
+    """Cheaper said directly; deadline from an event; returns from a gift of uncertain size."""
     out = []
     for fam, listings in FAMILIES.items():
         if listings[0]["category"] not in ("racket", "shoes"):
@@ -409,14 +410,14 @@ def t_stacked_implicit(rng, lang="en"):
 
 
 # ---------------------------------------------------------------------------
-# Пилот, раунд 3: ловушки на поиск. В раундах 1–2 сильные модели понимали
-# намёки, а ошибались, когда не обходили все магазины. Здесь правильный товар
-# находится, только если искать дальше первой страницы и сравнивать продавцов.
+# Pilot, round 3: search traps. In rounds 1-2 strong models understood the
+# hints but made mistakes when they did not go through every store. Here the
+# right item is found only by searching past the first page and comparing merchants.
 # ---------------------------------------------------------------------------
 
 def t_any_brand_fast(rng, lang="en"):
-    """Любая марка, но к среде: успевает только самый дорогой магазин (Ace),
-    а поиск по цене ставит его листинги в конец списка."""
+    """Any brand, but by Wednesday: only the most expensive store (Ace) is in time,
+    and a search by price puts its listings at the end."""
     out = []
     by_variant = defaultdict(list)
     for p in CATALOG:
@@ -460,8 +461,8 @@ def t_any_brand_fast(rng, lang="en"):
 
 
 def t_cheapest_any_brand(rng):
-    """Самое дешёвое с возвратом среди всех марок: в поиске видна цена, но не
-    возврат — придётся открывать товары по одному."""
+    """The cheapest returnable item across all brands: search shows the price
+    but not returns, so items have to be opened one by one."""
     out = []
     by_variant = defaultdict(list)
     for p in CATALOG:
@@ -495,7 +496,7 @@ def t_cheapest_any_brand(rng):
 
 
 def t_bundle_three(rng):
-    """Три вещи одним заказом к сроку: все три есть только у одного продавца."""
+    """Three items in one order by a deadline: only one merchant has all three."""
     out = []
     fams = defaultdict(list)
     for f, ls in FAMILIES.items():
@@ -552,8 +553,8 @@ PILOT_TEMPLATES = [
     (t_two_items, {}),
 ]
 
-# Раунд 2: усложнённые замены четырём лёгким шаблонам и two-items заново — у
-# агента теперь в описании checkout сказано, что заказ один.
+# Round 2: harder replacements for four easy templates and two-items again; the
+# checkout description now tells the agent the order is a single one.
 PILOT2_VERSION = "v2p2"
 PILOT2_SEED = 3032
 PILOT2_TEMPLATES = [
@@ -567,7 +568,7 @@ PILOT2_TEMPLATES = [
 
 def build_pilot(seed: int = PILOT_SEED, take: int = PILOT_TAKE, templates=None,
                 version: str = PILOT_VERSION) -> list[dict]:
-    """По take задач из каждого шаблона, с той же проверкой, что v1."""
+    """take tasks from each template, with the same check as v1."""
     rng = random.Random(seed)
     tasks, counts = [], defaultdict(int)
     for fn, kwargs in templates or PILOT_TEMPLATES:
@@ -588,7 +589,7 @@ def build_pilot(seed: int = PILOT_SEED, take: int = PILOT_TAKE, templates=None,
     return tasks
 
 
-# Раунд 3: ловушки на поиск.
+# Round 3: search traps.
 PILOT3_VERSION = "v2p3"
 PILOT3_SEED = 3033
 PILOT3_TEMPLATES = [
@@ -620,17 +621,17 @@ def load_pilot3() -> list[Task]:
 
 
 # ---------------------------------------------------------------------------
-# Датасет v2: шаблоны, в которых сильные модели ошибались, — новые из пилота
-# и самые трудные из v1. Сколько задач из шаблона, задано заранее и одинаково
-# для обеих половин; отдельные задачи не отбрасываются по результатам моделей.
+# Dataset v2: templates where strong models made mistakes, the new ones from
+# the pilot and the hardest from v1. How many tasks per template is fixed in
+# advance and equal for both halves; single tasks are not dropped by model results.
 # ---------------------------------------------------------------------------
 
 DATASET_V2_VERSION = "v2"
-# Открытая половина собирается из этого числа, скрытая — из секретного,
-# которое лежит только в HIDDEN_DIR (см. hidden_seed).
+# The open half is built from this number, the hidden one from a secret number
+# that lives only in HIDDEN_DIR (see hidden_seed).
 OPEN_SEED_V2 = 4040
 V2_TEMPLATES = [
-    # (шаблон, параметры, задач в каждой половине)
+    # (template, parameters, tasks in each half)
     (t_two_items, {}, 8),
     (t_bundle_three, {}, 8),
     (t_correction, {}, 7),
@@ -642,8 +643,8 @@ V2_TEMPLATES = [
 
 
 def hidden_seed() -> int:
-    """Секретное число для скрытой половины. Создаётся один раз и хранится вне
-    репозитория: по открытому коду скрытые задачи не восстановить."""
+    """The secret number for the hidden half. Created once and kept outside
+    the repository: the hidden tasks cannot be rebuilt from the open code."""
     path = d1.HIDDEN_DIR / "seed_v2.txt"
     if not path.exists():
         import secrets
@@ -666,7 +667,7 @@ def _half(seed: int, split: str, taken: set[str]) -> list[dict]:
             name = cand["template"] + ("-ru" if cand["lang"] == "ru" else "")
             if counts[name] >= take:
                 break
-            # Правильный ответ не должен совпадать ни с одной опубликованной задачей.
+            # The right answer must not match any published task.
             if _answer(cand) in taken or right_purchase(cand) is None or not has_trap(cand):
                 continue
             taken.add(_answer(cand))
@@ -677,18 +678,18 @@ def _half(seed: int, split: str, taken: set[str]) -> list[dict]:
             cand["right_purchase"] = right_purchase(cand)
             tasks.append(cand)
         if counts[name] < take:
-            raise ValueError(f"{name}: только {counts[name]} задач из {take}")
+            raise ValueError(f"{name}: only {counts[name]} tasks of {take}")
     return tasks
 
 
 def build_v2(include_hidden: bool = True) -> list[dict]:
-    """Открытая половина, затем скрытая. Ответы скрытых задач не совпадают ни с
-    открытыми задачами v2, ни с опубликованными задачами v1, ни с пилотами
-    (их числа открыты, задачи пересобираются из кода)."""
+    """The open half, then the hidden one. Hidden answers match neither open v2
+    tasks, nor published v1 tasks, nor the pilots (their seeds are open and the
+    tasks can be rebuilt from the code)."""
     taken = {_answer(r) for r in d1.rows("open")}
     tasks = _half(OPEN_SEED_V2, "open", taken)
     if include_hidden:
-        # Пилоты — только для скрытой половины: открытая уже опубликована.
+        # Pilots matter only for the hidden half: the open one is already published.
         taken |= {_answer(r) for r in build_pilot() + build_pilot2() + build_pilot3()}
         tasks += _half(hidden_seed(), "hidden", taken)
     return tasks
@@ -711,11 +712,11 @@ def write_v2(tasks: list[dict]) -> list[Path]:
 
 
 def load_v2(split: str | None = None) -> list[Task]:
-    """Задачи v2. Скрытые задачи с тем же ответом, что у пилотной, не
-    считаются: пилоты пересобираются из открытого кода, так что ответ на них
-    известен. Скрытая половина собрана до того, как build_v2 стал исключать
-    пилоты, и таких в ней три; файл не пересобирается, чтобы не обесценить
-    уже сделанные прогоны."""
+    """v2 tasks. Hidden tasks with the same answer as a pilot task do not
+    count: pilots can be rebuilt from the open code, so their answer is known.
+    The hidden half was built before build_v2 began excluding pilots, and it has
+    three such tasks; the file is not rebuilt, so as not to devalue runs
+    already made."""
     name = f"tasks_{DATASET_V2_VERSION}.jsonl"
     pilots = None
     out = []

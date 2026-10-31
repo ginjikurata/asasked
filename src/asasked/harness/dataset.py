@@ -1,28 +1,28 @@
-"""Датасет задач v1: генератор кандидатов, проверка, разбиение, загрузка.
+"""Task dataset v1: candidate generator, checks, split, loading.
 
-Задачи собираются из шаблонов ловушек по реальному каталогу v1. Генератор
-только предлагает: формулировку, личность человека, ожидаемые факты и метку
-в формате labels.py. Метка вычисляется из каталога, поэтому она не может
-сослаться на несуществующий товар, — но решать, верна ли она по смыслу,
-должен человек: каждую задачу смотрит разметчик (scripts/build_dataset.py
-пишет для него таблицу).
+Tasks are built from trap templates over the real catalog v1. The generator
+only proposes: the wording, the person's persona, the expected facts and a
+label in the labels.py format. The label is computed from the catalog, so it
+cannot point to a product that does not exist, but whether it is right in
+meaning is for a person to decide: a labeller looks at every task
+(scripts/build_dataset.py writes a table for them).
 
-Кандидат попадает в датасет, только если:
-- правильная покупка существует (или правильно ничего не купить),
-  укладывается в мандат и есть в наличии;
-- существует ловушка: товар из мандата в наличии, который VI пропустит,
-  а метка — нет.
+A candidate gets into the dataset only if:
+- a right purchase exists (or buying nothing is right), fits the mandate and
+  is in stock;
+- a trap exists: an in-stock item within the mandate that VI lets through
+  and the label does not.
 
-Разбиение на открытую и скрытую части — по хешу id, детерминированно.
-Скрытая часть не публикуется: по ней меряют, не подогнан ли агент под тест.
-Поэтому она и лежит не в репозитории, а в HIDDEN_DIR (по умолчанию
-../hidden рядом с ним, или путь из ASASKED_HIDDEN_DIR). Файлы там названы
-так же, как в data/.
+The split into open and hidden parts is by a hash of the id, deterministic.
+The hidden part is not published: it measures whether an agent was tuned to
+the test. That is why it lives not in the repository but in HIDDEN_DIR
+(../hidden next to it by default, or the path from ASASKED_HIDDEN_DIR). Files
+there are named as in data/.
 
-Но у v1 это защищает только разметку, а не сами задачи: seed и правило
-разбиения открыты, и скрытые задачи v1 пересобираются из этого кода.
-Поэтому v1 целиком считается открытым; скрытая половина v2 строится из
-секретного числа (dataset_v2.hidden_seed).
+But for v1 this protects only the labels, not the tasks themselves: the seed
+and the split rule are open, and the hidden v1 tasks can be rebuilt from this
+code. So v1 counts as open as a whole; the hidden half of v2 is built from a
+secret number (dataset_v2.hidden_seed).
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 HIDDEN_DIR = Path(os.environ.get("ASASKED_HIDDEN_DIR") or DATA_DIR.parents[1] / "hidden")
 SEED = 2026
 
-# Сегодня понедельник (tasks.TODAY): день недели → дней до него.
+# Today is Monday (tasks.TODAY): weekday -> days until it. Russian names are task wording.
 DAYS = {"Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5}
 DAYS_RU = {"Wednesday": "среды", "Thursday": "четверга", "Friday": "пятницы",
            "Saturday": "субботы"}
@@ -59,7 +59,7 @@ COLORS_RU = {"black": "чёрные", "white": "белые", "blue": "синие
 
 
 # ---------------------------------------------------------------------------
-# Каталог глазами генератора
+# The catalog as the generator sees it
 # ---------------------------------------------------------------------------
 
 
@@ -78,7 +78,7 @@ def _model(p: dict) -> str:
 
 
 def _variants(family: str) -> dict[tuple, list[dict]]:
-    """(цвет, размер, упаковка) → листинги у разных продавцов."""
+    """(colour, size, pack) -> listings at different merchants."""
     out = defaultdict(list)
     for p in FAMILIES[family]:
         out[(p["color"], p["size_label"], p["pack_size"])].append(p)
@@ -94,7 +94,7 @@ def _size_phrase(p: dict) -> str:
 
 
 def _colour_ru(p: dict, color: str) -> str:
-    """Кроссовки — «белые», ракетка — «цвет — белый»: согласование по роду."""
+    """Russian grammar: shoes are "белые", a racket is "цвет — белый" (gender agreement)."""
     if p["category"] == "shoes":
         return COLORS_RU.get(color, color)
     return f"цвет — {COLOR_NAME_RU.get(color, color)}"
@@ -105,7 +105,7 @@ def _in_stock(listings, pred=lambda p: True) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Шаблоны. Каждый возвращает список кандидатов (словарей задачи).
+# Templates. Each returns a list of candidates (task dicts).
 # ---------------------------------------------------------------------------
 
 
@@ -226,7 +226,7 @@ def t_cheapest_returnable(rng):
                 p["category"],
                 {"brand": brand, "model": model, "size_label": size,
                  "price_preference": "cheap", "needs_refundable": True},
-                # «самый дешёвый» — часть просьбы: дороже самого дешёвого возвратного нельзя
+                # "the cheapest" is part of the request: nothing pricier than the cheapest returnable one
                 {"lines": [{"where": {"family": fam, "size_label": size, "refundable": True,
                                       "max_price_cents": min(q["price_cents"] for q in ok)},
                             "units": 1}]},
@@ -258,7 +258,7 @@ def t_cheapest_in_time(rng):
                 p["category"],
                 {"brand": brand, "model": model, "size_label": size,
                  "price_preference": "cheap", "deadline_days": DAYS[day]},
-                # «как можно дешевле» — дороже самого дешёвого из успевающих нельзя
+                # "as cheap as possible": nothing pricier than the cheapest one that arrives in time
                 {"lines": [{"where": {"family": fam, "size_label": size,
                                       "max_ships_in_days": DAYS[day],
                                       "max_price_cents": min(
@@ -474,7 +474,7 @@ def t_starter_kit(rng):
 
 
 TEMPLATES = [
-    # (функция, сколько взять, аргументы)
+    # (function, how many to take, arguments)
     (t_refund_variant, 30, {}),
     (t_refund_variant, 10, {"lang": "ru"}),
     (t_deadline, 30, {}),
@@ -493,7 +493,7 @@ TEMPLATES = [
 
 
 # ---------------------------------------------------------------------------
-# Проверка, разбиение, запись, загрузка
+# Checks, split, writing, loading
 # ---------------------------------------------------------------------------
 
 
@@ -507,8 +507,8 @@ def _find(sku: str) -> dict:
 
 
 def right_purchase(task: dict) -> list[tuple[str, int]] | None:
-    """Одна правильная покупка, возможная в магазине: в наличии, в мандате,
-    у одного продавца. None — если правильного товара нет."""
+    """One right purchase possible in the store: in stock, within the mandate,
+    from one merchant. None if there is no right item."""
     label = task["label"]
     if label.get("no_purchase"):
         return None
@@ -540,7 +540,7 @@ def right_purchase(task: dict) -> list[tuple[str, int]] | None:
 
 
 def has_trap(task: dict) -> bool:
-    """Есть товар в мандате и в наличии, который VI пропустит, а метка — нет."""
+    """There is an in-stock item within the mandate that VI lets through and the label does not."""
     lines = task["label"].get("lines") or [{"units": 1}]
     for p in allowlist(task):
         if p["stock"] <= 0:
@@ -557,7 +557,7 @@ def split_of(task_id: str) -> str:
 
 
 def build(seed: int = SEED) -> tuple[list[dict], list[tuple[str, str]]]:
-    """Все задачи v1 и список отброшенных кандидатов с причиной."""
+    """All v1 tasks and the list of rejected candidates with the reason."""
     rng = random.Random(seed)
     tasks, rejected, counts = [], [], defaultdict(int)
     for fn, take, kwargs in TEMPLATES:
@@ -585,12 +585,12 @@ def build(seed: int = SEED) -> tuple[list[dict], list[tuple[str, str]]]:
 
 
 def dir_of(split: str) -> Path:
-    """Где лежат файлы половины: открытая — в data/, скрытая — вне репозитория."""
+    """Where a half's files live: the open one in data/, the hidden one outside the repository."""
     return HIDDEN_DIR if split == "hidden" else DATA_DIR
 
 
 def write(tasks: list[dict], path: Path | None = None) -> list[Path]:
-    """Пишет задачи; без path — каждую половину в свою папку."""
+    """Writes tasks; without path, each half into its own folder."""
     if path:
         groups = {path: tasks}
     else:
@@ -622,7 +622,7 @@ def to_task(row: dict) -> Task:
 
 
 def rows(split: str | None = None, path: Path | None = None) -> list[dict]:
-    """Задачи как записаны в файл. Скрытой половины может не быть — тогда её нет и тут."""
+    """Tasks as written to the file. The hidden half may be missing, and then it is missing here too."""
     name = f"tasks_{DATASET_VERSION}.jsonl"
     paths = [path] if path else [dir_of(s) / name for s in ("open", "hidden")
                                  if split in (None, s)]

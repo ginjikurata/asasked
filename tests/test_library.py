@@ -1,4 +1,4 @@
-"""Страж для разработчика агента: просьба + корзина словарями, без магазина и VI."""
+"""The guard for an agent developer: a request plus a cart of dicts, no store and no VI."""
 
 from asasked import ASK, PROCEED, Guard
 from asasked.coherence import IntentFacts
@@ -32,7 +32,7 @@ def test_limit_without_mandate():
 
 
 def test_unknown_field_is_a_note_not_a_stop():
-    # магазин не сообщил, можно ли вернуть, — проверить нельзя, человеку видно
+    # the store did not say whether it can be returned: it cannot be checked, the person sees it
     item = {k: v for k, v in SHOES.items() if k != "returnable"}
     result = guard(IntentFacts(needs_refundable=True)).check([item])
     assert result["decision"] == PROCEED

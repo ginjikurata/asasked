@@ -1,20 +1,20 @@
-"""Страж как MCP-сервер: агент спрашивает его перед оплатой.
+"""The guard as an MCP server: the agent asks it before paying.
 
-Один инструмент — check_order(просьба, корзина). Ответ «proceed» — можно
-платить; «ask» — не платить, показать человеку готовый вопрос и вызвать
-проверку ещё раз вместе с его ответом (answers). Сервер ничего не помнит
-между вызовами, кроме уже извлечённых фактов: одна и та же просьба не
-отправляется моделям дважды.
+One tool, check_order(request, cart). The answer "proceed" means payment can
+go ahead; "ask" means do not pay, show the person the ready question and call
+the check again together with their answer (answers). The server remembers
+nothing between calls except facts already extracted: the same request is not
+sent to the models twice.
 
-MCP-сервер не может помешать агенту заплатить без проверки — он только
-отвечает, когда спросят. И верит агенту на слово: просьбу и ответы человека
-(answers) присылает сам агент, так что агент может пересказать просьбу
-по-своему или ответить за человека. Это второе мнение для агента, который
-его хочет, а не замок. Если оплата идёт через ваш код, надёжнее вызывать
-Guard прямо в нём (см. guard.py): там ответ человека приходит из вашего кода
-(guard.answer), а не от агента.
+An MCP server cannot stop an agent from paying without a check: it only
+answers when asked. And it takes the agent at its word: the request and the
+person's answers are sent by the agent itself, so the agent may retell the
+request its own way or answer for the person. It is a second opinion for an
+agent that wants one, not a lock. If payment goes through your own code, it is
+safer to call Guard right there (see guard.py): there the person's answer
+comes from your code (guard.answer), not from the agent.
 
-Запуск: asasked-mcp (stdio). Ключи моделей — из окружения, как у Guard.
+Run: asasked-mcp (stdio). Model keys come from the environment, as for Guard.
 """
 
 from __future__ import annotations
@@ -67,11 +67,11 @@ class Answer(BaseModel):
 
 server = MCPServer(name="asasked", instructions=INSTRUCTIONS)
 
-# Факты из просьбы извлекаются моделями — это медленно и платно; при
-# повторной проверке исправленной корзины берутся готовые.
+# Facts are extracted from the request by models, which is slow and costs
+# money; a recheck of a corrected cart reuses them.
 _guards: OrderedDict[tuple, Guard] = OrderedDict()
 _KEEP = 64
-# Как извлекать факты; None — моделями (подменяется в тестах).
+# How to extract facts; None means by models (replaced in tests).
 EXTRACT = None
 
 

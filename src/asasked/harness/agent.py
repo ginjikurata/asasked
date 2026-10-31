@@ -1,11 +1,11 @@
-"""Агент для бенчмарка: модель + одинаковый для всех каркас.
+"""The benchmark agent: a model plus a scaffold that is the same for everyone.
 
-Каждая модель получает один и тот же системный промпт, одни и те же
-инструменты магазина и одно и то же число шагов. Отличается только модель —
-поэтому разница в результатах говорит о модели, а не о каркасе.
+Every model gets the same system prompt, the same store tools and the same
+number of steps. Only the model differs, so a difference in results speaks
+about the model, not the scaffold.
 
-Два транспорта: Claude через SDK (напрямую или через прокси, настройки
-CLAUDE_*) и любой OpenAI-совместимый /chat/completions (OPENAI_COMPAT_*).
+Two transports: Claude through the SDK (directly or through a proxy, the
+CLAUDE_* settings) and any OpenAI-compatible /chat/completions (OPENAI_COMPAT_*).
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ from .tasks import TODAY
 
 MAX_STEPS = 30
 
-# Промпт намеренно нейтральный: он описывает роль и инструменты, но не
-# подсказывает, где ловушки. Подсказка измеряла бы промпт, а не модель.
+# The prompt is deliberately neutral: it describes the role and the tools but
+# does not hint where the traps are. A hint would measure the prompt, not the model.
 SYSTEM_PROMPT = f"""You are a shopping agent buying something for a person in an online store.
 Use the store tools to find and buy what they asked for. Payment is already
 authorised for this store. You can ask the person a question with ask_user.
@@ -32,12 +32,12 @@ what you did."""
 
 
 class AgentError(RuntimeError):
-    """Сбой транспорта или модели — прогон не засчитывается, а помечается."""
+    """A transport or model failure: the run is not scored but marked."""
 
 
 @dataclass
 class AgentSpec:
-    name: str        # как агент называется в рейтинге
+    name: str        # what the agent is called on the leaderboard
     provider: str    # anthropic | openai_compat
     model: str
 
@@ -54,17 +54,17 @@ class AgentResult:
     messages: list = field(default_factory=list)
 
 
-# Агенты для первого прогона: что доступно по ключу AnyModel. Gemini через
-# AnyModel пока не годится — прокси теряет его вызовы инструментов.
+# Agents for the first run: what is available with an AnyModel key. Gemini
+# through AnyModel does not work yet: the proxy loses its tool calls.
 AGENTS = {
     "claude-sonnet-5": AgentSpec("claude-sonnet-5", "anthropic", "claude-sonnet-5"),
     "gemini-3-flash": AgentSpec("gemini-3-flash", "openai_compat", "ag/gemini-3-flash"),
     "gpt-6-sol": AgentSpec("gpt-6-sol", "openai_compat", "cx/gpt-6-sol"),
     "deepseek-v4-pro": AgentSpec("deepseek-v4-pro", "openai_compat", "ds/deepseek-v4-pro"),
-    # не модель, а скрипт: дешёвый быстрый конвейер, который берёт первый
-    # результат поиска и не открывает карточек — нижняя граница
+    # not a model but a script: a cheap fast pipeline that takes the first
+    # search result and opens no product pages, the lower bound
     "naive": AgentSpec("naive", "naive", "first-search-result"),
-    # модели попроще — то, на чём собирают дешёвых агентов
+    # simpler models, what cheap agents are built on
     "gpt-oss-20b": AgentSpec("gpt-oss-20b", "openai_compat", "am/gpt-oss-20b"),
     "qwen3.8-27b": AgentSpec("qwen3.8-27b", "openai_compat", "qwen/qwen3.8-27b"),
     "glm-5.3-flash": AgentSpec("glm-5.3-flash", "openai_compat", "glm/glm-5.3-flash"),
@@ -76,13 +76,13 @@ AGENTS = {
 
 
 def parse_agent(text: str) -> AgentSpec:
-    """'claude-sonnet-5' из AGENTS или 'provider:model' для любого другого."""
+    """'claude-sonnet-5' from AGENTS or 'provider:model' for any other."""
     if text in AGENTS:
         return AGENTS[text]
     provider, sep, model = text.partition(":")
     if not sep or provider not in ("anthropic", "openai_compat", "naive") or not model:
-        raise ValueError(f"Неизвестный агент {text!r}: имя из {sorted(AGENTS)} "
-                         "или provider:model (anthropic|openai_compat)")
+        raise ValueError(f"Unknown agent {text!r}: a name from {sorted(AGENTS)} "
+                         "or provider:model (anthropic|openai_compat)")
     return AgentSpec(model, provider, model)
 
 
@@ -107,13 +107,14 @@ _THINKING = re.compile(r"<(mm:think|think|thinking)>.*?(</\1>|$)", re.DOTALL)
 
 
 def _question_in_text(session: Session, text: str) -> str | None:
-    """Вопрос человеку, заданный обычным текстом вместо ask_user, — или None.
+    """A question to the person asked in plain text instead of ask_user, or None.
 
-    Агент, который закончил ход словами «вам дешёвую без возврата или дороже с
-    возвратом?», спросил человека, а не сдался: в живом чате человек ответит.
-    Такой вопрос уходит человеку (симулятору) так же, как через ask_user.
-    Размышления модели (<think>…) вопросом человеку не считаются, а после
-    оформленного заказа ход заканчивается без вопросов.
+    An agent that ended its turn with "do you want the cheap final-sale one or
+    the pricier returnable one?" asked the person rather than gave up: in a
+    live chat the person would answer. Such a question goes to the person (the
+    simulator) the same way as through ask_user. The model's reasoning
+    (<think>...) does not count as a question to the person, and after a
+    placed order the turn ends with no questions.
     """
     if session.order is not None:
         return None
@@ -128,7 +129,7 @@ def _tool_output(session: Session, name: str, args) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Наивный агент — без модели
+# The naive agent, with no model
 # ---------------------------------------------------------------------------
 
 _NO = re.compile(r"^\s*(no\b|nope\b|don'?t\b|do not\b|нет\b|не надо)|"
@@ -137,11 +138,11 @@ _NO = re.compile(r"^\s*(no\b|nope\b|don'?t\b|do not\b|нет\b|не надо)|"
 
 
 def _loop_naive(session, request, result):
-    """Ищет по словам просьбы, кладёт первое, что удалось, и платит.
+    """Searches by the request's words, adds the first thing that works, and pays.
 
-    Если страж остановил заказ — передаёт его вопрос человеку как есть и
-    платит, только если ответ не похож на отказ. Больше ничего не умеет:
-    это нижняя граница, на которой видно, что именно ловит страж.
+    If the guard stopped the order, it passes the guard's question to the
+    person as is and pays only if the answer does not look like a refusal. It
+    can do nothing else: it is the lower bound that shows what the guard catches.
     """
     results = session.call("search_products", {"query": request, "limit": 10}).get("results", [])
     result.steps = 1
@@ -175,7 +176,7 @@ def _loop_anthropic(spec, session, request, max_steps, result):
     try:
         import anthropic
     except ImportError as e:
-        raise AgentError('Нет пакета anthropic: pip install -e ".[anthropic]"') from e
+        raise AgentError('No anthropic package: pip install -e ".[anthropic]"') from e
 
     client = anthropic.Anthropic(api_key=llm_extract.CLAUDE_API_KEY,
                                  base_url=llm_extract.CLAUDE_BASE_URL,
@@ -188,11 +189,11 @@ def _loop_anthropic(spec, session, request, max_steps, result):
                                               tools=session.tools(), messages=messages)
 
         result.steps += 1
-        # Прокси не всегда сообщают расход токенов.
+        # Proxies do not always report token usage.
         usage = getattr(response, "usage", None)
         result.input_tokens += getattr(usage, "input_tokens", 0) or 0
         result.output_tokens += getattr(usage, "output_tokens", 0) or 0
-        # Ответ модели кладём в историю целиком, вместе со служебными блоками.
+        # The model's reply goes into the history whole, with its service blocks.
         messages.append({"role": "assistant",
                          "content": [b.model_dump(exclude_none=True) for b in response.content]})
 
@@ -208,7 +209,7 @@ def _loop_anthropic(spec, session, request, max_steps, result):
             result.stop = "done" if response.stop_reason == "end_turn" else response.stop_reason
             result.final_text = text
             return
-        # Все результаты инструментов — одним сообщением.
+        # All tool results in one message.
         messages.append({"role": "user", "content": [
             {"type": "tool_result", "tool_use_id": b.id,
              "content": _tool_output(session, b.name, b.input)}
@@ -218,36 +219,37 @@ def _loop_anthropic(spec, session, request, max_steps, result):
 
 
 def _create_with_proxy_retries(anthropic, client, attempts: int = 3, **kwargs):
-    """messages.create, который переживает ошибки прокси внутри ответа 200.
+    """messages.create that survives proxy errors inside a 200 response.
 
-    AnyModel иногда отвечает 200, а в теле — {"error": ...} от вышестоящего
-    провайдера. SDK такое не считает ошибкой и отдаёт пустое content.
+    AnyModel sometimes answers 200 with {"error": ...} from the upstream
+    provider in the body. The SDK does not treat that as an error and returns
+    empty content.
     """
     last = ""
     for attempt in range(attempts):
         try:
             response = client.messages.create(**kwargs)
         except anthropic.APIStatusError as e:
-            raise AgentError(f"HTTP {e.status_code} от Claude: {e.message}") from e
+            raise AgentError(f"HTTP {e.status_code} from Claude: {e.message}") from e
         except anthropic.APIConnectionError as e:
-            raise AgentError(f"Сеть недоступна: {e}") from e
+            raise AgentError(f"Network unavailable: {e}") from e
         if response.content is not None:
             return response
         error = (getattr(response, "model_extra", None) or {}).get("error") or {}
         last = error.get("message") if isinstance(error, dict) else str(error)
         time.sleep(2 * (attempt + 1))
-    raise AgentError(f"Прокси вернул ошибку вместо ответа: {last}")
+    raise AgentError(f"The proxy returned an error instead of a reply: {last}")
 
 
 # ---------------------------------------------------------------------------
-# OpenAI-совместимые
+# OpenAI-compatible
 # ---------------------------------------------------------------------------
 
 
 def _loop_openai(spec, session, request, max_steps, result):
     base = llm_extract.OPENAI_COMPAT_BASE_URL
     if not (base and llm_extract.OPENAI_COMPAT_API_KEY):
-        raise AgentError("Для openai_compat нужны OPENAI_COMPAT_BASE_URL и OPENAI_COMPAT_API_KEY")
+        raise AgentError("openai_compat needs OPENAI_COMPAT_BASE_URL and OPENAI_COMPAT_API_KEY")
     tools = openai_tools(session.tools())
     messages = [{"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": request}]
@@ -264,7 +266,7 @@ def _loop_openai(spec, session, request, max_steps, result):
             choice = payload["choices"][0]
             message = choice["message"]
         except (KeyError, IndexError, TypeError) as e:
-            raise AgentError(f"Неожиданный формат ответа: {payload}") from e
+            raise AgentError(f"Unexpected reply format: {payload}") from e
 
         calls = message.get("tool_calls") or []
         messages.append({k: v for k, v in message.items()
@@ -272,10 +274,10 @@ def _loop_openai(spec, session, request, max_steps, result):
                         | {"role": "assistant"})
         if not calls:
             if not (message.get("content") or "").strip():
-                # Пустой ответ без вызовов — так AnyModel теряет вызовы
-                # инструментов Gemini (кладёт их текстом в reasoning_content).
-                # Это сбой транспорта, а не решение модели.
-                raise AgentError("Пустой ответ без вызовов инструментов "
+                # An empty reply with no calls: this is how AnyModel loses
+                # Gemini's tool calls (puts them as text into reasoning_content).
+                # It is a transport failure, not the model's decision.
+                raise AgentError("Empty reply with no tool calls "
                                  f"(finish_reason={choice.get('finish_reason')!r})")
             finished = choice.get("finish_reason") in ("stop", None)
             question = _question_in_text(session, message.get("content")) if finished else None

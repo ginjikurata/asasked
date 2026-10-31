@@ -1,8 +1,8 @@
-"""Строит настоящую цепочку Verifiable Intent для сценария и проверяет её
-подлинной библиотекой из репозитория Mastercard.
+"""Builds a real Verifiable Intent chain for a scenario and verifies it with
+the genuine library from the Mastercard repository.
 
-Здесь ничего не имитируется: подписи, выборочное раскрытие, привязка слоёв
-и проверка ограничений — всё вызывается из SDK как есть.
+Nothing is simulated here: signatures, selective disclosure, layer binding
+and constraint checks are all called from the SDK as they are.
 """
 
 from __future__ import annotations
@@ -15,29 +15,29 @@ import uuid
 from pathlib import Path
 
 def _find_vi_sdk() -> Path:
-    """Где лежит клон agent-intent/verifiable-intent.
+    """Where the agent-intent/verifiable-intent clone lives.
 
-    Абсолютный путь здесь зашивать нельзя: проект перестал бы работать
-    после переноса папки или на другой машине. Порядок поиска —
-    переменная окружения, затем обычные места рядом с проектом.
+    An absolute path must not be hard-coded here: the project would stop
+    working after the folder moves or on another machine. Search order: the
+    environment variable, then the usual places next to the project.
     """
     here = Path(__file__).resolve().parents[2]
     candidates = []
     if env_path := os.environ.get("VI_SDK_PATH"):
         candidates.append(Path(env_path).expanduser())
     candidates += [
-        here.parent / "verifiable-intent",   # рядом с папкой проекта
-        here / "verifiable-intent",          # внутри папки проекта
+        here.parent / "verifiable-intent",   # next to the project folder
+        here / "verifiable-intent",          # inside the project folder
     ]
     for path in candidates:
         if (path / "src" / "verifiable_intent").is_dir():
             return path
     raise SystemExit(
-        "Не найден SDK Verifiable Intent. Искал в:\n"
+        "Verifiable Intent SDK not found. Looked in:\n"
         + "\n".join(f"  - {c}" for c in candidates)
-        + "\n\nСклонируйте его рядом с проектом:\n"
+        + "\n\nClone it next to the project:\n"
         "  git clone https://github.com/agent-intent/verifiable-intent.git\n"
-        "либо укажите путь в переменной VI_SDK_PATH."
+        "or set its path in the VI_SDK_PATH variable."
     )
 
 
@@ -105,14 +105,14 @@ def _find_disc(sd_jwt, predicate):
 
 
 def run_vi(scn, find=catalog.find, merchants=None, merchant=None) -> dict:
-    """Возвращает: подлинность цепочки, соблюдение ограничений, нарушения.
+    """Returns: chain authenticity, constraint compliance, violations.
 
-    scn — что угодно с полями allowlist, prompt_summary, quantity_cap,
-    amount_min_cents, amount_max_cents, purchase (сценарий или заказ из
-    песочницы-магазина). find — поиск товара по артикулу, merchants —
-    разрешённые продавцы, merchant — тот, у кого куплено (по умолчанию первый).
+    scn is anything with the fields allowlist, prompt_summary, quantity_cap,
+    amount_min_cents, amount_max_cents, purchase (a scenario or an order from
+    the sandbox store). find looks a product up by sku, merchants are the
+    allowed merchants, merchant is the one bought from (the first by default).
     """
-    # В мандат идут только поля, которые описывает стандарт.
+    # Only the fields the standard describes go into the mandate.
     merchants = [{k: m[k] for k in ("id", "name", "website")}
                  for m in (merchants or catalog.MERCHANTS)]
     merchant_entry = next(m for m in merchants
@@ -164,7 +164,7 @@ def run_vi(scn, find=catalog.find, merchants=None, merchant=None) -> dict:
     l2_ser = l2.serialize()
     l2_base = l2_ser.split("~")[0]
 
-    # --- агент покупает ------------------------------------------------
+    # --- the agent buys ------------------------------------------------
     jwt, total = _checkout_jwt(scn.purchase, merchant_keys, find, merchant_entry)
     c_hash = _b64url_encode(hashlib.sha256(jwt.encode("utf-8")).digest())
     nonce = str(uuid.uuid4())
@@ -191,7 +191,7 @@ def run_vi(scn, find=catalog.find, merchants=None, merchant=None) -> dict:
         final_checkout=FinalCheckoutMandate(checkout_jwt=jwt, checkout_hash=c_hash),
     ), agent.private_key, l2_base, chk_disc, itm_disc)
 
-    # --- проверка цепочки ---------------------------------------------
+    # --- chain verification --------------------------------------------
     l1_parsed, l2_parsed = decode_sd_jwt(l1.serialize()), decode_sd_jwt(l2_ser)
     l2_payment_ser = build_selective_presentation(l2_base, [pay_disc, mer_disc])
     chain = verify_chain(l1_parsed, l2_parsed, l3_payment=l3a,
@@ -228,7 +228,7 @@ def run_vi(scn, find=catalog.find, merchants=None, merchant=None) -> dict:
 
         pay_res = check_constraints(pay_constraints, fulfillment)
 
-        # сторона магазина: те же ограничения, корзина как line_items
+        # the merchant's side: the same constraints, the cart as line_items
         chk_inline = []
         for c in chk_constraints:
             c = dict(c)
@@ -251,9 +251,9 @@ def run_vi(scn, find=catalog.find, merchants=None, merchant=None) -> dict:
         "constraints_ok": satisfied,
         "violations": violations,
         "total_cents": total,
-        # Сырые подписанные артефакты — для того, чтобы вторая реализация
-        # стандарта могла провалидировать их сама и сверить свой ответ с
-        # нашим, а не поверить нам на слово.
+        # Raw signed artifacts, so that a second implementation of the
+        # standard can validate them itself and compare its answer with
+        # ours rather than take our word for it.
         "artifacts": {
             "layer1": l1.serialize(),
             "layer2": l2_ser,

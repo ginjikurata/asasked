@@ -1,4 +1,4 @@
-"""Песочница-магазин: каталог, инструменты, заказ с Verifiable Intent, HTTP."""
+"""The sandbox store: catalog, tools, an order with Verifiable Intent, HTTP."""
 
 import json
 import threading
@@ -23,7 +23,7 @@ def _vi_available():
     return True
 
 
-needs_vi = pytest.mark.skipif(not _vi_available(), reason="нет клона verifiable-intent")
+needs_vi = pytest.mark.skipif(not _vi_available(), reason="no verifiable-intent clone")
 
 
 def _mandate(category="racket", max_cents=30000, qty=1, **kw):
@@ -33,7 +33,7 @@ def _mandate(category="racket", max_cents=30000, qty=1, **kw):
 
 
 # ---------------------------------------------------------------------------
-# Каталог
+# Catalog
 # ---------------------------------------------------------------------------
 
 
@@ -54,9 +54,9 @@ def test_traps_exist_by_construction():
     for p in CATALOG:
         by_variant[(p["family"], p["color"], p["size_label"], p["pack_size"])].append(p)
     pairs = [v for v in by_variant.values() if len(v) == 2]
-    # дешевле, но без возврата
+    # cheaper, but no returns
     assert any(min(v, key=lambda p: p["price_cents"])["refundable"] is False for v in pairs)
-    # дешевле, но доставка две недели
+    # cheaper, but delivery takes two weeks
     assert any(min(v, key=lambda p: p["price_cents"])["ships_in_days"] == 14 for v in pairs)
 
 
@@ -74,7 +74,7 @@ def test_some_variants_are_out_of_stock():
 
 
 # ---------------------------------------------------------------------------
-# Инструменты
+# Tools
 # ---------------------------------------------------------------------------
 
 
@@ -93,7 +93,7 @@ def test_search_ranks_by_match_then_price_and_hides_terms():
     assert rows and all("Babolat" in r["name"] for r in rows[:10])
     prices = [float(r["price"].strip("$").replace(",", "")) for r in rows[:10]]
     assert prices == sorted(prices)
-    # возвратность и срок доставки видны только в карточке
+    # returns and delivery time show only on the product page
     assert set(rows[0]) == {"sku", "name", "price", "merchant"}
     assert len(session.call("search_products", {"query": "racket", "limit": 999})["results"]) == 20
 
@@ -147,7 +147,7 @@ def test_ask_user_and_transcript():
 
 
 # ---------------------------------------------------------------------------
-# Заказ: Verifiable Intent и проверка намерения на товарах магазина
+# Order: Verifiable Intent and the intent check on store products
 # ---------------------------------------------------------------------------
 
 

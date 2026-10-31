@@ -1,8 +1,8 @@
-"""Страж перед оплатой в коде агента: обёртка и крючки библиотек агентов.
+"""The guard before payment in agent code: the wrapper and agent library hooks.
 
-Модели не вызываются: факты задаёт тест, а модель агента — заготовленный
-сценарий «позвать checkout, потом ответить текстом». Сами библиотеки —
-настоящие: проверяется, что оплата действительно не вызывается.
+No models are called: the test sets the facts, and the agent's model is a
+prepared script "call checkout, then answer in text". The libraries themselves
+are real: the test checks that payment really is not called.
 """
 
 import asyncio
@@ -18,7 +18,7 @@ SHOES = {"name": "Nike Pegasus 41", "brand": "Nike", "color": "Triple Black",
 
 
 def size_guard() -> tuple[Guard, list[str]]:
-    """Человек просил 42, пока не ответил, что 43 тоже подойдёт."""
+    """The person asked for 42 until they answered that 43 would do too."""
     heard = []
 
     def extract(request):
@@ -28,7 +28,7 @@ def size_guard() -> tuple[Guard, list[str]]:
     return Guard("black running shoes, size 42", extract=extract), heard
 
 
-# --- обёртка вокруг своей функции оплаты ---
+# --- the wrapper around your own payment function ---
 
 def test_protect_does_not_pay_until_the_person_agrees():
     guard, heard = size_guard()
@@ -39,7 +39,7 @@ def test_protect_does_not_pay_until_the_person_agrees():
     blocked = pay([SHOES])
     assert paid == [] and blocked.startswith("NOT PAID") and "size 43" in blocked
 
-    # агент «соглашается» сам и платит ещё раз — всё равно нет
+    # the agent "agrees" by itself and pays again: still no
     assert pay([SHOES]).startswith("NOT PAID") and paid == []
 
     guard.answer("43 is fine")
@@ -85,7 +85,7 @@ def test_claude_agent_hook_denies_checkout():
     assert run([{**SHOES, "size": "42"}]) == {}
 
 
-# --- OpenAI Agents SDK: настоящий Runner, модель — сценарий ---
+# --- OpenAI Agents SDK: the real Runner, the model is a script ---
 
 def test_openai_agents_guardrail_keeps_checkout_from_running():
     pytest.importorskip("agents")
@@ -100,7 +100,7 @@ def test_openai_agents_guardrail_keeps_checkout_from_running():
 
     from asasked.integrations.openai_agents import checkout_guardrail
 
-    class Item(BaseModel):  # строгая схема OpenAI не принимает list[dict]
+    class Item(BaseModel):  # OpenAI's strict schema does not accept list[dict]
         name: str
         brand: str
         color: str
@@ -148,7 +148,7 @@ def test_openai_agents_guardrail_keeps_checkout_from_running():
     assert len(paid) == 1
 
 
-# --- LangChain: настоящий create_agent, модель — сценарий ---
+# --- LangChain: the real create_agent, the model is a script ---
 
 def test_langchain_middleware_keeps_checkout_from_running():
     pytest.importorskip("langchain")
@@ -198,6 +198,6 @@ def test_langchain_middleware_keeps_checkout_from_running():
     assert paid == [] and told[0].startswith("NOT PAID") and "size 43" in told[0]
     paid, told = shop([{**SHOES, "size": "42"}], guard)
     assert len(paid) == 1 and told == ["order 1"]
-    # асинхронный агент идёт через awrap_tool_call
+    # an async agent goes through awrap_tool_call
     paid, told = shop([SHOES], guard, run=lambda agent, x: asyncio.run(agent.ainvoke(x)))
     assert paid == [] and told[0].startswith("NOT PAID")

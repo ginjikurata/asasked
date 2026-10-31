@@ -1,4 +1,4 @@
-"""Каркас прогонов без сети: модель подменена сценарием вызовов."""
+"""The run harness with no network: the model is replaced by a scripted sequence of calls."""
 
 import json
 from types import SimpleNamespace
@@ -15,7 +15,7 @@ TASKS = {t.id: t for t in PILOT}
 
 
 class _StubUser:
-    """Симулятор без сети: на любой вопрос — одна фраза."""
+    """A simulator with no network: one phrase for any question."""
 
     model, reply = "stub", "Then don't buy anything, I'll wait."
 
@@ -40,11 +40,11 @@ def _vi_available():
     return True
 
 
-needs_vi = pytest.mark.skipif(not _vi_available(), reason="нет клона verifiable-intent")
+needs_vi = pytest.mark.skipif(not _vi_available(), reason="no verifiable-intent clone")
 
 
 # ---------------------------------------------------------------------------
-# Оценка по разметке
+# Scoring by the label
 # ---------------------------------------------------------------------------
 
 
@@ -93,7 +93,7 @@ def test_parse_agent():
 
 
 # ---------------------------------------------------------------------------
-# Цикл агента с подменённой моделью
+# The agent loop with a mocked model
 # ---------------------------------------------------------------------------
 
 
@@ -106,7 +106,7 @@ def _tool_use(i, name, args):
 
 
 class _ScriptedClaude:
-    """Отвечает заранее заданными шагами и запоминает, что ему прислали."""
+    """Answers with preset steps and remembers what it was sent."""
 
     def __init__(self, steps):
         self.steps, self.seen = list(steps), []
@@ -128,7 +128,7 @@ def _claude(monkeypatch, steps):
 
 @needs_vi
 def test_claude_loop_buys_and_is_scored(monkeypatch):
-    sku = "ASI-GELRESOLUTION9-42-BLA-OUT"   # дешёвый двойник без возврата
+    sku = "ASI-GELRESOLUTION9-42-BLA-OUT"   # the cheap twin with no returns
     fake = _claude(monkeypatch, [
         ([_tool_use(1, "search_products", {"query": "asics gel-resolution 42 black"})], "tool_use"),
         ([_tool_use(2, "add_to_cart", {"sku": sku}),
@@ -142,7 +142,7 @@ def test_claude_loop_buys_and_is_scored(monkeypatch):
     assert rec["score"]["vi_passed_but_wrong"]
     assert rec["engine"]["coherent"] is False and rec["engine"]["agrees_with_label"]
     assert [f["code"] for f in rec["engine"]["findings"]] == ["refund"]
-    # два результата инструментов вернулись одним сообщением
+    # two tool results came back in one message
     last_user = fake.seen[2][-1]
     assert last_user["role"] == "user" and len(last_user["content"]) == 2
     assert rec["input_tokens"] == 30 and rec["final_text"] == "Bought them."
@@ -159,12 +159,12 @@ def test_transport_error_is_not_a_score(monkeypatch):
     anthropic = pytest.importorskip("anthropic")
 
     def boom(**kw):
-        raise agent_mod.AgentError("HTTP 503 от Claude: down")
+        raise agent_mod.AgentError("HTTP 503 from Claude: down")
 
     monkeypatch.setattr(agent_mod, "_loop_anthropic", lambda *a: boom())
     rec = run_task(AGENTS["claude-sonnet-5"], TASKS["pilot-vague"])
     assert rec["stop"] == "error" and rec["score"] is None and "503" in rec["error"]
-    assert anthropic  # пакет есть, ошибка именно транспортная
+    assert anthropic  # the package is there, the error is about transport
 
 
 def test_openai_loop_asks_then_stops(monkeypatch):
@@ -210,7 +210,7 @@ def test_openai_question_in_plain_text_goes_to_the_person(monkeypatch):
     monkeypatch.setattr(llm_extract, "OPENAI_COMPAT_BASE_URL", "https://proxy.test/v1")
     monkeypatch.setattr(llm_extract, "OPENAI_COMPAT_API_KEY", "k")
     replies = [
-        # вопрос текстом, а не через ask_user; размышления вопросом не считаются
+        # a question in text, not through ask_user; reasoning does not count as a question
         {"choices": [{"finish_reason": "stop", "message": {
             "role": "assistant",
             "content": "<mm:think>should I ask?</mm:think>Cheaper final sale, or pricier with returns?"}}]},

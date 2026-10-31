@@ -1,7 +1,7 @@
-"""Настоящая цепочка Verifiable Intent для каждого сценария.
+"""The real Verifiable Intent chain for each scenario.
 
-Нужен клон agent-intent/verifiable-intent (см. vi_runner._find_vi_sdk);
-без него тесты пропускаются, а не падают.
+Needs a clone of agent-intent/verifiable-intent (see vi_runner._find_vi_sdk);
+without it the tests are skipped, not failed.
 """
 
 import pytest

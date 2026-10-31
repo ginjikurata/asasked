@@ -1,4 +1,4 @@
-"""LangChain 1.x: middleware вокруг инструмента оплаты.
+"""LangChain 1.x: middleware around the payment tool.
 
     agent = create_agent(model, tools=[checkout], middleware=[
         CheckoutGuard(guard, cart=lambda args: args["items"])])

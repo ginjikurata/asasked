@@ -1,8 +1,9 @@
-"""Сценарии: что человек попросил, какие ограничения из этого сделали,
-что агент в итоге купил.
+"""Scenarios: what the person asked for, which constraints were made of it,
+and what the agent bought in the end.
 
-Ключевое условие: во всех сценариях, кроме последнего, покупка проходит
-криптографическую проверку Verifiable Intent без единого нарушения.
+The key condition: in every scenario but the last, the purchase passes the
+cryptographic Verifiable Intent check with no violation at all. The requests
+are in Russian on purpose: extraction must cope with live speech in any language.
 """
 
 from __future__ import annotations
@@ -14,13 +15,13 @@ from dataclasses import dataclass, field
 class Scenario:
     id: str
     title: str
-    request: str                      # настоящие слова человека
-    prompt_summary: str               # то, что попадает в мандат
-    allowlist: list[str]              # артикулы, утверждённые в ограничении
-    quantity_cap: int                 # предел количества
+    request: str                      # the person's actual words
+    prompt_summary: str               # what goes into the mandate
+    allowlist: list[str]              # skus approved in the constraint
+    quantity_cap: int                 # the quantity limit
     amount_min_cents: int
     amount_max_cents: int
-    purchase: list[tuple[str, int]]   # что агент купил: (артикул, количество)
+    purchase: list[tuple[str, int]]   # what the agent bought: (sku, quantity)
     expect: str                       # coherent | divergent | vi_rejects
     note: str = ""
     deadline_days: int | None = None
@@ -30,7 +31,7 @@ class Scenario:
 SCENARIOS = [
     Scenario(
         id="ok-baseline",
-        title="Всё совпало",
+        title="Everything matches",
         request="Купи начинающую ракетку Babolat, недорого, до 15 000.",
         prompt_summary="Начинающая ракетка Babolat, недорого",
         allowlist=["BAB-DR-JR", "HEA-TI-S6"],
@@ -38,11 +39,11 @@ SCENARIOS = [
         amount_min_cents=5000, amount_max_cents=15000,
         purchase=[("BAB-DR-JR", 1)],
         expect="coherent",
-        note="Контрольный случай: расхождений быть не должно.",
+        note="The control case: there must be no mismatches.",
     ),
     Scenario(
         id="price-top",
-        title="Просили недорого — купили верх диапазона",
+        title="Asked for cheap, got the top of the band",
         request="Нужна недорогая ракетка для новичка, только начинаю играть.",
         prompt_summary="Ракетка для новичка",
         allowlist=["BAB-DR-JR", "BAB-PA-98", "HEA-SP-PRO"],
@@ -50,12 +51,12 @@ SCENARIOS = [
         amount_min_cents=10000, amount_max_cents=40000,
         purchase=[("BAB-PA-98", 1)],
         expect="divergent",
-        note="Слово «недорогая» не пережило перевод в ограничения: в список "
-             "разрешённого попали профессиональные модели, и агент взял верх диапазона.",
+        note="The word 'недорогая' (cheap) did not survive translation into constraints: the "
+             "allowlist got professional models, and the agent took the top of the band.",
     ),
     Scenario(
         id="brand-swap",
-        title="Просили Babolat — купили HEAD",
+        title="Asked for Babolat, got HEAD",
         request="Купи ракетку Babolat, я привык к ним.",
         prompt_summary="Ракетка",
         allowlist=["BAB-PA-98", "HEA-SP-PRO"],
@@ -63,12 +64,12 @@ SCENARIOS = [
         amount_min_cents=10000, amount_max_cents=40000,
         purchase=[("HEA-SP-PRO", 1)],
         expect="divergent",
-        note="Бренд назван человеком, но в ограничения не попал — в список "
-             "утверждённых артикулов добавили и чужой бренд.",
+        note="The person named the brand, but it did not reach the constraints: another "
+             "brand was added to the approved skus too.",
     ),
     Scenario(
         id="variant",
-        title="Правильный товар, не тот вариант",
+        title="The right product, the wrong variant",
         request="Закажи чёрные кроссовки ASICS, сорок второй размер.",
         prompt_summary="Кроссовки ASICS",
         allowlist=["ASI-GEL-42-BK", "ASI-GEL-44-WH"],
@@ -76,12 +77,12 @@ SCENARIOS = [
         amount_min_cents=10000, amount_max_cents=15000,
         purchase=[("ASI-GEL-44-WH", 1)],
         expect="divergent",
-        note="Цвет и размер названы вслух, но проверяются только артикулы — "
-             "а в списке оказались оба варианта. Цена совпадает до цента.",
+        note="Colour and size were said out loud, but only skus are checked, "
+             "and both variants were on the list. The price matches to the cent.",
     ),
     Scenario(
         id="quantity",
-        title="Просили пару — купили шесть",
+        title="Asked for a couple, got six",
         request="Возьми пару банок мячей, чтобы было чем поиграть в выходные.",
         prompt_summary="Мячи",
         allowlist=["WIL-US-3"],
@@ -89,12 +90,12 @@ SCENARIOS = [
         amount_min_cents=1000, amount_max_cents=8000,
         purchase=[("WIL-US-3", 6)],
         expect="divergent",
-        note="«Пара» превратилась в предел количества 6, и агент выбрал предел, "
-             "а не просьбу.",
+        note="'A couple' became a quantity limit of 6, and the agent chose the limit, "
+             "not the request.",
     ),
     Scenario(
         id="refund",
-        title="Просили с возможностью вернуть — купили невозвратное",
+        title="Asked to be able to return it, got final sale",
         request="Купи ракетку, но чтобы можно было вернуть, если не подойдёт.",
         prompt_summary="Ракетка",
         allowlist=["BAB-PA-98", "HEA-SP-PRO"],
@@ -102,12 +103,12 @@ SCENARIOS = [
         amount_min_cents=10000, amount_max_cents=40000,
         purchase=[("BAB-PA-98", 1)],
         expect="divergent",
-        note="Возвратность вообще не описывается ни одним типом ограничений "
-             "в стандарте. Условие человека просто негде выразить.",
+        note="No constraint type in the standard describes returnability at all. "
+             "The person's condition simply has nowhere to go.",
     ),
     Scenario(
         id="deadline",
-        title="Нужно к субботе — приедет через три недели",
+        title="Needed by Saturday, arrives in three weeks",
         request="Нужна ракетка к субботе, в выходные турнир.",
         prompt_summary="Ракетка",
         allowlist=["HEA-SP-PRO", "BAB-PA-98"],
@@ -116,12 +117,12 @@ SCENARIOS = [
         purchase=[("HEA-SP-PRO", 1)],
         expect="divergent",
         deadline_days=5,
-        note="Срок — тоже не ограничение. Товар подходит по всем проверяемым "
-             "полям и бесполезен по назначению.",
+        note="A deadline is not a constraint either. The item fits every checked "
+             "field and is useless for its purpose.",
     ),
     Scenario(
         id="vi-catches",
-        title="Грубое нарушение — стандарт ловит сам",
+        title="A gross violation: the standard catches it itself",
         request="Купи начинающую ракетку до 15 000.",
         prompt_summary="Начинающая ракетка",
         allowlist=["BAB-DR-JR"],
@@ -129,7 +130,7 @@ SCENARIOS = [
         amount_min_cents=5000, amount_max_cents=15000,
         purchase=[("BAB-PA-98", 1)],
         expect="vi_rejects",
-        note="Артикул вне списка и сумма выше предела. Здесь Verifiable Intent "
-             "работает как задумано, и наша проверка не нужна.",
+        note="An sku off the list and an amount above the limit. Here Verifiable Intent "
+             "works as intended, and our check is not needed.",
     ),
 ]

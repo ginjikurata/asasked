@@ -1,32 +1,32 @@
-"""Окно «свой запрос» на сайте: посетитель пишет просьбу, агент покупает в
-песочнице-магазине, страж стоит перед оплатой.
+"""The "your own request" window on the site: a visitor writes a request, an
+agent buys in the sandbox store, the guard stands before payment.
 
-    POST /try     {"request": "...", "visitor": "<хэш>"}  -> разбор одного прогона
+    POST /try     {"request": "...", "visitor": "<hash>"}  -> the breakdown of one run
     GET  /health  -> {"ok": true, "left_today": ...}
 
-Устройство — как в бенчмарке, режим enforced:
-- мандат «с потерями»: весь каталог до $300, детали просьбы в него не попадают;
-- агент — одна дешёвая модель (LIVE_AGENT), страж — та же сверка двух моделей
-  и детерминированный код;
-- человек — сам посетитель. Как только агент спрашивает человека — по своей
-  воле или потому что страж остановил оплату, — прогон замирает, посетитель
-  видит вопрос и может ответить:
+The setup is as in the benchmark, enforced mode:
+- a "lossy" mandate: the whole catalog up to $300, the request's details do not reach it;
+- the agent is one cheap model (LIVE_AGENT), the guard is the same agreement of
+  two models plus deterministic code;
+- the person is the visitor. As soon as the agent asks the person, on its own
+  or because the guard stopped payment, the run pauses, the visitor sees the
+  question and can answer:
 
-    POST /try     {"conversation": "<id>", "answer": "...", "visitor": "<хэш>"}
+    POST /try     {"conversation": "<id>", "answer": "...", "visitor": "<hash>"}
 
-  Агент продолжает с того же места, с той же историей. Ответ на вопрос агента
-  страж тоже слышит: факты извлекаются заново из просьбы вместе с ответом.
-  Ответов не больше MAX_ANSWERS на просьбу; неотвеченный вопрос ждёт
-  ANSWER_WAIT секунд, потом прогон закрывается.
+  The agent goes on from the same place, with the same history. The guard
+  hears the answer to the agent's question too: facts are extracted again from
+  the request together with the answer. At most MAX_ANSWERS answers per
+  request; an unanswered question waits ANSWER_WAIT seconds, then the run closes.
 
-Деньги считает сам сервис: не больше LIVE_PER_VISITOR просьб на посетителя
-и LIVE_DAILY_CAP на всех за сутки (UTC), одновременно — LIVE_PARALLEL. Ответы
-на вопросы — та же просьба, отдельно не считаются. Просьба, на которую агент
-только ответил или переспросил человека (например, «привет»), попытку
-посетителя не тратит — до FREE_PER_VISITOR таких в сутки. Общий дневной
-потолок она тратит всё равно: модель вызывалась, и потолок должен быть
-жёстким.
-Слушает только localhost: снаружи к нему ходит маршрут сайта /api/try.
+The service counts the money itself: at most LIVE_PER_VISITOR requests per
+visitor and LIVE_DAILY_CAP for everyone per day (UTC), LIVE_PARALLEL at once.
+Answers to questions are the same request and are not counted separately. A
+request the agent only answered or asked back about (say, "hello") does not
+use up the visitor's attempt, up to FREE_PER_VISITOR such a day. It still
+counts against the shared daily cap: the model was called, and the cap must
+be hard.
+Listens on localhost only: from outside it is reached by the site route /api/try.
 """
 
 from __future__ import annotations
@@ -59,13 +59,13 @@ PARALLEL = int(os.environ.get("LIVE_PARALLEL", "3"))
 FREE_PER_VISITOR = 10
 MAX_ANSWERS = 3
 MAX_ANSWER_CHARS = 300
-ANSWER_WAIT = 600          # сколько вопрос ждёт ответа, секунд
-RUN_WAIT = 290             # сколько ждём агента за один заход (маршрут сайта ждёт 300)
-MAX_OPEN = 40              # разговоров, ждущих ответа, одновременно
+ANSWER_WAIT = 600          # how long a question waits for an answer, seconds
+RUN_WAIT = 290             # how long we wait for the agent per turn (the site route waits 300)
+MAX_OPEN = 40              # conversations waiting for an answer at once
 
 
 class LimitError(Exception):
-    """Отказ по лимиту: посетитель видит причину, денег не тратится."""
+    """A refusal by limit: the visitor sees the reason, no money is spent."""
 
     def __init__(self, code: int, text: str):
         super().__init__(text)
@@ -73,7 +73,7 @@ class LimitError(Exception):
 
 
 class _PersonAsked(Exception):
-    """Вопрос человеку, на который ответа не будет: прогон на нём кончается."""
+    """A question to the person that will get no answer: the run ends on it."""
 
 
 def mandate() -> Mandate:
@@ -83,7 +83,7 @@ def mandate() -> Mandate:
 
 
 # ---------------------------------------------------------------------------
-# Что услышал страж — по-человечески
+# What the guard heard, in plain words
 # ---------------------------------------------------------------------------
 
 _LABELS = {
@@ -111,7 +111,7 @@ def _is_set(name: str, value) -> bool:
 
 
 def heard(facts: IntentFacts) -> list[dict]:
-    """Факты стража строками «признак — значение»; мягкие и спорные помечены."""
+    """The guard's facts as "feature: value" lines; soft and disputed ones are marked."""
     out = []
     for name, label in _LABELS.items():
         value = getattr(facts, name)
@@ -137,7 +137,7 @@ def _has_wishes(facts: IntentFacts) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Журнал агента — коротко
+# The agent's log, in short
 # ---------------------------------------------------------------------------
 
 
@@ -150,7 +150,7 @@ def _item(store: Store, sku: str, qty: int = 1) -> dict:
 
 
 def _steps(store: Store, call: dict) -> list[dict]:
-    """Строки журнала для окна: что делал агент и что ему ответил человек."""
+    """Log lines for the window: what the agent did and what the person answered."""
     if call["tool"] == "ask_user":
         return [{"k": "asked you", "v": call["args"].get("question", "")},
                 {"k": "you", "v": call["result"].get("reply", "")}]
@@ -177,16 +177,16 @@ def _step(store: Store, call: dict) -> str | None:
                 "placed": f"checkout → paid {result.get('total')}",
                 "declined": "checkout → payment declined by Verifiable Intent"}.get(
                     status, f"checkout → {status}")
-    return None  # view_cart и прочее в коротком журнале не нужно
+    return None  # view_cart and the like are not needed in the short log
 
 
 def suggestions(store: Store, facts: IntentFacts, categories: set[str], m: Mandate,
                 limit: int = 3) -> list[dict]:
-    """Что страж пропустил бы без вопросов в тех же категориях — дешёвое сначала.
+    """What the guard would let through without questions in the same categories, cheapest first.
 
-    Только для просьб об одном товаре: подбирать наборы из нескольких позиций
-    здесь не нужно. Без названных признаков подходит всё — тогда и советовать
-    нечего.
+    Only for requests for one item: picking sets of several lines is not
+    needed here. With no features named everything fits, and then there is
+    nothing to suggest.
     """
     if facts.lines or not categories or not _has_wishes(facts):
         return []
@@ -212,14 +212,14 @@ def suggestions(store: Store, facts: IntentFacts, categories: set[str], m: Manda
 
 
 # ---------------------------------------------------------------------------
-# Разговор: одна просьба, агент, вопросы посетителю
+# A conversation: one request, the agent, questions to the visitor
 # ---------------------------------------------------------------------------
 
 class Conversation:
-    """Одна просьба посетителя. Агент работает в своём потоке; вопрос человеку
-    останавливает его, пока посетитель не ответит (или не уйдёт).
+    """One visitor request. The agent works in its own thread; a question to the
+    person stops it until the visitor answers (or leaves).
 
-    run и extract подменяются в тестах (наивный агент, готовые факты).
+    run and extract are replaced in tests (the naive agent, ready facts).
     """
 
     def __init__(self, request: str, visitor: str = "", agent: AgentSpec | None = None,
@@ -237,12 +237,12 @@ class Conversation:
         self._inbox: queue.Queue = queue.Queue()
         self._outbox: queue.Queue = queue.Queue()
         self.answers = 0
-        self.waiting = False      # вопрос задан, ответа ждём
+        self.waiting = False      # a question was asked, waiting for the answer
         self.done = False
-        self.paid = True          # засчитана ли просьба в лимит посетителя
+        self.paid = True          # whether the request counts against the visitor's limit
         self._blocks_answered = 0
 
-    # ---- снаружи ----------------------------------------------------------
+    # ---- from outside -----------------------------------------------------
 
     def start(self) -> dict:
         threading.Thread(target=self._work, daemon=True).start()
@@ -254,14 +254,14 @@ class Conversation:
         return self._next()
 
     def close(self) -> None:
-        """Посетитель ушёл или начал новую просьбу — ждать больше нечего."""
+        """The visitor left or started a new request: nothing more to wait for."""
         if self.waiting:
             self.waiting = False
             self._inbox.put(None)
 
     def shopped(self) -> bool:
-        """Делал ли агент что-то кроме вопросов человеку. Любой другой вызов,
-        даже ошибочный, — это шаги модели, за которые заплачено."""
+        """Whether the agent did anything besides questions to the person. Any
+        other call, even a failed one, is model steps that were paid for."""
         return any(c["tool"] != "ask_user" for c in self.session.transcript)
 
     def _next(self) -> dict:
@@ -270,11 +270,11 @@ class Conversation:
         except queue.Empty:
             raise LimitError(504, "The agent is taking too long. Try a simpler request.") from None
 
-    # ---- в потоке агента --------------------------------------------------
+    # ---- in the agent's thread --------------------------------------------
 
     def _guard_pending(self) -> bool:
-        """Сейчас спрашивают по просьбе стража: была остановка оплаты после
-        последнего ответа человека."""
+        """The question now is asked at the guard's request: payment was stopped
+        after the person's last answer."""
         blocks = sum(c["tool"] == "checkout"
                      and c["result"].get("status") == "needs_confirmation"
                      for c in self.session.transcript)
@@ -307,14 +307,14 @@ class Conversation:
             result = self._run(self.spec, self.session, self.request, max_steps=MAX_STEPS)
         except _PersonAsked as e:
             asked = str(e)
-        except Exception as e:  # noqa: BLE001 — посетитель видит сбой, сервис живёт
+        except Exception as e:  # noqa: BLE001 - the visitor sees the failure, the service lives on
             result = AgentResult(stop="error", error=f"The run failed: {type(e).__name__}.")
         self.done = True
         self._outbox.put(self.report(result=result, asked=asked))
 
     def report(self, result: AgentResult | None = None, asked: str | None = None,
                can_answer: bool = False) -> dict:
-        """Разбор для окна на сайте — на паузе (asked) или в конце (result)."""
+        """The breakdown for the site window, paused (asked) or at the end (result)."""
         store, session, guard = self.store, self.session, self.guard
         facts = guard.facts()
         order = session.order
@@ -359,9 +359,9 @@ class Conversation:
 def try_request(request: str, agent: AgentSpec | None = None,
                 extract: Callable[[str], IntentFacts] | None = None,
                 answers: tuple[str, ...] = ()) -> dict:
-    """Прогон целиком, без HTTP: answers — ответы на вопросы по порядку.
+    """A whole run, without HTTP: answers are the answers to questions, in order.
 
-    Вопрос, на который ответов не хватило, заканчивает прогон и виден в разборе.
+    A question that ran out of answers ends the run and shows in the breakdown.
     """
     conv = Conversation(request, agent=agent, extract=extract)
     out = conv.start()
@@ -376,7 +376,7 @@ def try_request(request: str, agent: AgentSpec | None = None,
 
 
 # ---------------------------------------------------------------------------
-# Лимиты и HTTP
+# Limits and HTTP
 # ---------------------------------------------------------------------------
 
 
@@ -405,7 +405,7 @@ class Limits:
             return max(0, self.daily_cap - self._total)
 
     def count(self, visitor: str) -> None:
-        """Засчитывает просьбу до её начала: упавший прогон тоже стоил денег."""
+        """Counts the request before it starts: a failed run cost money too."""
         with self._lock:
             self._roll()
             if self._total >= self.daily_cap:
@@ -418,8 +418,8 @@ class Limits:
             self._visitors[visitor] += 1
 
     def refund(self, visitor: str) -> bool:
-        """Возвращает посетителю попытку за просьбу без покупок — не больше
-        free_per_visitor. Общий дневной счёт не уменьшается."""
+        """Gives the visitor back the attempt for a request with no purchases, at
+        most free_per_visitor. The shared daily count does not go down."""
         with self._lock:
             self._roll()
             if self._free[visitor] >= self.free_per_visitor or not self._visitors[visitor]:
@@ -448,7 +448,7 @@ class Limits:
 
 
 class Desk:
-    """Разговоры, ждущие ответа посетителя, и их счёт в лимитах."""
+    """Conversations waiting for the visitor's answer, and their count in the limits."""
 
     def __init__(self, limits: Limits | None = None, **conversation_kw):
         self.limits = limits or Limits()
@@ -460,7 +460,7 @@ class Desk:
         with self._lock:
             self._prune()
             for conv in [c for c in self._open.values() if c.visitor == visitor]:
-                conv.close()      # новая просьба закрывает старый разговор
+                conv.close()      # a new request closes the old conversation
                 del self._open[conv.id]
             if len(self._open) >= MAX_OPEN:
                 raise LimitError(503, "Busy with other visitors' requests. "
@@ -479,8 +479,8 @@ class Desk:
             conv = self._open.get(conversation)
             if conv is None or conv.visitor != visitor or not conv.waiting:
                 raise LimitError(409, "This conversation has ended — send a new request.")
-            conv.waiting = False  # второй ответ на тот же вопрос не пройдёт
-        # Просьба, которую вернули как пустую, засчитывается, когда на неё ответили.
+            conv.waiting = False  # a second answer to the same question will not pass
+        # A request given back as empty counts once it is answered.
         try:
             if conv.paid:
                 self.limits.acquire()
@@ -568,7 +568,7 @@ def make_handler(desk: Desk):
                     out = desk.start(*check_request(data))
             except LimitError as e:
                 return self._send(e.code, {"error": str(e)})
-            except Exception as e:  # noqa: BLE001 — посетитель видит сбой, сервис живёт
+            except Exception as e:  # noqa: BLE001 - the visitor sees the failure, the service lives on
                 return self._send(500, {"error": f"The run failed: {type(e).__name__}."})
             return self._send(200, out)
 

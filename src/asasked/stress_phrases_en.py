@@ -1,12 +1,12 @@
-"""Живые формулировки на английском — пара к stress_phrases.py.
+"""Live English phrasings, the pair to stress_phrases.py.
 
-Те же правила: expect только для полей, где человек высказался однозначно;
-expect=None — на ручное прочтение. Категории повторяют русский набор и
-добавляют то, что специфично для английской речи: сокращения сумм
-("150 bucks", "1.5k"), "a couple" / "a few" / "half a dozen", британское и
-американское написание, разговорные "kinda", "tbh", "lmk".
+The same rules: expect only for fields where the person spoke unambiguously;
+expect=None is for reading by hand. The categories follow the Russian set and
+add what is specific to English speech: shortened amounts ("150 bucks",
+"1.5k"), "a couple" / "a few" / "half a dozen", British and American
+spelling, colloquial "kinda", "tbh", "lmk".
 
-Суммы в explicit_max_cents — в центах выбранной валюты ($150 -> 15000).
+Amounts in explicit_max_cents are in cents of the chosen currency ($150 -> 15000).
 """
 
 from __future__ import annotations

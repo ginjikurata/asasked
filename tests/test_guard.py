@@ -1,4 +1,4 @@
-"""Страж перед оплатой, режимы магазина, наивный агент, исправления движка."""
+"""The guard before payment, store modes, the naive agent, engine fixes."""
 
 import pytest
 
@@ -24,7 +24,7 @@ def _vi_available():
     return True
 
 
-needs_vi = pytest.mark.skipif(not _vi_available(), reason="нет клона verifiable-intent")
+needs_vi = pytest.mark.skipif(not _vi_available(), reason="no verifiable-intent clone")
 
 
 def _guard(task=REFUND, calls=None):
@@ -36,7 +36,7 @@ def _guard(task=REFUND, calls=None):
 
 
 # ---------------------------------------------------------------------------
-# Страж
+# Guard
 # ---------------------------------------------------------------------------
 
 
@@ -48,7 +48,7 @@ def test_guard_proceeds_on_right_cart_and_asks_on_wrong():
     assert ok["decision"] == "proceed" and not ok["reasons"]
     assert bad["decision"] == "ask"
     assert "final sale" in bad["reasons"][0] and bad["question"].endswith("Should I still go ahead?")
-    assert len(calls) == 1          # факты извлекаются один раз на просьбу
+    assert len(calls) == 1          # facts are extracted once per request
     assert len(guard.checks) == 2
 
 
@@ -62,7 +62,7 @@ def test_guard_asks_when_extraction_fails():
 
 
 # ---------------------------------------------------------------------------
-# Магазин: режимы
+# Store: modes
 # ---------------------------------------------------------------------------
 
 
@@ -110,7 +110,7 @@ def test_enforced_rechecks_after_cart_change_and_passes_right_cart():
 
 
 # ---------------------------------------------------------------------------
-# Наивный агент
+# Naive agent
 # ---------------------------------------------------------------------------
 
 
@@ -133,7 +133,7 @@ def test_naive_agent_without_guard_just_buys():
 
 
 # ---------------------------------------------------------------------------
-# Исправления движка
+# Engine fixes
 # ---------------------------------------------------------------------------
 
 
@@ -161,11 +161,11 @@ def test_quantity_counts_cans_not_packs():
     assert [f.code for f in two.findings] == ["quantity"]
     one_can = check_coherence(IntentFacts(quantity=4), [("PEN-CHAMPIONSHIP-3B-YEL-COU", 1)],
                               (100, 6000), find=find)
-    assert [f.code for f in one_can.findings] == ["quantity"]   # меньше просьбы — тоже
+    assert [f.code for f in one_can.findings] == ["quantity"]   # less than asked, too
 
 
 # ---------------------------------------------------------------------------
-# Несколько вариантов в одном заказе
+# Several variants in one order
 # ---------------------------------------------------------------------------
 
 TWO_PAIRS = IntentFacts(brand="Nike", model="Court Lite 4", color="white",
@@ -197,18 +197,18 @@ def test_shared_facts_still_apply_to_every_line():
 
 def test_disputed_lines_only_warn():
     from dataclasses import replace
-    # модели разошлись в том, сколько вещей просили, — лишняя позиция только
-    # предупреждает
+    # the models disagreed on how many items were asked for: an extra line only
+    # warns
     disputed = replace(TWO_PAIRS, disputed=frozenset({"lines", "line_count"}))
     extra = [(W40, 1), (W43, 1), ("NIK-COURTLITE4-44-WHI-ACE", 1)]
     verdict = check_coherence(disputed, extra, (100, 20000), find=Store().find)
     assert verdict.coherent and [f.code for f in verdict.findings] == ["extra"]
-    # разошлись в размере строки — размер предупреждает
+    # they disagreed on a line's size: the size warns
     cart = [(W40, 1), ("NIK-COURTLITE4-44-WHI-ACE", 1)]
     details = replace(TWO_PAIRS, disputed=frozenset({"lines", "lines.size_label"}))
     verdict = check_coherence(details, cart, (100, 20000), find=Store().find)
     assert verdict.coherent and [f.code for f in verdict.findings] == ["size"]
-    # разошлись только в количестве — размер, который обе услышали, блокирует
+    # they disagreed only on quantity: a size both heard blocks
     details = replace(TWO_PAIRS, disputed=frozenset({"lines", "lines.quantity"}))
     verdict = check_coherence(details, cart, (100, 20000), find=Store().find)
     assert not verdict.coherent
@@ -216,8 +216,8 @@ def test_disputed_lines_only_warn():
 
 def test_merge_disputes_only_the_line_fields_that_differ():
     from asasked.coherence import merge_facts
-    # случай из прогона: Gemini не назвал количество, модели обе услышали
-    # Wilson Super Tour — подмена на Championship должна остановить заказ
+    # a case from a run: Gemini gave no quantity, both models heard
+    # Wilson Super Tour; a swap for Championship must stop the order
     full = IntentFacts(lines=({"brand": "HEAD", "model": "Tour", "quantity": 1},
                               {"brand": "Wilson", "model": "Super Tour", "quantity": 1}))
     bare = IntentFacts(lines=({"brand": "Wilson", "model": "Super Tour"},
@@ -234,8 +234,8 @@ def test_merge_disputes_only_the_line_fields_that_differ():
 
 def test_missing_item_blocks_even_if_one_extractor_heard_it():
     from asasked.coherence import merge_facts
-    # случай из прогона: Gemini слил «ракетку и банку мячей» в одну вещь,
-    # агент купил только ракетку — страж пропустил заказ
+    # a case from a run: Gemini merged "a racket and a can of balls" into one item,
+    # the agent bought only the racket, and the guard let the order through
     one = IntentFacts(brand="Nike", model="Court Lite 4", color="white", size_label="43")
     merged = merge_facts([one, TWO_PAIRS])
     assert "line_count" in merged.disputed and merged.lines == TWO_PAIRS.lines
@@ -245,12 +245,12 @@ def test_missing_item_blocks_even_if_one_extractor_heard_it():
 
 def test_lines_disputed_in_details_still_block_missing_and_order_wide_facts():
     from dataclasses import replace
-    # случай из прогона: число вещей обе модели услышали одинаково,
-    # агент купил только одну — пропуск второй блокирует
+    # a case from a run: both models heard the same number of items,
+    # the agent bought only one, and the missing second one blocks
     details = replace(TWO_PAIRS, disputed=frozenset({"lines"}))
     verdict = check_coherence(details, [(W43, 1)], (100, 20000), find=Store().find)
     assert not verdict.coherent and [f.code for f in verdict.findings] == ["missing"]
-    # случай из прогона: «всё к пятнице» — условие на весь заказ, а не на строку
+    # a case from a run: "everything by Friday" is a condition on the whole order, not a line
     late = replace(details, deadline_days=1)
     verdict = check_coherence(late, [(W40, 1), (W43, 1)], (100, 20000), find=Store().find)
     assert not verdict.coherent and {f.code for f in verdict.findings} == {"deadline"}
@@ -269,7 +269,7 @@ def test_extraction_parses_lines(monkeypatch):
                            {"size_label": "43", "quantity": 1})
     monkeypatch.setattr(coherence, "call_model", lambda r, p=None, today=None: {
         "lines": [{"size_label": "40", "model": None, "color": None, "quantity": None}]})
-    assert coherence.extract_intent("…").lines == ()      # одна строка — не варианты
+    assert coherence.extract_intent("…").lines == ()      # one line is not variants
 
 
 def test_canonical_lines_make_two_extractors_agree():
@@ -296,7 +296,7 @@ def test_excluded_brand_is_flagged_and_merged_strictly():
     assert merged.brand_not == ("Wilson",) and "brand_not" not in merged.disputed
 
 
-# Разные вещи в одном заказе: у каждой свой бренд и свои условия
+# Different items in one order: each has its own brand and conditions
 RACKET_AND_BALLS = IntentFacts(lines=(
     {"brand": "HEAD", "model": "Graphene Spark", "size_label": "4 3/8", "needs_refundable": True},
     {"brand": "Wilson", "model": "Championship", "quantity": 1, "deadline_days": 2}))
@@ -306,17 +306,17 @@ CHAMP = "WIL-CHAMPIONSHIP-3B-YEL-ACE"
 
 def test_lines_with_different_brands():
     assert _codes(RACKET_AND_BALLS, [(SPARK, 1), (CHAMP, 1)]) == []
-    # бренд одной вещи не переносится на другую, а подмена внутри строки видна
+    # one item's brand does not carry over to another, and a swap within a line shows
     assert _codes(RACKET_AND_BALLS, [(SPARK, 1), ("PEN-CHAMPIONSHIP-3B-YEL-COU", 1)]) == [
         "brand", "deadline"]
 
 
 def test_line_conditions_stay_on_their_line():
-    # возврат просили для ракетки, срок — только для мячей: у невозвратной
-    # ракетки с доставкой 4 дня расхождение одно — возврат
+    # returns were asked for the racket, a deadline only for the balls: a final-sale
+    # racket with 4-day delivery has one mismatch, returns
     assert _codes(RACKET_AND_BALLS, [("HEA-GRAPHENESPARK-438-RED-OUT", 1), (CHAMP, 1)]) == [
         "refund"]
-    # мячи с долгой доставкой — расхождение по сроку только у мячей
+    # balls with slow delivery: a deadline mismatch for the balls only
     assert _codes(RACKET_AND_BALLS, [(SPARK, 1), ("WIL-CHAMPIONSHIP-12B-YEL-BAS", 1)]) == [
         "deadline", "quantity"]
 
@@ -349,15 +349,15 @@ def test_canonical_lifts_shared_brand_and_refund():
 
 @needs_vi
 def test_enforced_consent_does_not_carry_over_to_a_changed_cart():
-    # человека спросили о прежней корзине; новую страж ещё не видел — и
-    # любой вопрос агента не должен открывать оплату мимо стража
+    # the person was asked about the old cart; the guard has not seen the new one,
+    # and no question from the agent may open payment past the guard
     session = Store().new_session(REFUND.mandate(), guard=_guard(), guard_mode="enforced",
                                   user_reply="Fine.")
     session.call("add_to_cart", {"sku": FINAL_SALE})
     assert session.call("checkout", {"confirm": True})["status"] == "needs_confirmation"
     session.call("ask_user", {"question": "?"})
-    session.call("remove_from_cart", {"sku": FINAL_SALE})  # корзина изменилась: другой
-    session.call("add_to_cart", {"sku": "ASI-GELRESOLUTION9-44-WHI-OUT"})  # цвет и размер
+    session.call("remove_from_cart", {"sku": FINAL_SALE})  # the cart changed: another
+    session.call("add_to_cart", {"sku": "ASI-GELRESOLUTION9-44-WHI-OUT"})  # colour and size
     session.call("ask_user", {"question": "Shall I?"})
     assert session.call("checkout", {"confirm": True})["status"] == "needs_confirmation"
     assert session.order is None

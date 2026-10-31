@@ -1,27 +1,25 @@
-"""Контрольные примеры совместимости для стандарта Verifiable Intent.
+"""Conformance vectors for the Verifiable Intent standard.
 
-Такого набора сегодня не существует у самого стандарта: вторая реализация
-не может доказать, что совпадает с первой (issue упоминается в CLAUDE.md).
-Этот скрипт закрывает это — но не так, как обычно ожидают "тестовые
-векторы".
+The standard itself has no such set today: a second implementation cannot
+show that it agrees with the first. This script fills that gap, though not in
+the way "test vectors" usually do.
 
-Почему не статичный файл с застывшими байтами: мандаты L3 в этой версии
-стандарта живут 5 минут (exp = iat + 300) — если один раз сериализовать
-цепочку и закоммитить, через 5 минут она станет "просроченной" и любая
-корректная реализация будет обязана её отклонить. Замороженный вектор
-превратился бы в вектор "мы умеем отклонять просрочку", а не в то, что
-нужно на самом деле.
+Why not a static file of frozen bytes: L3 mandates in this version of the
+standard live 5 minutes (exp = iat + 300). A chain serialised once and
+committed would be "expired" five minutes later, and every correct
+implementation would have to reject it. A frozen vector would turn into a
+vector for "we can reject an expired mandate", not what is actually needed.
 
-Поэтому вектор здесь — не байты, а рецепт + ожидание: этот скрипт берёт
-восемь сценариев из scenarios.py (реальная просьба человека → ограничения
-→ покупка), строит для каждого настоящую подписанную цепочку VI заново
-(ключи детерминированные — helpers.py в самом SDK, не секрет) и записывает
-её вместе с тем, каким должен быть ответ валидатора: чейн валиден или нет,
-ограничения соблюдены или нет, какие именно нарушения.
+So a vector here is not bytes but a recipe plus an expectation: this script
+takes the eight scenarios from scenarios.py (a person's real request ->
+constraints -> purchase), builds a real signed VI chain for each one afresh
+(the keys are deterministic, from helpers.py in the SDK itself, not a secret)
+and writes it together with what the validator's answer should be: whether
+the chain is valid, whether the constraints hold, and which violations exactly.
 
-Вторая реализация стандарта берёт получившийся JSON, валидирует artifacts
-своим кодом и сверяет свой ответ с полем "expected". Совпадение — и есть
-доказательство совместимости, которого сегодня нет ни у кого.
+A second implementation of the standard takes the resulting JSON, validates
+the artifacts with its own code and compares its answer with the "expected"
+field. A match is the proof of conformance that nobody has today.
 """
 
 from __future__ import annotations
@@ -49,7 +47,7 @@ def build_vector(scn) -> dict:
         "request": scn.request,
         "prompt_summary": scn.prompt_summary,
         "input": {
-            "allowed_merchants": "см. catalog.MERCHANTS (2 продавца, оба разрешены)",
+            "allowed_merchants": "see catalog.MERCHANTS (2 merchants, both allowed)",
             "allowlist": scn.allowlist,
             "quantity_cap": scn.quantity_cap,
             "amount_min_cents": scn.amount_min_cents,
@@ -73,18 +71,19 @@ def main() -> int:
 
     doc = {
         "$comment": (
-            "Контрольные примеры совместимости для Verifiable Intent v0.1. "
-            "Артефакты (artifacts.*) — настоящие подписанные SD-JWT цепочки, "
-            "сгенерированные детерминированными демо-ключами из "
-            "verifiable-intent/examples/helpers.py (см. keys.*). Мандаты "
-            "L3 живут 5 минут от момента генерации (generated_at) — "
-            "валидировать сразу после генерации, не хранить как статичный "
-            "фикстур. Как использовать: своей реализацией провалидировать "
+            "Conformance vectors for Verifiable Intent v0.1. "
+            "The artifacts (artifacts.*) are real signed SD-JWT chains, "
+            "generated with the deterministic demo keys from "
+            "verifiable-intent/examples/helpers.py (see keys.*). L3 "
+            "mandates live 5 minutes from generation (generated_at): "
+            "validate right after generating, do not keep as a static "
+            "fixture. How to use: validate "
             "artifacts.layer1/layer2/layer3_payment/layer3_checkout "
-            "(layer2_payment_presentation — уже применённое выборочное "
-            "раскрытие для платёжной сети) и сверить свой ответ с полем "
-            "expected. Совпадение на всех векторах — свидетельство "
-            "совместимости с этой реализацией."
+            "with your implementation (layer2_payment_presentation is "
+            "the selective disclosure already applied for the payment "
+            "network) and compare your answer with the expected field. "
+            "A match on every vector is evidence of conformance with "
+            "this implementation."
         ),
         "generated_at": int(time.time()),
         "valid_for_seconds": 300,
@@ -93,8 +92,8 @@ def main() -> int:
 
     OUT_PATH.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"Записано {len(vectors)} векторов в {OUT_PATH.name}")
-    print(f"Действительны {doc['valid_for_seconds']} секунд с момента генерации "
+    print(f"Wrote {len(vectors)} vectors to {OUT_PATH.name}")
+    print(f"Valid for {doc['valid_for_seconds']} seconds from generation "
           f"({time.strftime('%H:%M:%S', time.localtime(doc['generated_at']))}).")
     for v in vectors:
         exp = v["expected"]

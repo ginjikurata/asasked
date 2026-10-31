@@ -1,4 +1,4 @@
-"""OpenAI Agents SDK: проверка входа инструмента оплаты.
+"""OpenAI Agents SDK: a check on the payment tool's input.
 
     @function_tool(tool_input_guardrails=[
         checkout_guardrail(guard, cart=lambda args: args["items"])])

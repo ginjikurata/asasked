@@ -46,7 +46,7 @@ export default function DatasetPage() {
             ))}
           </ul>
           <p>
-            English tasks were reviewed through a Russian translation, with labels translated by code, not by a model.
+            English tasks were reviewed alongside a machine translation, with labels translated by code, not by a model.
             Whether the English sounds natural was checked by a model, not a person.
           </p>
         </div>

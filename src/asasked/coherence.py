@@ -1,18 +1,18 @@
-"""Сверка намерения с корзиной.
+"""Checking intent against the cart.
 
-Устройство сознательно разделено на две половины:
+The design is deliberately split in two halves:
 
-  1) ИЗВЛЕЧЕНИЕ — превратить слова человека в набор фактов.
-     Здесь работает настоящая языковая модель (llm_extract.py).
-     Это единственное место, где нужен ИИ.
+  1) EXTRACTION turns a person's words into a set of facts.
+     A real language model works here (llm_extract.py).
+     This is the only place that needs a model.
 
-  2) СВЕРКА — сравнить факты с корзиной и выдать заключение.
-     Это обычный детерминированный код. Он воспроизводим, объясним
-     и пригоден для приложения к спору: не «так решил ИИ», а
-     «человек просил возврат, товар невозвратный».
+  2) THE CHECK compares the facts with the cart and gives a verdict.
+     This is ordinary deterministic code. It is reproducible, explainable
+     and fit to attach to a dispute: not "the AI decided so", but
+     "the person asked to be able to return it, the item is final sale".
 
-Разделение важно не для красоты: заключение, которое нельзя перепроверить,
-в споре не стоит ничего.
+The split is not for looks: a verdict that cannot be rechecked is worth
+nothing in a dispute.
 """
 
 from __future__ import annotations
@@ -35,8 +35,8 @@ _SOFTENABLE_FIELDS = frozenset(SOFTENABLE_FIELDS)
 @dataclass
 class IntentFacts:
     brand: str | None = None
-    brand_not: tuple = ()                    # исключённые бренды: «любой, кроме Wilson»
-    model: str | None = None                 # модель, как её назвал человек: "EZONE 98"
+    brand_not: tuple = ()                    # excluded brands: "anything but Wilson"
+    model: str | None = None                 # the model as the person named it: "EZONE 98"
     color: str | None = None
     size_label: str | None = None
     level: str | None = None
@@ -46,25 +46,25 @@ class IntentFacts:
     needs_refundable: bool = False
     deadline_days: int | None = None
     raw: str = ""
-    # Имена полей выше, которые человек сам обозначил как необязательные
-    # или примерные ("не принципиально", "плюс-минус"). Расхождение по
-    # такому полю — предупреждение (WARN), а не блокировка (BLOCK).
+    # Names of the fields above that the person marked as optional or
+    # approximate ("not a big deal", "give or take"). A mismatch on such a
+    # field is a warning (WARN), not a block (BLOCK).
     soft: frozenset = field(default_factory=frozenset)
-    # Поля, в которых независимые модели извлечения разошлись
-    # (extract_intent_agreed). Факт спорный — расхождение по нему тоже WARN:
-    # блокировать покупку на основании факта, в котором не уверены сами
-    # модели, нельзя, но и молча его терять тоже.
+    # Fields the independent extraction models disagreed on
+    # (extract_intent_agreed). The fact is disputed, so a mismatch on it is
+    # also WARN: a purchase must not be blocked on a fact the models
+    # themselves are unsure of, but the fact must not be silently lost either.
     disputed: frozenset = field(default_factory=frozenset)
-    # Несколько разных вещей или вариантов в одном заказе: «размер 40 для жены
-    # и 43 для меня», «ракетка HEAD и банка мячей Wilson». Каждая строка —
-    # словарь с полями из LINE_FIELDS, которые у этой позиции свои; остальное
-    # общее и берётся с верхнего уровня.
+    # Several different items or variants in one order: "size 40 for my wife
+    # and 43 for me", "a HEAD racket and a can of Wilson balls". Each line is a
+    # dict with the LINE_FIELDS that are its own; everything else is shared
+    # and taken from the top level.
     lines: tuple = ()
-    # Остальные требования человека — те, которым нет поля выше («без
-    # глютена», «подарочная упаковка»), его же словами. Сверить их с корзиной
-    # код не может, поэтому не молчит, а спрашивает: other — обязательные
-    # (BLOCK), other_optional — «по возможности» (WARN). Решать за человека,
-    # подходит ли товар, модели не поручается.
+    # The person's other requirements, the ones no field above holds
+    # ("gluten-free", "gift-wrapped"), in their own words. Code cannot check
+    # them against the cart, so instead of staying silent it asks: other are
+    # musts (BLOCK), other_optional are nice-to-haves (WARN). Deciding for the
+    # person whether the item fits is not left to the model.
     other: tuple = ()
     other_optional: tuple = ()
 
@@ -91,7 +91,7 @@ class Verdict:
 
 
 # ---------------------------------------------------------------------------
-# 1. Извлечение — настоящая языковая модель (llm_extract.py)
+# 1. Extraction: a real language model (llm_extract.py)
 # ---------------------------------------------------------------------------
 
 
@@ -99,12 +99,12 @@ def _as_int(value, field_name: str) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool):
-        raise ExtractionError(f"Поле {field_name}: ожидалось число, получен bool {value!r}")
+        raise ExtractionError(f"Field {field_name}: expected a number, got bool {value!r}")
     if isinstance(value, int):
         return value
     if isinstance(value, str) and value.strip().lstrip("-").isdigit():
         return int(value)
-    raise ExtractionError(f"Поле {field_name}: ожидалось целое число, получено {value!r}")
+    raise ExtractionError(f"Field {field_name}: expected an integer, got {value!r}")
 
 
 def _as_str(value, field_name: str) -> str | None:
@@ -112,14 +112,14 @@ def _as_str(value, field_name: str) -> str | None:
         return None
     if isinstance(value, str):
         return value
-    raise ExtractionError(f"Поле {field_name}: ожидалась строка, получено {value!r}")
+    raise ExtractionError(f"Field {field_name}: expected a string, got {value!r}")
 
 
 def _as_str_tuple(value, field_name: str) -> tuple:
     if value is None:
         return ()
     if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-        raise ExtractionError(f"Поле {field_name}: ожидался список строк, получено {value!r}")
+        raise ExtractionError(f"Field {field_name}: expected a list of strings, got {value!r}")
     return tuple(value)
 
 
@@ -127,26 +127,26 @@ def _as_lines(value, today: str | None = None) -> tuple:
     if value is None:
         return ()
     if not isinstance(value, list):
-        raise ExtractionError(f"Поле lines: ожидался список, получено {value!r}")
+        raise ExtractionError(f"Field lines: expected a list, got {value!r}")
     lines = []
     for raw in value:
         if not isinstance(raw, dict):
-            raise ExtractionError(f"Поле lines: ожидался объект, получено {raw!r}")
+            raise ExtractionError(f"Field lines: expected an object, got {raw!r}")
         unknown = set(raw) - set(LINE_FIELDS) - {"deadline_weekday"}
         if unknown:
-            raise ExtractionError(f"Поле lines: неизвестные поля {sorted(unknown)!r}")
+            raise ExtractionError(f"Field lines: unknown fields {sorted(unknown)!r}")
         line = {k: _as_str(raw.get(k), f"lines.{k}") for k in ("brand", "model", "color",
                                                                 "size_label")}
         line["quantity"] = _as_int(raw.get("quantity"), "lines.quantity")
-        # Только «да»: «нет» у строки — это «не просили», а не запрет возврата.
+        # Only "yes": "no" on a line means "not asked for", not "no returns".
         line["needs_refundable"] = True if raw.get("needs_refundable") else None
-        # Срок строки — как и общий: названный день считает код, а не модель.
+        # A line's deadline works like the shared one: code counts a named day, not the model.
         line["deadline_days"] = _as_int(raw.get("deadline_days"), "lines.deadline_days")
         counted = days_until(_as_str(raw.get("deadline_weekday"), "lines.deadline_weekday"), today)
         if counted is not None:
             line["deadline_days"] = counted
         lines.append({k: v for k, v in line.items() if v is not None})
-    # одна строка — это не «несколько вариантов», а просто факты
+    # a single line is not "several variants", just facts
     return tuple(lines) if len(lines) > 1 else ()
 
 
@@ -154,27 +154,27 @@ def _as_soft_set(value) -> frozenset:
     if value is None:
         return frozenset()
     if not isinstance(value, list):
-        raise ExtractionError(f"Поле soft_fields: ожидался список, получено {value!r}")
-    # Мягкость прочих условий задаётся в них самих (optional); модель иногда
-    # дублирует её сюда — это не ошибка извлечения.
+        raise ExtractionError(f"Field soft_fields: expected a list, got {value!r}")
+    # Other conditions carry their own softness (optional); the model sometimes
+    # repeats it here, which is not an extraction error.
     value = [v for v in value if v != "other_conditions"]
     unknown = [v for v in value if v not in _SOFTENABLE_FIELDS]
     if unknown:
-        raise ExtractionError(f"Поле soft_fields: неизвестные имена полей {unknown!r}")
+        raise ExtractionError(f"Field soft_fields: unknown field names {unknown!r}")
     return frozenset(value)
 
 
 def _as_conditions(value) -> tuple[tuple, tuple]:
-    """other_conditions модели → (обязательные, по возможности), без повторов."""
+    """The model's other_conditions -> (musts, nice-to-haves), without repeats."""
     if value is None:
         return (), ()
     if not isinstance(value, list):
-        raise ExtractionError(f"Поле other_conditions: ожидался список, получено {value!r}")
+        raise ExtractionError(f"Field other_conditions: expected a list, got {value!r}")
     required, optional = [], []
     for raw in value:
         if not isinstance(raw, dict) or not isinstance(raw.get("text"), str):
-            raise ExtractionError(f"Поле other_conditions: ожидался объект с text, "
-                                  f"получено {raw!r}")
+            raise ExtractionError(f"Field other_conditions: expected an object with text, "
+                                  f"got {raw!r}")
         text = " ".join(raw["text"].split())
         target = optional if raw.get("optional") else required
         if text and text.lower() not in {t.lower() for t in required + optional}:
@@ -183,11 +183,11 @@ def _as_conditions(value) -> tuple[tuple, tuple]:
 
 
 def days_until(weekday: str | None, today: str | None) -> int | None:
-    """Сколько дней от сегодня до названного дня недели, включая его.
+    """Days from today to the named weekday, that day included.
 
-    today — дата словами, начинается с дня недели («Monday, 2 November
-    2026»). С понедельника «к пятнице» — 4 дня, «к понедельнику» — 7.
-    Если день или сегодняшняя дата неизвестны — None.
+    today is the date in words, starting with the weekday ("Monday, 2 November
+    2026"). From Monday, "by Friday" is 4 days and "by Monday" is 7.
+    None if the day or today's date is unknown.
     """
     if not weekday or not today:
         return None
@@ -199,14 +199,14 @@ def days_until(weekday: str | None, today: str | None) -> int | None:
 
 def extract_intent(request: str, deadline_days: int | None = None,
                    provider: str | None = None, today: str | None = None) -> IntentFacts:
-    """Извлекает факты из просьбы человека настоящей языковой моделью.
+    """Extracts facts from a person's request with a real language model.
 
-    Сверка (ниже в этом файле) не знает и не должна знать, что было внутри
-    этой функции — только то, что IntentFacts либо получен, либо не получен
-    (тогда наружу летит ExtractionError, а не молчаливые null-поля).
+    The check (further down this file) does not and must not know what happened
+    inside this function, only that IntentFacts either came back or did not
+    (then ExtractionError is raised rather than silent null fields).
 
-    today — сегодняшняя дата словами: без неё «к субботе» модели переводят
-    в дни наугад и расходятся между собой.
+    today is today's date in words: without it models turn "by Saturday" into
+    days at random and disagree with each other.
     """
     data = call_model(request, provider, today=today)
 
@@ -217,9 +217,9 @@ def extract_intent(request: str, deadline_days: int | None = None,
     price_preference = _as_str(data.get("price_preference"), "price_preference")
 
     model_deadline = _as_int(data.get("deadline_days"), "deadline_days")
-    # «К пятнице» модели переводят в дни по-разному (4 или 5), и строгий
-    # из двух ответов останавливал правильные покупки. Названный день модель
-    # только называет, а дни до него считает код.
+    # Models turn "by Friday" into days differently (4 or 5), and the stricter
+    # of the two answers stopped right purchases. The model only names the day;
+    # code counts the days to it.
     counted = days_until(_as_str(data.get("deadline_weekday"), "deadline_weekday"), today)
     if counted is not None:
         model_deadline = counted
@@ -246,12 +246,13 @@ def extract_intent(request: str, deadline_days: int | None = None,
 
 
 def canonical(facts: IntentFacts) -> IntentFacts:
-    """Одна форма для одного смысла — чтобы ответы двух моделей сравнивались.
+    """One form for one meaning, so that two models' answers can be compared.
 
-    Модели по-разному раскладывают одно и то же: общий цвет кладут то наверх,
-    то в каждую строку, а рядом со строками иногда пишут общее количество.
-    Здесь всё, что одинаково во всех строках, поднимается наверх, а общее
-    количество при строках отбрасывается — оно уже в строках.
+    Models lay out the same thing differently: a shared colour goes on top one
+    time and into every line the next, and next to the lines they sometimes
+    write a total quantity. Here everything that is the same in every line
+    moves to the top, and a total quantity next to lines is dropped: it is
+    already in the lines.
     """
     if not facts.lines:
         return facts
@@ -259,7 +260,7 @@ def canonical(facts: IntentFacts) -> IntentFacts:
     for name in ("brand", "model", "color", "size_label", "needs_refundable", "deadline_days"):
         values = {line.get(name) for line in lines}
         shared = values.pop() if len(values) == 1 else None
-        # needs_refundable наверху — False, когда не просили: это «не задано»
+        # needs_refundable on top is False when not asked for: that means "not set"
         if shared is not None and getattr(facts, name) in (None, False, shared):
             top[name] = shared
             for line in lines:
@@ -288,35 +289,37 @@ def _norm(value):
 
 
 def merge_facts(results: list[IntentFacts]) -> IntentFacts:
-    """Сводит факты от нескольких моделей в один набор.
+    """Merges facts from several models into one set.
 
-    Где модели согласны — берётся общее значение. Срок и предел суммы, если их
-    нашла хоть одна модель, — берётся строжайший из найденных, без пометки
-    спора: модели такие факты почти не выдумывают, а пропускают часто
-    (Claude то видит «by Friday», то нет). Где разошлись — поле
-    попадает в disputed, а значение выбирается так, чтобы факт не потерялся:
-    если одна модель вернула null, а другая что-то нашла, берётся найденное;
-    если обе нашли разное — значение первой модели. needs_refundable при
-    расхождении — True: человек, возможно, просил возврат.
+    Where the models agree, the shared value is taken. A deadline and an amount
+    limit, if any model found them, take the strictest value found, with no
+    dispute mark: models rarely invent such facts but often miss them (Claude
+    sees "by Friday" one time and not the next). Where they disagree, the field
+    goes into disputed, and the value is chosen so the fact is not lost: if one
+    model returned null and the other found something, the found value is
+    taken; if both found different values, the first model's value is taken.
+    needs_refundable on disagreement is True: the person may have asked for
+    returns.
 
-    soft — объединение: если хоть одна модель услышала, что человек сам
-    снял жёсткость с требования, требование не блокирует покупку.
+    soft is a union: if any model heard the person relax a requirement, that
+    requirement does not block the purchase.
 
-    Прочие требования (other) — свободный текст, по словам его не сравнить:
-    берутся у модели, которая услышала их больше всего. Если хоть одна
-    модель не услышала ни одного — спор "other", требования предупреждают,
-    а не останавливают, как и любой спорный факт.
+    Other requirements (other) are free text and cannot be compared word for
+    word: they are taken from the model that heard the most of them. If any
+    model heard none, "other" is disputed and the requirements warn rather
+    than stop, like any disputed fact.
 
-    Строки заказа: разошлись в деталях строк — спор "lines" и "lines.<поле>"
-    для каждого поля, в котором разошлись (одна модель не назвала количество —
-    спорно количество, а не модель, которую обе услышали одинаково); разошлись
-    в том, сколько вещей человек просил, — ещё и "line_count". Строки берутся
-    у той модели, что услышала больше вещей: вещь модели почти не выдумывают,
-    а сливают две в одну часто (Gemini то видит «ракетку и банку мячей», то
-    нет). При одинаковом числе вещей строки сводятся по полям, как и факты.
+    Order lines: if the models disagree on line details, "lines" and
+    "lines.<field>" are disputed for each field they disagree on (one model did
+    not name a quantity: the quantity is disputed, not the model both heard the
+    same way); if they disagree on how many items the person asked for,
+    "line_count" is disputed too. Lines are taken from the model that heard
+    more items: models rarely invent an item but often merge two into one
+    (Gemini sees "a racket and a can of balls" one time and not the next). With
+    the same number of items, lines are merged field by field, like facts.
     """
     if not results:
-        raise ValueError("merge_facts: нет ни одного результата")
+        raise ValueError("merge_facts: no results at all")
     first = results[0]
     values, disputed = {}, set()
     for name in _COMPARED_FIELDS:
@@ -324,15 +327,16 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
         if len({_norm(v) for v in found}) == 1:
             values[name] = found[0]
             continue
-        # Срок и предел суммы — не спор, а разная оценка одного и того же
-        # («к субботе» = 4 или 5 дней) или пропуск одной из моделей. Для
-        # стража надёжнее строгая: меньший срок, меньший предел; цена ошибки —
-        # лишний вопрос человеку, а не покупка, которая не успеет.
+        # A deadline and an amount limit are not a dispute but different
+        # estimates of the same thing ("by Saturday" = 4 or 5 days) or a miss by
+        # one model. The strict one is safer for the guard: the shorter deadline,
+        # the lower limit; the cost of a mistake is one extra question to the
+        # person, not a purchase that arrives too late.
         if name in _STRICTEST_WINS:
             values[name] = min(v for v in found if v is not None)
             continue
-        # Исключённый бренд, замеченный хоть одной моделью, — исключён:
-        # купить то, что человек прямо отверг, хуже лишнего вопроса.
+        # A brand excluded by any model is excluded: buying what the person
+        # explicitly rejected is worse than an extra question.
         if name == "brand_not":
             values[name] = tuple(sorted({b for v in found for b in v}))
             continue
@@ -373,10 +377,10 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
 
 
 def _align_lines(base: tuple, other: tuple) -> tuple:
-    """Строки другой модели в порядке строк base — по наибольшему совпадению
-    полей (модели могут перечислить те же вещи в другом порядке)."""
+    """The other model's lines in the order of base's lines, by the most
+    matching fields (models may list the same items in a different order)."""
     if math.factorial(len(other)) > MAX_ASSIGNMENTS:
-        return other  # не сопоставить — расхождения станут спорными полями
+        return other  # cannot be matched: the differences become disputed fields
     def agree(order) -> int:
         return sum(_norm(a.get(k)) == _norm(b.get(k)) for a, b in zip(base, order)
                    for k in a.keys() | b.keys())
@@ -385,10 +389,10 @@ def _align_lines(base: tuple, other: tuple) -> tuple:
 
 def extract_intent_agreed(request: str, deadline_days: int | None = None,
                           providers=AGREE_PROVIDERS, today: str | None = None) -> IntentFacts:
-    """Извлекает факты несколькими независимыми моделями и сводит их.
+    """Extracts facts with several independent models and merges them.
 
-    Одна модель может уверенно ошибиться, и это не видно. Две модели,
-    разошедшиеся в факте, — видно: поле попадает в disputed.
+    One model can be confidently wrong, and that does not show. Two models
+    disagreeing on a fact does show: the field goes into disputed.
     """
     if not providers:
         raise ExtractionError("no model key: set CLAUDE_API_KEY, LLM_API_KEY (Gemini) "
@@ -397,7 +401,7 @@ def extract_intent_agreed(request: str, deadline_days: int | None = None,
 
 
 # ---------------------------------------------------------------------------
-# 2. Сверка — детерминированная
+# 2. The check: deterministic
 # ---------------------------------------------------------------------------
 
 
@@ -406,20 +410,20 @@ def _words(text: str) -> set[str]:
 
 
 def _model_matches(product: dict, model: str) -> bool:
-    """Все слова названной модели есть в названии товара: 'EZONE 98' ⊂
-    'Yonex EZONE 98, 4 1/4 grip, blue'. Бренд в названии модели не мешает."""
+    """Every word of the named model is in the item's name: 'EZONE 98' ⊂
+    'Yonex EZONE 98, 4 1/4 grip, blue'. A brand in the model name is fine."""
     wanted = _words(model) - _words(product.get("brand") or "")
     return bool(wanted) and wanted <= _words(product["name"])
 
 
 def _suits(product: dict, facts: IntentFacts) -> bool:
-    """Подходит ли товар под названные человеком признаки."""
+    """Whether the item matches the features the person named."""
     return not any(f.code != "unchecked"
                    for f in _item_findings(product, facts, lambda _name: BLOCK))
 
 
-# Русские названия цветов — по началу слова: «чёрная», «Черный», «чёрные».
-# Порядок важен: «серебристый» раньше «серого».
+# Russian colour names, matched by the start of the word ("чёрная", "Черный",
+# "чёрные"). Order matters: "серебристый" (silver) before "серый" (grey).
 _RU_COLORS = (("черн", "black"), ("бел", "white"), ("син", "blue"), ("голуб", "blue"),
               ("желт", "yellow"), ("серебр", "silver"), ("красн", "red"), ("зелен", "green"),
               ("сер", "grey"), ("розов", "pink"), ("коричн", "brown"), ("беж", "beige"),
@@ -435,11 +439,11 @@ def _color_words(text: str) -> list[str]:
 
 
 def _color_match(have: str, want: str) -> str:
-    """Цвет товара против названного человеком: "yes", "second" или "no".
+    """The item's colour against the one the person named: "yes", "second" or "no".
 
-    Совпадение по слову: «Triple Black» — чёрный, «Light Gray» — серый,
-    «Чёрный» — тоже чёрный. У многоцветного товара («White/Black») главный
-    цвет — первый: чёрный во второй части — это "second", не совпадение.
+    Matched by word: "Triple Black" is black, "Light Gray" is grey, "Чёрный" is
+    black too. A multi-colour item's ("White/Black") main colour is the first
+    one: black in the second part is "second", not a match.
     """
     wanted = _color_words(want)
     if not wanted:
@@ -451,7 +455,7 @@ def _color_match(have: str, want: str) -> str:
     return "no"
 
 
-# Системы размеров: «EU 42» и «42» — один размер, «US 9» и «EU 9» — разные.
+# Size systems: "EU 42" and "42" are one size, "US 9" and "EU 9" are different.
 _SIZE_SYSTEMS = {"eu", "us", "uk", "fr", "it", "jp", "ru"}
 _SIZE_FILLER = {"size", "sz", "размер", "р"}
 _SIZE_WORDS = {"small": "s", "medium": "m", "large": "l"}
@@ -466,9 +470,8 @@ def _size_parts(text: str) -> tuple[set, list]:
 
 
 def _same_size(have: str, want: str) -> bool:
-    """Размер товара совпадает с названным: «EU 42» = «42», «42,5» = «42.5»,
-    «Medium» = «M». Если система указана с обеих сторон, она тоже должна
-    совпасть."""
+    """The item's size matches the named one: "EU 42" = "42", "42,5" = "42.5",
+    "Medium" = "M". If both sides name a size system, it must match too."""
     (have_sys, have_rest), (want_sys, want_rest) = _size_parts(have), _size_parts(want)
     if have_sys and want_sys and have_sys != want_sys:
         return False
@@ -476,11 +479,11 @@ def _same_size(have: str, want: str) -> bool:
 
 
 def _item_findings(product: dict, facts: IntentFacts, sev) -> list[Finding]:
-    """Расхождения одного товара с фактами (общими или одной строки).
+    """Mismatches of one item with the facts (shared ones or one line's).
 
-    Признак, которого у товара нет (None — магазин его не сообщил), не
-    сверяется: это пометка "unchecked", а не расхождение, — человек увидит,
-    что проверить не удалось.
+    A feature the item does not have (None: the shop did not say) is not
+    checked: it is an "unchecked" note, not a mismatch, so the person sees
+    that it could not be checked.
     """
     out: list[Finding] = []
     name = product["name"]
@@ -522,7 +525,7 @@ def _item_findings(product: dict, facts: IntentFacts, sev) -> list[Finding]:
                 f"Asked for {facts.color}, the item is {product['color']}{second}: {name}.",
             ))
 
-    # пустой размер — у товара размеров нет вовсе (банка мячей)
+    # an empty size means the item has no sizes at all (a can of balls)
     if (facts.size_label and not unknown("size_label", f"size {facts.size_label}")
             and product["size_label"] and not _same_size(product["size_label"], facts.size_label)):
         out.append(Finding(
@@ -563,22 +566,22 @@ def _describe(line: dict) -> str:
     return " ".join(p for p in parts if p)
 
 
-# Сколько раскладок позиций по строкам перебирать (около 8!: строк в
-# живых просьбах единицы, а 6 строк × 6 позиций — уже 665 тысяч вариантов).
+# How many assignments of cart lines to request lines to try (about 8!: live
+# requests have a handful of lines, while 6 lines x 6 items is already 665 thousand).
 MAX_ASSIGNMENTS = 50_000
 
 
 def _check_lines(facts: IntentFacts, items, sev) -> list[Finding]:
-    """Каждой строке просьбы — своя позиция в корзине, без лишних и пропущенных.
+    """Each line of the request gets its own cart line, none extra, none missing.
 
-    Раскладка позиций по строкам — та, при которой расхождений меньше всего
-    (полный перебор: строк и позиций в заказе всегда немного). Если модели
-    разошлись в деталях строк, предупреждает только поле, в котором разошлись
-    (а если в числе вещей — всё, что взято из строк);
-    условия на весь заказ («всё к пятнице») блокируют как обычно. Пропущенная
-    позиция блокирует, даже если её услышала только одна модель: заказ, где
-    пропала половина, хуже лишнего вопроса. Лишняя позиция при споре о числе
-    вещей только предупреждает.
+    Cart lines are assigned to request lines the way that gives the fewest
+    mismatches (exhaustive search: an order always has few lines and items).
+    If the models disagreed on line details, only the disputed field warns
+    (if they disagreed on the number of items, everything taken from lines
+    does); conditions on the whole order ("everything by Friday") block as
+    usual. A missing line blocks even if only one model heard it: an order
+    with half of it gone is worse than an extra question. An extra line only
+    warns when the number of items is disputed.
     """
     def count_sev(code: str) -> str:
         if "lines" in facts.soft or (code == "extra" and "line_count" in facts.disputed):
@@ -594,8 +597,8 @@ def _check_lines(facts: IntentFacts, items, sev) -> list[Finding]:
         return from_line
 
     line_facts = [replace(facts, lines=(), **line) for line in facts.lines]
-    # Перебор растёт как факториал: на десятке строк он не кончится никогда.
-    # Такой заказ не проверяется автоматически, а уходит человеку.
+    # The search grows factorially: with ten lines it would never finish.
+    # Such an order is not checked automatically; it goes to the person.
     if math.perm(len(items) + len(line_facts), len(line_facts)) > MAX_ASSIGNMENTS:
         return [Finding("lines", BLOCK,
                         f"Too many items to check automatically ({len(line_facts)} asked for, "
@@ -613,9 +616,8 @@ def _check_lines(facts: IntentFacts, items, sev) -> list[Finding]:
         return out
 
     def cost(assignment) -> tuple[int, int]:
-        # блокирующие расхождения + пропущенные строки + лишние позиции;
-        # при равенстве — меньше предупреждений (иначе спорная строка может
-        # достаться не той позиции)
+        # blocking mismatches + missing lines + extra items; on a tie, fewer
+        # warnings (otherwise a disputed line may go to the wrong item)
         found = [f for i, j in enumerate(assignment) if j is not None for f in pair_findings(i, j)]
         used = {j for j in assignment if j is not None}
         missing = sum(j is None for j in assignment)
@@ -643,11 +645,12 @@ def _check_lines(facts: IntentFacts, items, sev) -> list[Finding]:
 
 def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
                     find=catalog.find) -> Verdict:
-    """purchase: список (артикул, количество). allowed_band: (мин, макс) в центах.
+    """purchase: a list of (sku, quantity). allowed_band: (min, max) in cents.
 
-    allowlist — утверждённые артикулы: нужны, чтобы понять, был ли у агента
-    более подходящий выбор. Без этого «дорого» не отличить от «дешевле не было».
-    find — поиск товара по артикулу (каталог прототипа или песочницы-магазина).
+    allowlist is the approved skus: needed to tell whether the agent had a
+    better choice. Without it "expensive" cannot be told from "there was
+    nothing cheaper". find looks an item up by sku (the prototype's catalog or
+    the sandbox store's).
     """
     def sev(field_name: str) -> str:
         return WARN if field_name in facts.soft or field_name in facts.disputed else BLOCK
@@ -663,7 +666,7 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
         for product, _qty in items:
             findings += _item_findings(product, facts, sev)
 
-    # цена: был ли доступен более дешёвый подходящий вариант
+    # price: was a cheaper matching option available
     if facts.price_preference == "cheap" and len(items) == 1 and not facts.lines:
         chosen, _ = items[0]
         cheaper = [
@@ -687,8 +690,8 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
             f"the order costs ${total/100:.2f}.",
         ))
 
-    # количество — в тех единицах, в которых считает человек (банки мячей,
-    # а не упаковки); меньше просьбы — тоже расхождение
+    # quantity in the units the person counts (cans of balls, not packs);
+    # fewer than asked is a mismatch too
     if facts.quantity is not None and not facts.lines:
         bought = sum(p.get("units", 1) * q for p, q in items)
         if bought != facts.quantity:
@@ -697,7 +700,7 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
                 f"Asked for {facts.quantity}, the order has {bought}.",
             ))
 
-    # требования без поля: код их не сверяет, но и не теряет — решает человек
+    # requirements with no field: code does not check them but does not lose them either; the person decides
     for text in facts.other:
         findings.append(Finding(
             "other", sev("other"),
@@ -712,14 +715,14 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
 
 
 # ---------------------------------------------------------------------------
-# 3. Режим «до покупки» — та же сверка, другой момент вызова
+# 3. "Before purchase" mode: the same check, called at a different moment
 # ---------------------------------------------------------------------------
 #
-# check_coherence выше отвечает на вопрос «эта уже сделанная покупка совпадает
-# с просьбой?» — годится для аудита и споров постфактум. decide_before_purchase
-# задаёт тот же вопрос до того, как агент нажал «купить»: результат — не
-# вердикт для спора, а команда «можно продолжать» или «сначала спроси
-# человека», с готовой причиной, которую можно ему показать.
+# check_coherence above answers "does this purchase, already made, match the
+# request?", which suits audits and disputes after the fact.
+# decide_before_purchase asks the same question before the agent presses
+# "buy": the result is not a verdict for a dispute but a command, "go ahead" or
+# "ask the person first", with a ready reason that can be shown to them.
 
 
 ASK = "ask"
@@ -729,12 +732,12 @@ PROCEED = "proceed"
 @dataclass
 class Decision:
     action: str                                    # PROCEED | ASK
-    reasons: list[Finding] = field(default_factory=list)   # BLOCK-находки — из-за них решили спросить
-    notes: list[Finding] = field(default_factory=list)     # WARN-находки — можно продолжать, но человеку видно
+    reasons: list[Finding] = field(default_factory=list)   # BLOCK findings: the reason to ask
+    notes: list[Finding] = field(default_factory=list)     # WARN findings: can proceed, but the person sees them
 
     @property
     def question(self) -> str | None:
-        """Готовый вопрос человеку, если решили спросить. None, если можно продолжать."""
+        """A ready question to the person if asking was decided. None if it can proceed."""
         if self.action != ASK:
             return None
         bullets = "\n".join(f"  - {f.text}" for f in self.reasons)
@@ -743,12 +746,11 @@ class Decision:
 
 def decide_before_purchase(facts: IntentFacts, purchase, allowed_band, allowlist=(),
                            find=catalog.find) -> Decision:
-    """Решает, можно ли агенту продолжить покупку без подтверждения человека.
+    """Decides whether the agent may go on with the purchase without the person's confirmation.
 
-    Ничего нового не проверяет — использует ту же check_coherence на
-    предполагаемой покупке, до того как она состоялась. BLOCK-находки
-    останавливают агента и требуют подтверждения; WARN-находки не
-    останавливают, но остаются видны в notes.
+    Checks nothing new: it runs the same check_coherence on the intended
+    purchase before it happens. BLOCK findings stop the agent and require
+    confirmation; WARN findings do not stop it but stay visible in notes.
     """
     verdict = check_coherence(facts, purchase, allowed_band, allowlist, find)
     reasons = [f for f in verdict.findings if f.severity == BLOCK]

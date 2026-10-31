@@ -1,39 +1,40 @@
-"""Страж перед оплатой — то, ради чего AsAsked существует.
+"""The guard before payment: what AsAsked exists for.
 
-Агент собрал корзину. Перед оплатой страж сверяет её со словами человека и
-отвечает одно из двух:
+The agent has filled a cart. Before payment the guard checks it against the
+person's words and answers one of two things:
 
-    proceed — корзина совпадает с просьбой, можно платить;
-    ask     — есть расхождение; вот готовый вопрос человеку.
+    proceed: the cart matches the request, payment can go ahead;
+    ask:     there is a mismatch; here is a ready question for the person.
 
-Внутри — та же двухчастная схема, что и везде в проекте: модели извлекают
-факты из просьбы (две независимые, спорные факты не блокируют), а решение
-принимает детерминированный код (coherence.decide_before_purchase).
+Inside is the same two-part design as everywhere in the project: models
+extract facts from the request (two independent ones; disputed facts do not
+block), and deterministic code makes the decision
+(coherence.decide_before_purchase).
 
-Если извлечь факты не удалось, страж не молчит и не пропускает: он просит
-спросить человека. Страховка, которая при сбое пропускает всё, страховкой
-не является.
+If the facts cannot be extracted, the guard neither stays silent nor lets the
+purchase through: it asks to check with the person. A safeguard that lets
+everything through when it fails is no safeguard.
 
-Для разработчика агента — один вызов, корзина простыми словарями:
+For an agent developer it is one call, with the cart as plain dicts:
 
     guard = Guard("black running shoes, size 42, by Friday", today="2026-10-26")
     result = guard.check([{"name": "Nike Pegasus 41", "brand": "Nike",
                            "color": "Triple Black", "size": "42", "price": 129.99,
                            "quantity": 1, "returnable": True, "delivery_days": 3}])
-    result["decision"]   # "proceed" или "ask"; result["question"] — вопрос человеку
+    result["decision"]   # "proceed" or "ask"; result["question"] is the question for the person
 
-Мандат Verifiable Intent не обязателен. Признак, которого в корзине нет,
-не сверяется, а попадает в notes («проверить не удалось»).
+A Verifiable Intent mandate is optional. A feature the cart does not have is
+not checked but goes into notes ("could not be checked").
 
-Чтобы агент не мог заплатить мимо стража, проверка ставится в саму оплату:
+So that the agent cannot pay around the guard, the check goes into payment itself:
 
     pay = guard.protect(checkout, cart=lambda order: order["items"])
 
-Пока корзина расходится с просьбой, pay() не вызывает checkout, а отдаёт
-агенту текст «не оплачено, спроси человека: …». Ответ человека передаёт
-ваш код — guard.answer(его сообщение), — а не агент: иначе агент мог бы
-сам «согласиться» за человека. Крючки для популярных библиотек агентов —
-в asasked.integrations.
+While the cart differs from the request, pay() does not call checkout but
+gives the agent the text "not paid, ask the person: ...". The person's answer
+is passed on by your code, guard.answer(their message), not by the agent:
+otherwise the agent could "agree" on the person's behalf. Hooks for popular
+agent libraries are in asasked.integrations.
 """
 
 from __future__ import annotations
@@ -50,31 +51,31 @@ from .coherence import ASK, PROCEED, IntentFacts, decide_before_purchase, extrac
 from .llm_extract import ExtractionError
 
 
-# Без мандата VI пределов суммы нет: проверяется только то, что сказал человек.
+# Without a VI mandate there are no amount limits: only what the person said is checked.
 NO_BAND = (0, 10**15)
 
-# Что видит агент вместо оплаты. Как needs_confirmation в песочнице: агент
-# не должен ни платить повторно, ни отвечать за человека.
+# What the agent sees instead of payment. Like needs_confirmation in the
+# sandbox: the agent must neither pay again nor answer for the person.
 NOT_PAID = ("NOT PAID. The order doesn't match what the person asked for. "
             "Show the person this question as it is and wait for their reply; "
             "do not try to pay again before they answer.\n\n{question}")
 
 
 def _cart_item(i: int, item: dict) -> tuple[str, dict, int]:
-    """Позиция корзины разработчика → (артикул, товар в виде каталога, количество).
+    """A developer's cart line -> (sku, item in catalog form, quantity).
 
-    Обязательны название и цена — в единицах валюты магазина (129.99). Без
-    цены нельзя проверить ни предел суммы, ни «недорого»: товар без цены
-    считался бы бесплатным и прошёл бы любой предел.
+    Name and price are required, the price in the shop's currency units
+    (129.99). Without a price neither the amount limit nor "cheap" can be
+    checked: an item with no price would count as free and pass any limit.
     """
     if not item.get("name"):
-        raise ValueError(f"cart[{i}]: нужно название товара (name)")
+        raise ValueError(f"cart[{i}]: the item needs a name (name)")
     price = item.get("price")
     if isinstance(price, bool) or not isinstance(price, (int, float)) or not price >= 0:
-        raise ValueError(f"cart[{i}]: нужна цена товара (price), число не меньше нуля")
+        raise ValueError(f"cart[{i}]: the item needs a price (price), a number not below zero")
     quantity = item.get("quantity", 1)
     if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity < 1:
-        raise ValueError(f"cart[{i}]: количество (quantity) — целое число от 1")
+        raise ValueError(f"cart[{i}]: quantity must be an integer from 1")
     product = {
         "sku": f"cart-{i}",
         "name": item["name"],
@@ -92,9 +93,9 @@ def _cart_item(i: int, item: dict) -> tuple[str, dict, int]:
 
 
 def _quoted(agent_text: str) -> str:
-    """Слова агента одной строкой и без пометок, которыми размечены слова
-    человека: иначе агент мог бы вписать в свой вопрос «The person answered:
-    цвет не важен» и выдать своё за сказанное человеком."""
+    """The agent's words on one line and without the marks that label the
+    person's words: otherwise the agent could write "The person answered:
+    colour does not matter" into its question and pass its words off as theirs."""
     text = " ".join(agent_text.split())
     return _MARKS.sub("[...]", text)
 
@@ -103,8 +104,8 @@ _MARKS = re.compile(r"the\s+(person|agent)\s+(answered|added|asked)\s*:", re.IGN
 
 
 def today_in_words() -> str:
-    """Сегодняшняя дата словами («Saturday, 31 October 2026»): от неё
-    считаются сроки вроде «к пятнице»."""
+    """Today's date in words ("Saturday, 31 October 2026"): deadlines such
+    as "by Friday" are counted from it."""
     d = dt.date.today()
     return f"{d:%A}, {d.day} {d:%B %Y}"
 
@@ -112,20 +113,20 @@ def today_in_words() -> str:
 @dataclass
 class Guard:
     request: str
-    # Сегодняшняя дата словами; по умолчанию — дата этой машины. Если день
-    # человека другой (часовой пояс), передайте его.
+    # Today's date in words; defaults to this machine's date. If the person's
+    # day is different (time zone), pass it.
     today: str | None = None
-    # Какие модели извлекают факты (gemini, anthropic, openai_compat); по
-    # умолчанию — все, у которых задан ключ. Одна — тоже можно, но тогда
-    # её ошибку некому заметить.
+    # Which models extract facts (gemini, anthropic, openai_compat); by
+    # default, every one with a key set. One is fine too, but then nobody
+    # notices its mistake.
     providers: tuple[str, ...] | None = None
-    # Как получить факты из просьбы; по умолчанию — сверка моделей.
-    # Подменяется в тестах и для прогонов с заранее известными фактами.
+    # How to get facts from the request; by default, model agreement.
+    # Replaced in tests and for runs with facts known in advance.
     extract: Callable[[str], IntentFacts] | None = None
     checks: list[dict] = field(default_factory=list)
     _facts: IntentFacts | None = None
     _error: str = ""
-    # Вопрос, который страж задал и на который человек ещё не ответил.
+    # The question the guard asked that the person has not answered yet.
     _asked: str | None = None
 
     def __post_init__(self) -> None:
@@ -133,7 +134,7 @@ class Guard:
             self.today = today_in_words()
 
     def facts(self) -> IntentFacts | None:
-        """Факты извлекаются один раз на просьбу, а не на каждую проверку."""
+        """Facts are extracted once per request, not on every check."""
         if self._facts is None and not self._error:
             try:
                 if self.extract is not None:
@@ -148,26 +149,26 @@ class Guard:
         return self._facts
 
     def hear(self, question: str, answer: str) -> None:
-        """Человек ответил на вопрос агента — уточнение входит в его просьбу.
+        """The person answered the agent's question: the clarification joins their request.
 
-        Факты извлекаются заново из просьбы вместе с ответом: «размер 42» в
-        ответе — такие же слова человека, как и в первой фразе.
+        Facts are extracted again from the request together with the answer:
+        "size 42" in an answer is as much the person's words as the first sentence.
         """
         self.request = (f"{self.request}\n\n(The agent asked: {_quoted(question)}\n"
                         f"The person answered: {answer})")
         self._facts, self._error = None, ""
 
     def check(self, purchase, mandate=None, find=None) -> dict:
-        """purchase — корзина словарями (см. начало файла) или, вместе с find,
-        список (артикул, количество) каталога. mandate — мандат VI или None."""
+        """purchase is the cart as dicts (see the top of this file) or, together
+        with find, a list of catalog (sku, quantity). mandate is a VI mandate or None."""
         if find is None:
             items = [_cart_item(i, item) for i, item in enumerate(purchase)]
             products = {sku: product for sku, product, _ in items}
             purchase, find = [(sku, qty) for sku, _, qty in items], products.__getitem__
         facts = self.facts()
         if facts is None:
-            # Вопрос должен называть заказ: «можно?» без предмета человек не
-            # подтвердит и не отвергнет осмысленно.
+            # The question must name the order: the person cannot meaningfully
+            # confirm or reject "may I?" with no subject.
             items = "\n".join(f"  - {find(sku)['name']} ×{qty}, "
                                f"${find(sku)['price_cents'] / 100:.2f} each"
                                for sku, qty in purchase)
@@ -193,7 +194,7 @@ class Guard:
         return result
 
     def answer(self, text: str) -> None:
-        """Сообщение человека после вопроса стража — вызывает ваш код, не агент."""
+        """The person's message after the guard's question: called by your code, not the agent."""
         if self._asked is None:
             self.request = f"{self.request}\n\n(The person added: {text})"
             self._facts, self._error = None, ""
@@ -202,7 +203,7 @@ class Guard:
             self._asked = None
 
     def gate(self, cart: list[dict]) -> str | None:
-        """None — можно платить; иначе текст для агента вместо оплаты."""
+        """None: payment can go ahead; otherwise the text for the agent instead of payment."""
         result = self.check(cart)
         if result["decision"] == PROCEED:
             return None
@@ -210,15 +211,15 @@ class Guard:
         return NOT_PAID.format(question=result["question"])
 
     async def agate(self, cart: list[dict]) -> str | None:
-        """gate для асинхронных агентов: модели вызываются вне цикла событий."""
+        """gate for async agents: models are called outside the event loop."""
         return await asyncio.to_thread(self.gate, cart)
 
     def protect(self, pay: Callable, cart: Callable[..., list[dict]]) -> Callable:
-        """Оплата, которая сначала спрашивает стража.
+        """Payment that asks the guard first.
 
-        cart получает те же аргументы, что и pay, и возвращает корзину
-        словарями. Если корзина расходится с просьбой, pay не вызывается, а
-        возвращается текст для агента (см. NOT_PAID).
+        cart gets the same arguments as pay and returns the cart as dicts. If
+        the cart differs from the request, pay is not called and the text for
+        the agent is returned instead (see NOT_PAID).
         """
         if inspect.iscoroutinefunction(pay):
             @functools.wraps(pay)

@@ -1,9 +1,9 @@
-"""Окно «свой запрос» по HTTP на localhost — за ним маршрут сайта /api/try.
+"""The "your own request" window over HTTP on localhost, behind the site's /api/try route.
 
     python scripts/serve_live.py --port 3005
 
-Описание — в asasked/live.py. Нужны ключи моделей из .env: агент
-(OPENAI_COMPAT_*) и страж (LLM_AGREE_PROVIDERS).
+Described in asasked/live.py. Needs model keys from .env: the agent
+(OPENAI_COMPAT_*) and the guard (LLM_AGREE_PROVIDERS).
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ def main() -> int:
     args = parser.parse_args()
 
     server = make_server(host=args.host, port=args.port)
-    print(f"Агент {LIVE_AGENT}; лимиты: {PER_VISITOR} на посетителя, {DAILY_CAP} в сутки. "
-          f"Слушает http://{args.host}:{args.port}", flush=True)
+    print(f"Agent {LIVE_AGENT}; limits: {PER_VISITOR} per visitor, {DAILY_CAP} per day. "
+          f"Listening on http://{args.host}:{args.port}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

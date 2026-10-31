@@ -379,8 +379,8 @@ right?" question, and the template's label was checked against the answer
 one. The review changed labels in three templates: two-pair shoe orders now
 say and require that both pairs are returnable, and "cheapest" requests now
 require the cheapest listing that meets the other conditions, not any of
-them. English tasks were read through a Russian translation made by Claude Sonnet 5
-(`scripts/translate_review.py`), with the original alongside; labels are
+them. English tasks were read alongside a machine translation made by Claude Sonnet 5
+next to the original; labels are
 translated by code, not by the model. Whether the English requests sound
 natural is checked by a model, not a person (`scripts/check_naturalness.py`,
 results in `data/naturalness_v1_model.csv`). Dataset v1 has a single

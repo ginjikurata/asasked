@@ -1,20 +1,20 @@
-"""Вызов языковой модели для превращения слов человека в факты.
+"""Calling a language model to turn a person's words into facts.
 
-Единственное место в проекте, где вызывается ИИ. Всё остальное в
-coherence.py — обычный детерминированный код, который об этом файле
-ничего не знает: он получает готовый набор фактов и с ним работает.
+The only place in the project that calls a model. Everything else in
+coherence.py is ordinary deterministic code that knows nothing about this
+file: it receives a ready set of facts and works with them.
 
-Провайдеров три, и они взаимозаменяемы: одинаковый промпт, одинаковая схема
-ответа. gemini — родной API Google; anthropic — Claude через SDK, напрямую или
-через совместимый прокси (CLAUDE_BASE_URL); openai_compat — любой
-OpenAI-совместимый /chat/completions (AnyModel, OpenRouter и т. п.), через него
-удобно брать модели не от Anthropic. Два независимых провайдера нужны для
-сверки — если модели разошлись в факте, это видно
-(см. coherence.extract_intent_agreed).
+There are three providers, and they are interchangeable: same prompt, same
+response schema. gemini is Google's own API; anthropic is Claude through the
+SDK, directly or through a compatible proxy (CLAUDE_BASE_URL); openai_compat
+is any OpenAI-compatible /chat/completions (AnyModel, OpenRouter and the
+like), a handy way to use models not made by Anthropic. Two independent
+providers are there for cross-checking: if the models disagree on a fact,
+it shows (see coherence.extract_intent_agreed).
 
-Если модель не смогла вернуть корректный ответ — поднимается
-ExtractionError с сырым текстом ответа, чтобы это было видно на прогоне,
-а не пряталось за null-полями.
+If the model cannot return a valid answer, ExtractionError is raised with the
+raw response text, so that it shows up in a run instead of hiding behind
+null fields.
 """
 
 from __future__ import annotations
@@ -30,9 +30,9 @@ from pathlib import Path
 
 _ENV_LOADED = False
 
-# .env лежит в корне проекта. Искать его относительно текущей папки
-# нельзя: скрипт, запущенный не из корня проекта, молча не нашёл бы ключ
-# и упал бы с «LLM_API_KEY не задан», хотя ключ на месте.
+# .env lives in the project root. Looking for it relative to the current
+# directory won't do: a script started outside the root would silently miss
+# the key and fail with "LLM_API_KEY is not set" while the key is there.
 _ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 
 
@@ -57,7 +57,7 @@ DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini")
 
 
 def configured_providers() -> tuple[str, ...]:
-    """Провайдеры, для которых задан ключ: у разработчика их может быть один."""
+    """Providers that have a key set: a developer may have just one."""
     keys = {"gemini": "LLM_API_KEY", "anthropic": "CLAUDE_API_KEY",
             "openai_compat": "OPENAI_COMPAT_API_KEY"}
     found = tuple(p for p, key in keys.items() if os.environ.get(key))
@@ -66,8 +66,8 @@ def configured_providers() -> tuple[str, ...]:
     return found
 
 
-# Какие провайдеры сверяются друг с другом в extract_intent_agreed: заданные
-# явно или все, у которых есть ключ.
+# Which providers extract_intent_agreed compares: the ones set explicitly, or
+# every one that has a key.
 AGREE_PROVIDERS = tuple(
     p.strip() for p in os.environ.get("LLM_AGREE_PROVIDERS", "").split(",") if p.strip()
 ) or configured_providers()
@@ -76,10 +76,11 @@ API_KEY = os.environ.get("LLM_API_KEY")
 MODEL = os.environ.get("LLM_MODEL", "gemini-flash-lite-latest")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-# Свои имена, а не ANTHROPIC_*: стандартные переменные SDK часто уже заданы
-# в окружении (например, средой разработки), и .env их не перебивает — запрос
-# ушёл бы не туда. Пустые значения — SDK берёт ключ и адрес по умолчанию
-# (ANTHROPIC_API_KEY, профиль `ant auth login`, официальный API).
+# Our own names rather than ANTHROPIC_*: the SDK's standard variables are often
+# already set in the environment (by a development tool, say), and .env does
+# not override them, so the request would go elsewhere. Empty values: the SDK
+# uses its default key and address (ANTHROPIC_API_KEY, the `ant auth login`
+# profile, the official API).
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY") or None
 CLAUDE_BASE_URL = os.environ.get("CLAUDE_BASE_URL") or None
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-5-5")
@@ -192,8 +193,8 @@ clarification. Always return the JSON object; when there are no purchase
 facts, every field is null, needs_refundable is false, soft_fields and
 other_conditions are []."""
 
-# Та же схема, что описана в промпте, — для провайдеров со структурированным
-# выводом. Ограничивает форму ответа; содержание по-прежнему проверяет
+# The same schema the prompt describes, for providers with structured output.
+# It constrains the shape of the answer; the content is still checked by
 # coherence.extract_intent.
 RESPONSE_SCHEMA = {
     "type": "object",
@@ -248,7 +249,7 @@ RESPONSE_SCHEMA = {
 
 
 class ExtractionError(RuntimeError):
-    """Модель не вернула корректный ответ по схеме IntentFacts."""
+    """The model did not return a valid answer in the IntentFacts schema."""
 
 
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
@@ -261,10 +262,10 @@ def _extract_retry_delay(error_body: str) -> float | None:
 
 
 def _parse_json(text: str) -> dict:
-    """Первый JSON-объект в ответе. Модели иногда оборачивают его в ```json
-    или дописывают после него рассуждения — с ещё одним JSON внутри."""
+    """The first JSON object in the answer. Models sometimes wrap it in ```json
+    or append reasoning after it, with another JSON object inside."""
     if not _JSON_BLOCK.search(text):
-        raise ExtractionError(f"В ответе модели нет JSON: {text!r}")
+        raise ExtractionError(f"No JSON in the model's answer: {text!r}")
     decoder = json.JSONDecoder()
     for start in (i for i, ch in enumerate(text) if ch == "{"):
         try:
@@ -273,7 +274,7 @@ def _parse_json(text: str) -> dict:
             continue
         if isinstance(value, dict):
             return value
-    raise ExtractionError(f"Модель вернула невалидный JSON: {text!r}")
+    raise ExtractionError(f"The model returned invalid JSON: {text!r}")
 
 
 def system_prompt(today: str | None = None) -> str:
@@ -284,7 +285,7 @@ def system_prompt(today: str | None = None) -> str:
 
 
 def call_model(request: str, provider: str | None = None, today: str | None = None) -> dict:
-    """Возвращает сырой dict с полями схемы. Бросает ExtractionError при сбое."""
+    """Returns a raw dict with the schema's fields. Raises ExtractionError on failure."""
     provider = provider or DEFAULT_PROVIDER
     system = system_prompt(today)
     if provider == "gemini":
@@ -293,12 +294,12 @@ def call_model(request: str, provider: str | None = None, today: str | None = No
         return _call_anthropic(request, system)
     if provider == "openai_compat":
         return _call_openai_compat(request, system)
-    raise ExtractionError(f"Неизвестный провайдер {provider!r}, есть: {', '.join(PROVIDERS)}")
+    raise ExtractionError(f"Unknown provider {provider!r}, available: {', '.join(PROVIDERS)}")
 
 
 def _call_gemini(request: str, system: str = SYSTEM_PROMPT) -> dict:
     if not API_KEY:
-        raise ExtractionError("LLM_API_KEY не задан (см. .env)")
+        raise ExtractionError("LLM_API_KEY is not set (see .env)")
 
     body = json.dumps({
         "contents": [{"role": "user", "parts": [{"text": request}]}],
@@ -326,34 +327,34 @@ def _call_gemini(request: str, system: str = SYSTEM_PROMPT) -> dict:
             break
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", "replace")
-            last_error = f"HTTP {e.code} от модели: {error_body}"
+            last_error = f"HTTP {e.code} from the model: {error_body}"
             if e.code in (429, 503) and attempt < 3:
                 delay = _extract_retry_delay(error_body) or (2 ** attempt)
                 time.sleep(delay)
                 continue
             raise ExtractionError(last_error) from e
         except urllib.error.URLError as e:
-            raise ExtractionError(f"Сеть недоступна: {e}") from e
+            raise ExtractionError(f"Network unavailable: {e}") from e
     else:
-        raise ExtractionError(last_error or "Не удалось получить ответ от модели")
+        raise ExtractionError(last_error or "Could not get an answer from the model")
 
     try:
         text = payload["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError, TypeError) as e:
-        raise ExtractionError(f"Неожиданный формат ответа: {payload}") from e
+        raise ExtractionError(f"Unexpected response format: {payload}") from e
 
     return _parse_json(text)
 
 
 def _call_anthropic(request: str, system: str = SYSTEM_PROMPT) -> dict:
-    # SDK — необязательная зависимость: pip install "asasked[anthropic]".
-    # Без него остальной проект (и Gemini) работает как раньше.
+    # The SDK is an optional dependency: pip install "asasked[anthropic]".
+    # Without it the rest of the project (and Gemini) works as before.
     try:
         import anthropic
     except ImportError as e:
-        raise ExtractionError('Нет пакета anthropic: pip install "asasked[anthropic]"') from e
+        raise ExtractionError('The anthropic package is missing: pip install "asasked[anthropic]"') from e
 
-    # Повторы на 429/5xx и сетевые сбои SDK делает сам (max_retries).
+    # The SDK retries 429/5xx and network failures itself (max_retries).
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY, base_url=CLAUDE_BASE_URL,
                                  max_retries=4, timeout=60.0)
     kwargs = dict(
@@ -367,34 +368,34 @@ def _call_anthropic(request: str, system: str = SYSTEM_PROMPT) -> dict:
         try:
             response = client.messages.create(**kwargs)
         except anthropic.BadRequestError:
-            # Прокси может не знать структурированного вывода. Схема всё равно
-            # описана в промпте, а форму ответа проверяет extract_intent.
+            # A proxy may not support structured output. The schema is in the
+            # prompt anyway, and extract_intent checks the answer's shape.
             del kwargs["output_config"]
             response = client.messages.create(**kwargs)
     except anthropic.AuthenticationError as e:
-        raise ExtractionError("Claude: нет ключа или он неверный "
-                              "(CLAUDE_API_KEY и CLAUDE_BASE_URL в .env)") from e
+        raise ExtractionError("Claude: the key is missing or wrong "
+                              "(CLAUDE_API_KEY and CLAUDE_BASE_URL in .env)") from e
     except anthropic.APIStatusError as e:
-        raise ExtractionError(f"HTTP {e.status_code} от Claude: {e.message}") from e
+        raise ExtractionError(f"HTTP {e.status_code} from Claude: {e.message}") from e
     except anthropic.APIConnectionError as e:
-        raise ExtractionError(f"Сеть недоступна: {e}") from e
+        raise ExtractionError(f"Network unavailable: {e}") from e
 
     if response.stop_reason != "end_turn":
-        raise ExtractionError(f"Claude не закончил ответ: stop_reason={response.stop_reason!r}")
+        raise ExtractionError(f"Claude did not finish its answer: stop_reason={response.stop_reason!r}")
 
     text = next((b.text for b in response.content if b.type == "text"), None)
     if text is None:
-        raise ExtractionError(f"В ответе Claude нет текста: {response.content!r}")
+        raise ExtractionError(f"No text in Claude's answer: {response.content!r}")
     return _parse_json(text)
 
 
 def _call_openai_compat(request: str, system: str = SYSTEM_PROMPT) -> dict:
     if not (OPENAI_COMPAT_BASE_URL and OPENAI_COMPAT_API_KEY and OPENAI_COMPAT_MODEL):
-        raise ExtractionError("Для openai_compat нужны OPENAI_COMPAT_BASE_URL, "
-                              "OPENAI_COMPAT_API_KEY и OPENAI_COMPAT_MODEL (см. .env)")
+        raise ExtractionError("openai_compat needs OPENAI_COMPAT_BASE_URL, "
+                              "OPENAI_COMPAT_API_KEY and OPENAI_COMPAT_MODEL (see .env)")
 
-    # Не каждый совместимый сервер понимает json_schema: при отказе (400)
-    # просим просто JSON, а затем и вовсе без формата — схема есть в промпте.
+    # Not every compatible server understands json_schema: on a refusal (400)
+    # ask for plain JSON, then for no format at all; the schema is in the prompt.
     formats = [
         {"type": "json_schema", "json_schema": {"name": "intent_facts", "strict": True,
                                                 "schema": RESPONSE_SCHEMA}},
@@ -419,15 +420,15 @@ def _call_openai_compat(request: str, system: str = SYSTEM_PROMPT) -> dict:
         try:
             text = payload["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as e:
-            raise ExtractionError(f"Неожиданный формат ответа: {payload}") from e
+            raise ExtractionError(f"Unexpected response format: {payload}") from e
         if not isinstance(text, str):
-            raise ExtractionError(f"В ответе нет текста: {payload}")
+            raise ExtractionError(f"No text in the answer: {payload}")
         return _parse_json(text)
-    raise ExtractionError(last_error or "Сервер отклонил все форматы запроса")
+    raise ExtractionError(last_error or "The server rejected every request format")
 
 
 class _BadRequest(ExtractionError):
-    """400 от сервера — повод упростить запрос, а не сдаться."""
+    """A 400 from the server is a reason to simplify the request, not to give up."""
 
 
 def _post_with_retries(url: str, body: dict, api_key: str | None = None) -> dict:
@@ -437,31 +438,31 @@ def _post_with_retries(url: str, body: dict, api_key: str | None = None) -> dict
         req = urllib.request.Request(url, data=data, headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key or OPENAI_COMPAT_API_KEY}",
-            # Cloudflare перед некоторыми прокси отсекает стандартный
-            # "Python-urllib/…" (ошибка 1010) — представляемся своим именем.
+            # Cloudflare in front of some proxies blocks the standard
+            # "Python-urllib/…" (error 1010), so we introduce ourselves by name.
             "User-Agent": "asasked/0.1",
         })
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except (http.client.IncompleteRead, ConnectionResetError, TimeoutError) as e:
-            # Прокси иногда обрывает ответ на середине — это повод повторить.
-            last_error = f"Обрыв ответа: {type(e).__name__}"
+            # A proxy sometimes cuts the answer off midway: a reason to retry.
+            last_error = f"Answer cut off: {type(e).__name__}"
             if attempt < 3:
                 time.sleep(2 ** (attempt + 1))
                 continue
             raise ExtractionError(last_error) from e
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", "replace")
-            last_error = f"HTTP {e.code} от модели: {error_body}"
+            last_error = f"HTTP {e.code} from the model: {error_body}"
             if e.code == 400:
                 raise _BadRequest(last_error) from e
-            # Прокси вроде AnyModel коротко отвечают 503 и подсказывают паузу.
+            # Proxies like AnyModel briefly answer 503 and suggest a pause.
             if e.code in (429, 500, 502, 503) and attempt < 3:
                 match = re.search(r'"retry_after_seconds":\s*(\d+(?:\.\d+)?)', error_body)
                 time.sleep(float(match.group(1)) + 0.5 if match else 2 ** (attempt + 1))
                 continue
             raise ExtractionError(last_error) from e
         except urllib.error.URLError as e:
-            raise ExtractionError(f"Сеть недоступна: {e}") from e
-    raise ExtractionError(last_error or "Не удалось получить ответ от модели")
+            raise ExtractionError(f"Network unavailable: {e}") from e
+    raise ExtractionError(last_error or "Could not get an answer from the model")

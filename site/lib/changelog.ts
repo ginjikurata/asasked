@@ -82,7 +82,7 @@ export const CHANGELOG: Day[] = [
       {
         area: "dataset",
         commit: "f867e96",
-        text: "Review through a Russian translation; English naturalness checked by a model. Its first pass caught \"a intermediate\" in one template.",
+        text: "Review alongside a machine translation; English naturalness checked by a model. Its first pass caught \"a intermediate\" in one template.",
       },
       { area: "dataset", commit: "21d2311", text: "Dataset v1: 200 labelled tasks from 13 trap templates, 100 open and 100 hidden." },
       { area: "guard", commit: "bf0ae5d", text: "Per-line facts for orders of several variants (\"size 40 for my wife and 43 for me\")." },

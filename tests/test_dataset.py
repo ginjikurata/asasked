@@ -1,4 +1,4 @@
-"""Датасет v1 и формат разметки — без сети."""
+"""Dataset v1 and the label format, with no network."""
 
 import csv
 
@@ -12,15 +12,15 @@ from asasked.store.catalog_v1 import BY_SKU
 find = BY_SKU.__getitem__
 TASKS, _REJECTED = dataset.build()
 
-# Архив исходников с PyPI несёт только пакет и тесты, без data/ и scripts/.
+# The source archive on PyPI carries only the package and tests, no data/ or scripts/.
 REPO = dataset.DATA_DIR.parent
 needs_repo = pytest.mark.skipif(
     not (REPO / "data" / "tasks_v2.jsonl").exists() or not (REPO / "scripts").is_dir(),
-    reason="нужны data/ и scripts/ из репозитория")
+    reason="needs data/ and scripts/ from the repository")
 
 
 # ---------------------------------------------------------------------------
-# Формат разметки
+# Label format
 # ---------------------------------------------------------------------------
 
 TWO = {"lines": [{"where": {"family": "NIK-COURTLITE4", "color": "white", "size_label": "40"},
@@ -45,7 +45,7 @@ def test_units_special_keys_and_total():
     cheap = {"lines": [{"where": {"category": "racket", "brand_not": ["Wilson"],
                                   "max_price_cents": 10000, "max_ships_in_days": 3}}]}
     assert purchase_matches(cheap, [("HEA-TIS6-438-BLA-COU", 1)], find)
-    assert not purchase_matches(cheap, [("HEA-TIS6-438-BLA-BAS", 1)], find)        # 14 дней
+    assert not purchase_matches(cheap, [("HEA-TIS6-438-BLA-BAS", 1)], find)        # 14 days
     assert not purchase_matches(cheap, [("WIL-ULTRAPOWER-438-BLU-COU", 1)], find)  # Wilson
     capped = {**cans, "max_total_cents": 1000}
     assert not purchase_matches(capped, [("PEN-CHAMPIONSHIP-12B-YEL-COU", 1)], find)
@@ -59,7 +59,7 @@ def test_no_purchase_label():
 
 
 # ---------------------------------------------------------------------------
-# Датасет
+# Dataset
 # ---------------------------------------------------------------------------
 
 
@@ -102,7 +102,7 @@ def test_write_puts_each_half_in_its_own_folder(tmp_path, monkeypatch):
     assert {r["split"] for r in dataset.rows("open")} == {"open"}
     assert {r["split"] for r in dataset.rows("hidden")} == {"hidden"}
     assert len(dataset.rows()) == len(TASKS)
-    (tmp_path / "hidden" / "tasks_v1.jsonl").unlink()  # у постороннего скрытой половины нет
+    (tmp_path / "hidden" / "tasks_v1.jsonl").unlink()  # an outsider has no hidden half
     assert dataset.rows("hidden") == [] and dataset.rows() == dataset.rows("open")
 
 
@@ -135,7 +135,7 @@ def test_agreement(tmp_path, capsys):
     b = sheet("b.csv", ["ok", "ok", "drop", "ok"])
     assert bd.agreement(a, b) == 0
     out = capsys.readouterr().out
-    assert "Совпало: 3 (75%)" in out and "t3" in out
+    assert "Agreed: 3 (75%)" in out and "t3" in out
 
 
 def test_v2_pilot_takes_whole_templates_with_traps():
@@ -195,8 +195,8 @@ def test_v2_open_file_matches_generator():
 
 
 def test_v2_hidden_half_avoids_public_pilots(tmp_path, monkeypatch):
-    """Скрытая половина на своём (здесь — временном) секретном числе не
-    повторяет ответов пилотов: их числа открыты."""
+    """The hidden half, on its own (here temporary) secret number, does not
+    repeat the pilots' answers: their seeds are open."""
     from asasked.harness import dataset_v2 as v2
     monkeypatch.setattr(dataset, "HIDDEN_DIR", tmp_path)
     hidden = [t for t in v2.build_v2() if t["split"] == "hidden"]

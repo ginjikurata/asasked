@@ -1,7 +1,7 @@
-"""Сверка намерения с корзиной на 8 сценариях — без языковой модели.
+"""The intent check against the cart on 8 scenarios, with no language model.
 
-Факты здесь заданы вручную: ровно то, что извлечение должно вернуть из
-просьбы. Так проверяется детерминированная половина, которая и идёт в спор.
+The facts here are set by hand: exactly what extraction should return from the
+request. This tests the deterministic half, the one that goes into a dispute.
 """
 
 import pytest
@@ -25,7 +25,7 @@ FACTS = {
     "vi-catches": IntentFacts(level="beginner", explicit_max_cents=1500000),
 }
 
-# какие находки обязана дать сверка в каждом сценарии
+# which findings the check must give in each scenario
 EXPECTED_CODES = {
     "ok-baseline": set(),
     "price-top": {"level", "price"},
@@ -91,7 +91,7 @@ def test_same_inputs_same_findings():
 
 
 # ---------------------------------------------------------------------------
-# Разбор ответа модели — сеть подменена, проверяется только валидация
+# Parsing the model's reply: the network is mocked, only validation is tested
 # ---------------------------------------------------------------------------
 
 
@@ -125,7 +125,7 @@ def test_extract_rejects_malformed_answer(monkeypatch, data):
 
 
 # ---------------------------------------------------------------------------
-# Совпадение цвета и размера
+# Colour and size matching
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("have, want, match", [

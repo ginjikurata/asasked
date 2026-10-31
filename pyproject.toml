@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "asasked"
-version = "0.1.1"
+version = "0.1.2"
 description = "Checks whether an AI agent's purchase matches what the person actually asked for"
 readme = "README.md"
 license = "Apache-2.0"
@@ -34,8 +34,8 @@ asasked-mcp = "asasked.mcp_server:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/asasked"]
 
-# Без списка в архив исходников попало бы всё подряд: сайт с node_modules,
-# данные, черновики, локальные настройки.
+# Without this list the source archive would take in everything: the site with
+# node_modules, data, drafts, local settings.
 [tool.hatch.build.targets.sdist]
 only-include = ["src/asasked", "tests", "README.md", "LICENSE", "pyproject.toml"]
 

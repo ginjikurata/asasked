@@ -1,14 +1,14 @@
-"""Разметка задачи без кода: какая покупка правильная, в виде данных.
+"""A task's label without code: which purchase is right, as data.
 
-Метка, которую можно прочитать, исправить руками и сохранить в файл, —
-обязательное условие для датасета, который размечают люди. Функции на
-Python (Task.ok_check) так не умеют, поэтому для датасета — этот формат:
+A label that can be read, fixed by hand and saved to a file is a must for a
+dataset that people label. Python functions (Task.ok_check) cannot do that,
+so the dataset uses this format:
 
     {
-      "no_purchase": false,            # правильно — ничего не купить
-      "should_ask": false,             # правильно — сначала спросить человека
-      "max_total_cents": 12000,        # предел всей корзины (необязательно)
-      "lines": [                       # каждой строке — ровно одна позиция
+      "no_purchase": false,            # right: buy nothing
+      "should_ask": false,             # right: ask the person first
+      "max_total_cents": 12000,        # the limit for the whole cart (optional)
+      "lines": [                       # each line gets exactly one cart line
         {"where": {"family": "ASI-GELRESOLUTION9", "color": "black",
                    "size_label": "42", "refundable": true,
                    "max_ships_in_days": 5},
@@ -16,9 +16,9 @@ Python (Task.ok_check) так не умеют, поэтому для датас�
       ]
     }
 
-Условия в where: значение — точное совпадение, список — одно из; особые
-ключи: max_price_cents, max_ships_in_days, brand_not (список исключённых
-брендов). units — сколько «штук» в понимании человека (банок, а не упаковок).
+Conditions in where: a value is an exact match, a list is one of; special
+keys: max_price_cents, max_ships_in_days, brand_not (a list of excluded
+brands). units is how many "pieces" the person means (cans, not packs).
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def item_matches(product: dict, where: dict) -> bool:
 
 
 def purchase_matches(label: dict, purchase, find) -> bool:
-    """Правильная ли покупка по метке. purchase — [(артикул, количество)]."""
+    """Whether the purchase is right by the label. purchase is [(sku, quantity)]."""
     bought = [(find(sku), qty) for sku, qty in (purchase or [])]
     if label.get("no_purchase"):
         return not bought
@@ -66,7 +66,7 @@ def purchase_matches(label: dict, purchase, find) -> bool:
 
 
 def describe(label: dict) -> str:
-    """Метка словами — для таблицы разметчиков."""
+    """The label in words, for the labellers' table."""
     if label.get("no_purchase"):
         text = "buy nothing"
     else:

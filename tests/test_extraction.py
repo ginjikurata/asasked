@@ -1,4 +1,4 @@
-"""Извлечение без сети: провайдеры, сверка двух моделей, стресс-наборы."""
+"""Extraction with no network: providers, comparing two models, stress sets."""
 
 from dataclasses import fields
 from types import SimpleNamespace
@@ -12,7 +12,7 @@ from asasked.stress_phrases import CASES
 from asasked.stress_phrases_en import CASES_EN
 
 # ---------------------------------------------------------------------------
-# Сверка двух моделей
+# Comparing two models
 # ---------------------------------------------------------------------------
 
 
@@ -29,9 +29,9 @@ def test_disagreement_keeps_the_fact_and_marks_it():
     b = IntentFacts(color="black", size_label="44", needs_refundable=True)
     merged = merge_facts([a, b])
     assert merged.disputed == frozenset({"color", "size_label", "needs_refundable"})
-    assert merged.color == "black"            # найденное важнее null
-    assert merged.size_label == "42"          # оба нашли разное — первая модель
-    assert merged.needs_refundable is True    # возможно, просил возврат
+    assert merged.color == "black"            # a found value beats null
+    assert merged.size_label == "42"          # both found different ones: the first model wins
+    assert merged.needs_refundable is True    # may have asked for returns
 
 
 def test_deadline_found_by_any_takes_the_strictest_without_dispute():
@@ -39,7 +39,7 @@ def test_deadline_found_by_any_takes_the_strictest_without_dispute():
                           IntentFacts(deadline_days=5, explicit_max_cents=22000)])
     assert (merged.deadline_days, merged.explicit_max_cents) == (4, 20000)
     assert merged.disputed == frozenset()
-    # одна модель пропустила срок или предел — они всё равно блокируют
+    # one model missed the deadline or the cap: they still block
     one_sided = merge_facts([IntentFacts(deadline_days=None, explicit_max_cents=20000),
                              IntentFacts(deadline_days=5, explicit_max_cents=None)])
     assert (one_sided.deadline_days, one_sided.explicit_max_cents) == (5, 20000)
@@ -76,12 +76,12 @@ def test_agreed_calls_every_provider(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Провайдеры
+# Providers
 # ---------------------------------------------------------------------------
 
 
 def test_unknown_provider():
-    with pytest.raises(ExtractionError, match="Неизвестный провайдер"):
+    with pytest.raises(ExtractionError, match="Unknown provider"):
         llm_extract.call_model("…", provider="nope")
 
 
@@ -115,7 +115,7 @@ def test_anthropic_request_and_parse(monkeypatch):
     assert sent["model"] == llm_extract.CLAUDE_MODEL
     assert sent["system"] == llm_extract.SYSTEM_PROMPT
     assert sent["output_config"]["format"]["schema"] is RESPONSE_SCHEMA
-    assert "temperature" not in sent          # API больше не принимает сэмплинг
+    assert "temperature" not in sent          # the API no longer accepts sampling
 
 
 def test_anthropic_unfinished_answer_is_an_error(monkeypatch):
@@ -125,7 +125,7 @@ def test_anthropic_unfinished_answer_is_an_error(monkeypatch):
 
 
 class _FakeHTTP:
-    """Подмена urlopen: отвечает по очереди заготовленными ответами."""
+    """A mock urlopen: answers with prepared replies in turn."""
 
     def __init__(self, replies):
         self.replies, self.bodies = list(replies), []
@@ -194,7 +194,7 @@ def test_openai_compat_needs_config(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Схема и наборы фраз
+# Schema and phrase sets
 # ---------------------------------------------------------------------------
 
 
@@ -202,7 +202,7 @@ def test_schema_matches_intent_facts():
     facts_fields = {f.name for f in fields(IntentFacts)} - {"raw", "soft", "disputed", "lines",
                                                              "other", "other_optional"}
     assert set(SOFTENABLE_FIELDS) == facts_fields
-    # deadline_weekday — не факт, а сырьё: дни до него считает код (days_until)
+    # deadline_weekday is not a fact but raw material: the code counts days to it (days_until)
     assert set(RESPONSE_SCHEMA["properties"]) == facts_fields | {
         "lines", "soft_fields", "deadline_weekday", "other_conditions"}
     assert set(RESPONSE_SCHEMA["required"]) == set(RESPONSE_SCHEMA["properties"])
@@ -253,7 +253,7 @@ def test_days_until_counts_the_named_day_in_code():
     monday = "Monday, 2 November 2026"
     assert days_until("friday", monday) == 4
     assert days_until("saturday", monday) == 5
-    assert days_until("monday", monday) == 7      # «к понедельнику» — следующему
+    assert days_until("monday", monday) == 7      # "by Monday" means next Monday
     assert days_until("friday", None) is None
     assert days_until(None, monday) is None
 
@@ -264,12 +264,12 @@ def test_named_weekday_overrides_the_models_count(monkeypatch):
     monkeypatch.setattr(coherence, "call_model", fake)
     facts = coherence.extract_intent("by Wednesday", today="Monday, 2 November 2026")
     assert facts.deadline_days == 2
-    # без сегодняшней даты считать не от чего — остаётся оценка модели
+    # with no today's date there is nothing to count from: the model's estimate stays
     assert coherence.extract_intent("by Wednesday").deadline_days == 5
 
 
 # ---------------------------------------------------------------------------
-# Требования, которым нет поля
+# Requirements with no field
 # ---------------------------------------------------------------------------
 
 GLUTEN_FREE = [("BAR-1", 1)]

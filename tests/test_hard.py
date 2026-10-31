@@ -1,4 +1,4 @@
-"""Трудный набор и симулятор пользователя — без сети."""
+"""The hard set and the user simulator, with no network."""
 
 from types import SimpleNamespace
 
@@ -13,8 +13,8 @@ from asasked.store.store import Store
 
 TASKS = {t.id: t for t in HARD}
 
-# Для каждой задачи: правильная покупка и покупка-ловушка (None — правильно
-# ничего не покупать). Если разметка разрешит ловушку, тест это поймает.
+# For each task: the right purchase and the trap purchase (None means the right
+# thing is to buy nothing). If the label allows the trap, the test catches it.
 CASES = {
     "hard-similar-babolat": ([("BAB-PUREDRIVE-438-BLU-BAS", 1)],
                              [("BAB-PUREAERO98-438-BLA-COU", 1)]),
@@ -79,7 +79,7 @@ def test_every_hard_task_has_a_persona():
 
 
 # ---------------------------------------------------------------------------
-# Симулятор пользователя
+# User simulator
 # ---------------------------------------------------------------------------
 
 

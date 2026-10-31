@@ -1,13 +1,13 @@
-"""Симулированный человек, который отвечает агенту на ask_user.
+"""A simulated person who answers the agent's ask_user.
 
-Одна заготовленная фраза на все вопросы ломает честные прогоны: агент,
-который просит «подтвердите покупку», получает в ответ «я новичок, до $100»
-и так и не получает «да». Здесь отвечает модель, которая знает полное
-намерение человека (persona) — включая то, что он не сказал вслух, — и
-отвечает по ситуации, как в tau-bench.
+One prepared phrase for every question breaks honest runs: an agent that asks
+"please confirm the purchase" gets "I'm a beginner, up to $100" in reply and
+never gets a "yes". Here a model answers that knows the person's full intent
+(persona), including what they did not say out loud, and answers depending
+on the situation, as in tau-bench.
 
-Симулятор — не судья: он не подсказывает агенту правильный товар и не
-говорит больше, чем спросили. Оценка по-прежнему идёт по разметке задачи.
+The simulator is not a judge: it does not hint the right item to the agent
+and says no more than it was asked. Scoring still goes by the task's label.
 """
 
 from __future__ import annotations
@@ -46,14 +46,14 @@ would. Rules:
   agent to do something you would not want."""
 
 
-# AnyModel иногда приклеивает к ответу служебный текст размышлений модели:
-# "<thinking_mode>enabled</thinking_mode> ... </thinking> Ответ".
+# AnyModel sometimes glues the model's service reasoning text to the reply:
+# "<thinking_mode>enabled</thinking_mode> ... </thinking> Answer".
 _THINKING_TAIL = re.compile(r"^.*</(?:thinking|thinking_mode|think)>", re.DOTALL)
 _TAG_LINE = re.compile(r"^\s*<[^>]+>.*?(?:</[^>]+>)?\s*$", re.MULTILINE)
 
 
 def clean_reply(text: str) -> str:
-    """Оставляет только то, что человек сказал агенту."""
+    """Keeps only what the person said to the agent."""
     text = _THINKING_TAIL.sub("", text)
     return _TAG_LINE.sub("", text).strip()
 
@@ -73,8 +73,8 @@ class SimulatedUser:
         client = anthropic.Anthropic(api_key=llm_extract.CLAUDE_API_KEY,
                                      base_url=llm_extract.CLAUDE_BASE_URL,
                                      max_retries=4, timeout=60.0)
-        # Вся переписка с агентом — чтобы на «а точно?» человек помнил,
-        # что уже отвечал.
+        # The whole exchange with the agent, so that on "are you sure?" the
+        # person remembers what they already answered.
         messages = []
         for turn in self.history:
             messages += [{"role": "user", "content": f"Agent: {turn['question']}"},

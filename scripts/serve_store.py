@@ -1,8 +1,8 @@
-"""Запуск песочницы-магазина по HTTP на localhost.
+"""Run the sandbox store over HTTP on localhost.
 
     python scripts/serve_store.py --port 8765
 
-Описание маршрутов — в asasked/store/http.py.
+The routes are described in asasked/store/http.py.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ def main() -> int:
     args = parser.parse_args()
 
     server = make_server(host=args.host, port=args.port)
-    print(f"Каталог {CATALOG_VERSION}: {len(CATALOG)} товаров. "
-          f"Магазин слушает http://{args.host}:{args.port}")
+    print(f"Catalog {CATALOG_VERSION}: {len(CATALOG)} products. "
+          f"The store is listening on http://{args.host}:{args.port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -1,15 +1,15 @@
-"""HTTP-обёртка над песочницей-магазином — для агентов, которые живут не в
-этом процессе (свой фреймворк, другой язык).
+"""An HTTP wrapper around the sandbox store, for agents that do not live in
+this process (their own framework, another language).
 
-    GET  /tools                          описание инструментов
+    GET  /tools                          tool descriptions
     POST /sessions                       {"mandate": {...}, "user_reply": "..."}
                                          -> {"session_id": ..., "tools": [...]}
     POST /sessions/<id>/call             {"tool": "search_products", "args": {...}}
-                                         -> результат инструмента
-    GET  /sessions/<id>/transcript       журнал вызовов и итоговый заказ
+                                         -> the tool's result
+    GET  /sessions/<id>/transcript       the call log and the final order
 
-Только стандартная библиотека. Слушает localhost: это песочница для прогонов,
-а не публичный сервис.
+Standard library only. Listens on localhost: this is a sandbox for runs, not
+a public service.
 """
 
 from __future__ import annotations
@@ -104,7 +104,7 @@ def make_handler(store: Store):
                 return None
             return self._send(404, {"error": "not found"})
 
-        def log_message(self, fmt, *args):  # тихо: журнал ведёт сама сессия
+        def log_message(self, fmt, *args):  # quiet: the session keeps its own log
             pass
 
     return Handler

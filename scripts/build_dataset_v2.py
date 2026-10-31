@@ -1,10 +1,10 @@
-"""Сборка датасета задач v2.
+"""Build task dataset v2.
 
-    python scripts/build_dataset_v2.py            # data/tasks_v2.jsonl + скрытая половина
-    python scripts/build_dataset_v2.py --open     # только открытая (без секретного числа)
+    python scripts/build_dataset_v2.py            # data/tasks_v2.jsonl + the hidden half
+    python scripts/build_dataset_v2.py --open     # the open half only (no secret number)
 
-Открытая половина собирается из числа, записанного в коде, скрытая — из
-секретного, которое лежит в HIDDEN_DIR/seed_v2.txt и в репозиторий не попадает.
+The open half is built from a number written in the code, the hidden one from
+a secret number that lives in HIDDEN_DIR/seed_v2.txt and never enters the repository.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from asasked.harness.dataset_v2 import build_v2, write_v2
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--open", action="store_true", help="только открытая половина")
+    parser.add_argument("--open", action="store_true", help="the open half only")
     args = parser.parse_args()
     tasks = build_v2(include_hidden=not args.open)
     for path in write_v2(tasks):

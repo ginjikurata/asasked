@@ -1,13 +1,13 @@
-"""Демонстрация режима «до покупки».
+"""Demo of the "before purchase" mode.
 
-Та же сверка (check_coherence), что и в run.py — только вызывается на
-этапе «агент вот-вот нажмёт купить», а не «уже купил». BLOCK-находки
-останавливают агента и требуют подтверждения человека; WARN — не
-останавливают, но остаются видны.
+The same check (check_coherence) as in run.py, only called at the moment
+"the agent is about to press buy" rather than "has already bought". BLOCK
+findings stop the agent and require the person's confirmation; WARN ones do
+not stop it but stay visible.
 
-Использует те же 8 сценариев из scenarios.py: там, где run.py показывает
-дыру постфактум («криптография довольна, человек — нет»), здесь показываем,
-что случилось бы, если агент спросил бы до, а не после.
+Uses the same 8 scenarios from scenarios.py: where run.py shows the gap after
+the fact ("the cryptography is satisfied, the person is not"), this shows what
+would have happened if the agent had asked before rather than after.
 """
 
 from __future__ import annotations
@@ -27,15 +27,15 @@ def show(title: str, request: str, decision) -> None:
     line("═")
     print(f"{B}{title}{X}")
     line("═")
-    print(f'{D}Человек:{X} «{request}»')
+    print(f'{D}Person:{X} "{request}"')
     if decision.action == ASK:
-        print(f"\n  {R}Агент останавливается перед покупкой:{X}")
+        print(f"\n  {R}The agent stops before buying:{X}")
         for reason in decision.reasons:
             print(f"    {Y}·{X} {reason.text}")
     else:
-        print(f"\n  {G}Агент продолжает без вопросов.{X}")
+        print(f"\n  {G}The agent goes on without questions.{X}")
         for note in decision.notes:
-            print(f"    {D}· (мягко, не останавливает) {note.text}{X}")
+            print(f"    {D}· (soft, does not stop) {note.text}{X}")
 
 
 def main() -> int:
@@ -52,7 +52,7 @@ def main() -> int:
         expected_ask = scn.expect in ("divergent", "vi_rejects")
         rows.append((scn.id, decision.action, expected_ask))
 
-    # доп. случай: мягкое расхождение не должно останавливать агента
+    # extra case: a soft mismatch must not stop the agent
     soft_request = ("Черные кроссовки, а вообще если только белые есть — "
                      "ну ладно, разница не принципиальная.")
     facts = extract_intent(soft_request)
@@ -60,24 +60,24 @@ def main() -> int:
         facts, [("ASI-GEL-44-WH", 1)], (10000, 15000),
         ["ASI-GEL-42-BK", "ASI-GEL-44-WH"],
     )
-    show("Доп. случай: мягкое расхождение не должно останавливать  [soft-demo]",
+    show("Extra case: a soft mismatch must not stop the agent  [soft-demo]",
          soft_request, decision)
     rows.append(("soft-demo", decision.action, False))
 
     print()
     line("═")
-    print(f"{B}Сводка{X}")
+    print(f"{B}Summary{X}")
     line("═")
-    print(f"{'сценарий':<16}{'решение':<14}{'ожидали спросить':<18}")
+    print(f"{'scenario':<16}{'decision':<14}{'expected to ask':<18}")
     line()
     ok = True
     for sid, action, expected_ask in rows:
         got_ask = action == ASK
-        mark = G + "верно" + X if got_ask == expected_ask else R + "разошлось" + X
+        mark = G + "right" + X if got_ask == expected_ask else R + "wrong" + X
         ok &= got_ask == expected_ask
-        print(f"{sid:<16}{action:<23}{('да' if expected_ask else 'нет'):<9}{mark}")
+        print(f"{sid:<16}{action:<23}{('yes' if expected_ask else 'no'):<9}{mark}")
     line()
-    print("\nОжидания сошлись:" if ok else "\nЕсть расхождения:", f"{G}да{X}" if ok else f"{R}нет{X}")
+    print("\nExpectations met:" if ok else "\nThere are mismatches:", f"{G}yes{X}" if ok else f"{R}no{X}")
     return 0 if ok else 1
 
 
