@@ -82,7 +82,7 @@ export default function Home() {
       <main id="top">
         {/* ── Hero ── */}
         {/* room above and below the intro: the field grows into those bands, across the column */}
-        <section id="hero" className="column pb-16 pt-24 md:pb-24 md:pt-32">
+        <section id="hero" className="column pb-4 pt-24 md:pb-6 md:pt-32">
           <div id="hero-copy">
           <p className="text-muted">Pre-checkout guard for AI shopping agents</p>
           <h1 className="mt-4 text-[44px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[64px]">
