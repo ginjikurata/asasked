@@ -711,10 +711,21 @@ def write_v2(tasks: list[dict]) -> list[Path]:
 
 
 def load_v2(split: str | None = None) -> list[Task]:
+    """Задачи v2. Скрытые задачи с тем же ответом, что у пилотной, не
+    считаются: пилоты пересобираются из открытого кода, так что ответ на них
+    известен. Скрытая половина собрана до того, как build_v2 стал исключать
+    пилоты, и таких в ней три; файл не пересобирается, чтобы не обесценить
+    уже сделанные прогоны."""
     name = f"tasks_{DATASET_V2_VERSION}.jsonl"
+    pilots = None
     out = []
     for s in ("open", "hidden"):
         path = d1.dir_of(s) / name
         if split in (None, s) and path.exists():
-            out += [to_task(json.loads(line)) for line in path.open(encoding="utf-8")]
+            rows = [json.loads(line) for line in path.open(encoding="utf-8")]
+            if s == "hidden":
+                pilots = pilots or {_answer(r) for r in build_pilot() + build_pilot2()
+                                    + build_pilot3()}
+                rows = [r for r in rows if _answer(r) not in pilots]
+            out += [to_task(r) for r in rows]
     return out

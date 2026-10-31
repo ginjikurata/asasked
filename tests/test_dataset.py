@@ -193,3 +193,15 @@ def test_v2_hidden_half_avoids_public_pilots(tmp_path, monkeypatch):
     hidden = [t for t in v2.build_v2() if t["split"] == "hidden"]
     pilots = v2.build_pilot() + v2.build_pilot2() + v2.build_pilot3()
     assert hidden and not {v2._answer(t) for t in hidden} & {v2._answer(t) for t in pilots}
+
+
+def test_v2_hidden_tasks_repeating_a_pilot_are_not_loaded(tmp_path, monkeypatch):
+    import json
+
+    from asasked.harness import dataset_v2 as v2
+    pilot, other = v2.build_pilot()[0], v2.build_v2(include_hidden=False)[0]
+    monkeypatch.setattr(dataset, "HIDDEN_DIR", tmp_path)
+    with (tmp_path / "tasks_v2.jsonl").open("w", encoding="utf-8") as f:
+        for row in (pilot, {**other, "split": "hidden"}):
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    assert [t.id for t in v2.load_v2("hidden")] == [other["id"]]
