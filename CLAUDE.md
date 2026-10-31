@@ -185,6 +185,12 @@ README.md           описание проекта на английском �
   issue #37 (2026-09-26) и комментарий с описанием стража и цифрами
   песочницы (2026-10-25). Ответов на 2026-10-31 нет. Новые комментарии
   туда — только после «да» владельца на точный текст.
+- ~~Пакет на PyPI~~ — опубликован 2026-10-31: `pip install asasked`,
+  текущая версия 0.1.1. Описание на PyPI — это README на момент выпуска;
+  правки README попадают туда только с новой версией. Новая версия:
+  поднять `version` в `pyproject.toml`, собрать (`python -m build`) в
+  `dist/`, проверить `twine check`. Загружает владелец сам, своим токеном
+  (`twine upload dist/*`); токены не вводить и не просить.
 
 ## Проверка 2026-09-26 (перед публикацией)
 
@@ -238,6 +244,7 @@ README.md           описание проекта на английском �
 - Этот проект: https://github.com/ginjikurata/asasked
   Вход в GitHub — через `gh` (аккаунт ginjikurata), git настроен через
   `gh auth setup-git`, так что `git push` работает без токенов.
+- Пакет: https://pypi.org/project/asasked/
 - Спецификация: https://github.com/agent-intent/verifiable-intent
 - Issue #15 (ответственность магазина): https://github.com/agent-intent/verifiable-intent/issues/15
 - Записка по проекту: https://claude.ai/code/artifact/86a001a9-4a7e-4766-9945-1a35a5dc96ff
