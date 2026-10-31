@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MARK_END, MARK_PATH } from "@/lib/mark";
 import { CONCORD_URL, GITHUB_URL, NAV, PYPI_URL, RELEASE_URL, STATUS, VERSION, VI_URL } from "@/lib/content";
 
 /** Link into the public repository. */
@@ -12,15 +13,12 @@ export function GitHubLink({ path = "", children }: { path?: string; children: R
 
 /** A tiny pixel mark: a cart's path ending in one red pixel. */
 function Mark() {
-  const px = [
-    [0, 0], [0, 1], [0, 2], [1, 2], [2, 2], [3, 2], [3, 1], [4, 1],
-  ];
   return (
     <svg viewBox="0 0 6 4" className="h-4 w-6" aria-hidden shapeRendering="crispEdges">
-      {px.map(([x, y]) => (
+      {MARK_PATH.map(([x, y]) => (
         <rect key={`${x}${y}`} x={x} y={y} width="1" height="1" className="fill-ink" />
       ))}
-      <rect x="5" y="0" width="1" height="1" className="fill-signal" />
+      <rect x={MARK_END[0]} y={MARK_END[1]} width="1" height="1" className="fill-signal" />
     </svg>
   );
 }

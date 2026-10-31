@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Inter_Tight } from "next/font/google";
 import { Footer, Header } from "@/components/Chrome";
 import { PixelField } from "@/components/PixelField";
 import { LAUNCHED, SITE_URL } from "@/lib/content";
+import { DESCRIPTION, HEADLINE, TITLE } from "@/lib/headline";
 import "./globals.css";
 
 const interTight = Inter_Tight({
@@ -17,17 +18,15 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
-const description =
-  "A pre-checkout guard for AI shopping agents: before payment, it checks the cart against what the person " +
-  "actually asked for and answers proceed or ask. Open library, sandbox store, benchmark and spec.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: "AsAsked — did the agent buy what you asked for?", template: "%s · AsAsked" },
-  description,
+  title: { default: TITLE, template: "%s · AsAsked" },
+  description: DESCRIPTION,
+  applicationName: "AsAsked",
   // indexed only once launched (LAUNCHED in lib/content.ts)
   robots: LAUNCHED ? undefined : { index: false, follow: false },
-  openGraph: { type: "website", url: SITE_URL, title: "AsAsked", description },
+  openGraph: { type: "website", siteName: "AsAsked", url: SITE_URL, title: HEADLINE, description: DESCRIPTION },
+  twitter: { card: "summary_large_image", title: HEADLINE, description: DESCRIPTION },
 };
 
 export const viewport: Viewport = {

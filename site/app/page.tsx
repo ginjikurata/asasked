@@ -6,6 +6,7 @@ import { HeroSlip } from "@/components/HeroSlip";
 import { LoadingGate } from "@/components/LoadingGate";
 import { ReprintButton } from "@/components/PixelField";
 import { RunGrid } from "@/components/RunGrid";
+import { HEADLINE, TAGLINE } from "@/lib/headline";
 import {
   GUARD_STEPS,
   LIMITATIONS,
@@ -84,9 +85,9 @@ export default function Home() {
         {/* room above and below the intro: the field grows into those bands, across the column */}
         <section id="hero" className="column pb-4 pt-24 md:pb-6 md:pt-32">
           <div id="hero-copy">
-          <p className="text-muted">Pre-checkout guard for AI shopping agents</p>
+          <p className="text-muted">{TAGLINE}</p>
           <h1 className="mt-4 text-[44px] font-bold leading-[1.02] tracking-[-0.03em] md:text-[64px]">
-            The agent stayed within its mandate. Did it buy what you asked&nbsp;for?
+            {HEADLINE}
           </h1>
           <p className="mt-7 text-[17px] leading-[1.65] md:text-lg">
             Verifiable Intent proves an agent kept to its formal limits: approved items, an amount in range, an allowed
