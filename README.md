@@ -34,6 +34,12 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
 - The cart is plain dicts; only `name` is required. A fact the person stated
   that the cart says nothing about (no `returnable`, no `delivery_days`) is
   not guessed: it lands in `notes` as "the order doesn't say".
+- Colours match by word, in English or Russian ("Triple Black", "Чёрный").
+  The first colour of a multi-colour item is its main one: "Black/White" is
+  black, "White/Black" is not. Sizes ignore the size system unless both
+  sides name one: "EU 42" is 42, "US 9" is not "EU 9".
+- `today` defaults to the machine's date. Pass it when the person's day
+  differs; deadlines like "by Friday" count from it.
 - A Verifiable Intent mandate is optional: `guard.check(cart, mandate)` adds
   its amount limits; without one, only the person's own words are checked.
 - Facts are extracted by every model you have a key for (`CLAUDE_API_KEY`,

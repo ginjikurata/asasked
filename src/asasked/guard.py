@@ -39,6 +39,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import functools
 import inspect
 import re
@@ -101,9 +102,18 @@ def _quoted(agent_text: str) -> str:
 _MARKS = re.compile(r"the\s+(person|agent)\s+(answered|added|asked)\s*:", re.IGNORECASE)
 
 
+def today_in_words() -> str:
+    """Сегодняшняя дата словами («Saturday, 31 October 2026»): от неё
+    считаются сроки вроде «к пятнице»."""
+    d = dt.date.today()
+    return f"{d:%A}, {d.day} {d:%B %Y}"
+
+
 @dataclass
 class Guard:
     request: str
+    # Сегодняшняя дата словами; по умолчанию — дата этой машины. Если день
+    # человека другой (часовой пояс), передайте его.
     today: str | None = None
     # Какие модели извлекают факты (gemini, anthropic, openai_compat); по
     # умолчанию — все, у которых задан ключ. Одна — тоже можно, но тогда
@@ -117,6 +127,10 @@ class Guard:
     _error: str = ""
     # Вопрос, который страж задал и на который человек ещё не ответил.
     _asked: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.today is None:
+            self.today = today_in_words()
 
     def facts(self) -> IntentFacts | None:
         """Факты извлекаются один раз на просьбу, а не на каждую проверку."""

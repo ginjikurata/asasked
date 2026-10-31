@@ -418,14 +418,61 @@ def _suits(product: dict, facts: IntentFacts) -> bool:
                    for f in _item_findings(product, facts, lambda _name: BLOCK))
 
 
-def _same(have: str, want: str) -> bool:
-    """Значение товара совпадает с названным человеком: без учёта регистра,
-    а цвет — по слову («Triple Black» — чёрный, «Light Gray» — серый)."""
-    have, want = have.strip().lower(), want.strip().lower()
-    if have == want:
-        return True
-    words = {"gray" if w == "grey" else w for w in re.findall(r"[a-z]+", have)}
-    return ("gray" if want == "grey" else want) in words
+# Русские названия цветов — по началу слова: «чёрная», «Черный», «чёрные».
+# Порядок важен: «серебристый» раньше «серого».
+_RU_COLORS = (("черн", "black"), ("бел", "white"), ("син", "blue"), ("голуб", "blue"),
+              ("желт", "yellow"), ("серебр", "silver"), ("красн", "red"), ("зелен", "green"),
+              ("сер", "grey"), ("розов", "pink"), ("коричн", "brown"), ("беж", "beige"),
+              ("оранж", "orange"), ("фиолет", "purple"))
+
+
+def _color_words(text: str) -> list[str]:
+    out = []
+    for w in re.findall(r"[^\W\d_]+", text.lower().replace("ё", "е")):
+        w = "grey" if w == "gray" else w
+        out.append(next((en for ru, en in _RU_COLORS if w.startswith(ru)), w))
+    return out
+
+
+def _color_match(have: str, want: str) -> str:
+    """Цвет товара против названного человеком: "yes", "second" или "no".
+
+    Совпадение по слову: «Triple Black» — чёрный, «Light Gray» — серый,
+    «Чёрный» — тоже чёрный. У многоцветного товара («White/Black») главный
+    цвет — первый: чёрный во второй части — это "second", не совпадение.
+    """
+    wanted = _color_words(want)
+    if not wanted:
+        return "no"
+    parts = [p for p in re.split(r"/|,|&|\+|\bwith\b|\band\b|\bи\b|\bс\b", have.lower()) if p.strip()]
+    for i, part in enumerate(parts):
+        if set(wanted) <= set(_color_words(part)):
+            return "yes" if i == 0 else "second"
+    return "no"
+
+
+# Системы размеров: «EU 42» и «42» — один размер, «US 9» и «EU 9» — разные.
+_SIZE_SYSTEMS = {"eu", "us", "uk", "fr", "it", "jp", "ru"}
+_SIZE_FILLER = {"size", "sz", "размер", "р"}
+_SIZE_WORDS = {"small": "s", "medium": "m", "large": "l"}
+
+
+def _size_parts(text: str) -> tuple[set, list]:
+    tokens = re.findall(r"\d+/\d+|\d+(?:\.\d+)?|[^\W\d_]+", text.lower().replace(",", "."))
+    systems = {t for t in tokens if t in _SIZE_SYSTEMS}
+    rest = [_SIZE_WORDS.get(t, t.removesuffix(".0")) for t in tokens
+            if t not in _SIZE_SYSTEMS and t not in _SIZE_FILLER]
+    return systems, rest
+
+
+def _same_size(have: str, want: str) -> bool:
+    """Размер товара совпадает с названным: «EU 42» = «42», «42,5» = «42.5»,
+    «Medium» = «M». Если система указана с обеих сторон, она тоже должна
+    совпасть."""
+    (have_sys, have_rest), (want_sys, want_rest) = _size_parts(have), _size_parts(want)
+    if have_sys and want_sys and have_sys != want_sys:
+        return False
+    return bool(want_rest) and have_rest == want_rest
 
 
 def _item_findings(product: dict, facts: IntentFacts, sev) -> list[Finding]:
@@ -466,16 +513,18 @@ def _item_findings(product: dict, facts: IntentFacts, sev) -> list[Finding]:
             f"Asked for the {facts.model}, the item is a different model: {name}.",
         ))
 
-    if (facts.color and not unknown("color", facts.color)
-            and not _same(product["color"], facts.color)):
-        out.append(Finding(
-            "color", sev("color"),
-            f"Asked for {facts.color}, the item is {product['color']}: {name}.",
-        ))
+    if facts.color and not unknown("color", facts.color):
+        match = _color_match(product["color"], facts.color)
+        if match != "yes":
+            second = f" ({facts.color} only as a second colour)" if match == "second" else ""
+            out.append(Finding(
+                "color", sev("color"),
+                f"Asked for {facts.color}, the item is {product['color']}{second}: {name}.",
+            ))
 
     # пустой размер — у товара размеров нет вовсе (банка мячей)
     if (facts.size_label and not unknown("size_label", f"size {facts.size_label}")
-            and product["size_label"] and not _same(product["size_label"], facts.size_label)):
+            and product["size_label"] and not _same_size(product["size_label"], facts.size_label)):
         out.append(Finding(
             "size", sev("size_label"),
             f"Asked for size {facts.size_label}, the item is size {product['size_label']}: {name}.",

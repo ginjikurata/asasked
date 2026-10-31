@@ -122,3 +122,47 @@ def test_extract_rejects_malformed_answer(monkeypatch, data):
     _fake_model(monkeypatch, data)
     with pytest.raises(ExtractionError):
         coherence.extract_intent("…")
+
+
+# ---------------------------------------------------------------------------
+# Совпадение цвета и размера
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("have, want, match", [
+    ("Triple Black", "black", "yes"),
+    ("Light Gray", "grey", "yes"),
+    ("Чёрный", "black", "yes"),
+    ("черные с белым", "black", "yes"),
+    ("Black/White", "black", "yes"),
+    ("White/Black", "black", "second"),
+    ("Белый с чёрным", "black", "second"),
+    ("Серебристый", "grey", "no"),
+    ("Midnight Blue", "black", "no"),
+])
+def test_color_match(have, want, match):
+    assert coherence._color_match(have, want) == match
+
+
+@pytest.mark.parametrize("have, want, same", [
+    ("EU 42", "42", True),
+    ("42,5", "42.5", True),
+    ("Размер 42", "42", True),
+    ("Medium", "M", True),
+    ("4 3/8", "4 3/8", True),
+    ("12R", "12r", True),
+    ("US 9", "EU 9", False),
+    ("43", "42", False),
+    ("4 1/4", "4 3/8", False),
+])
+def test_same_size(have, want, same):
+    assert coherence._same_size(have, want) is same
+
+
+def test_second_colour_is_asked_about():
+    item = {"sku": "S", "name": "Runner", "brand": "ASICS", "color": "White/Black",
+            "size_label": "EU 42", "price_cents": 100, "refundable": True, "ships_in_days": 1,
+            "level": "any", "category": "shoes", "units": 1}
+    verdict = check_coherence(IntentFacts(color="black", size_label="42"), [("S", 1)],
+                              (0, 10**9), find=lambda _sku: item)
+    assert [f.code for f in verdict.findings] == ["color"]
+    assert "only as a second colour" in verdict.findings[0].text

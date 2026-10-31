@@ -368,3 +368,9 @@ def test_too_many_lines_go_to_the_person():
     found = check_coherence(facts, [(W40, 1)] * 9, (100, 10**9), find=Store().find)
     assert [f.code for f in found.findings] == ["lines"]
     assert found.findings[0].severity == "block"
+
+
+def test_guard_knows_today_without_being_told():
+    from asasked.guard import today_in_words
+    assert Guard("shoes", extract=lambda _r: IntentFacts()).today == today_in_words()
+    assert Guard("shoes", today="Monday, 2 November 2026").today == "Monday, 2 November 2026"

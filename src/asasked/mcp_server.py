@@ -19,14 +19,13 @@ Guard прямо в нём (см. guard.py): там ответ человека 
 
 from __future__ import annotations
 
-import datetime as dt
 from collections import OrderedDict
 
 from pydantic import BaseModel, Field
 
 from mcp.server.mcpserver import MCPServer
 
-from .guard import Guard
+from .guard import Guard, today_in_words
 
 INSTRUCTIONS = """\
 Before paying for anything on a person's behalf, call check_order with their
@@ -76,11 +75,6 @@ _KEEP = 64
 EXTRACT = None
 
 
-def _today() -> str:
-    d = dt.date.today()
-    return f"{d:%A}, {d.day} {d:%B %Y}"
-
-
 def _guard(request: str, answers: list[Answer], today: str) -> Guard:
     key = (request, tuple((a.question, a.answer) for a in answers), today)
     if key in _guards:
@@ -110,7 +104,7 @@ def check_order(request: str, cart: list[CartItem], answers: list[Answer] | None
     Returns decision ("proceed" or "ask"), question (for the person, when
     asking), reasons and notes.
     """
-    guard = _guard(request, answers or [], today or _today())
+    guard = _guard(request, answers or [], today or today_in_words())
     result = guard.check([item.model_dump() for item in cart])
     return CheckResult(**{k: result[k] for k in ("decision", "question", "reasons", "notes")})
 
