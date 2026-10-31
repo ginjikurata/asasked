@@ -7,14 +7,15 @@ export const alt = TITLE;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Inter Tight, as on the site. Fetched once at build time; if Google Fonts is unreachable the
-// image still builds, in the default font.
+// Inter Tight, as on the site. Cached, so the image is rendered once at build time instead of on
+// every request; if Google Fonts is unreachable the image still builds, in the default font.
 const FONTS = [
   { weight: 400, url: "https://fonts.gstatic.com/s/intertight/v9/NGSnv5HMAFg6IuGlBNMjxJEL2VmU3NS7Z2mjDw-qXA.ttf" },
   { weight: 700, url: "https://fonts.gstatic.com/s/intertight/v9/NGSnv5HMAFg6IuGlBNMjxJEL2VmU3NS7Z2mj6AiqXA.ttf" },
 ] as const;
 
 async function loadFonts() {
+  "use cache";
   try {
     return await Promise.all(
       FONTS.map(async ({ weight, url }) => {
