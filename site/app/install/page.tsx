@@ -49,15 +49,12 @@ const CURSOR = `{
 }`;
 
 const VSCODE = `{
-  "inputs": [
-    {"type": "promptString", "id": "claude-key", "description": "Claude API key", "password": true}
-  ],
   "servers": {
     "asasked": {
       "type": "stdio",
       "command": "uvx",
       "args": [${SERVER}],
-      "env": {"CLAUDE_API_KEY": "\${input:claude-key}"}
+      "env": {"CLAUDE_API_KEY": "\${env:CLAUDE_API_KEY}"}
     }
   }
 }`;
@@ -191,8 +188,8 @@ const TABS: InstallTab[] = [
     content: (
       <>
         <p>
-          For Copilot agent mode: <code>.vscode/mcp.json</code> in a project. VS Code asks for the key the first time
-          the server starts and keeps it out of the file.
+          For Copilot agent mode: <code>.vscode/mcp.json</code> in a project. The key is read from your environment:
+          a server that prompts for it (<code>{"${input:...}"}</code>) is not passed on to Copilot agent sessions.
         </p>
         <CopyCode title=".vscode/mcp.json">{VSCODE}</CopyCode>
       </>

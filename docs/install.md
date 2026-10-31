@@ -133,20 +133,18 @@ appear, use the full path to `uvx` (see above); the logs are in
 
 ### VS Code (Copilot agent mode)
 
-`.vscode/mcp.json` in a project. VS Code asks for the key the first time
-the server starts and keeps it out of the file:
+`.vscode/mcp.json` in a project. The key is read from your environment:
+a server that prompts for it (`${input:...}`) is not passed on to Copilot
+agent sessions.
 
 ```json
 {
-  "inputs": [
-    {"type": "promptString", "id": "claude-key", "description": "Claude API key", "password": true}
-  ],
   "servers": {
     "asasked": {
       "type": "stdio",
       "command": "uvx",
       "args": ["--from", "asasked[mcp,anthropic]", "asasked-mcp"],
-      "env": {"CLAUDE_API_KEY": "${input:claude-key}"}
+      "env": {"CLAUDE_API_KEY": "${env:CLAUDE_API_KEY}"}
     }
   }
 }
