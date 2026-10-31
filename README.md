@@ -244,6 +244,7 @@ scripts/
   run.py                        8 scenarios, after the fact
   run_prepurchase.py            same scenarios, decided before checkout
   build_conformance_vectors.py  generates conformance_vectors.json
+  conformance_ts/               checks them with the TypeScript implementation (Node.js)
   store/                        the sandbox store: catalog_v1.py, store.py (tools), http.py
   harness/                      agent runs: tasks.py (labelled pilot and hard sets), agent.py
                                 (loop), user_sim.py (simulated person), run.py (scoring)
@@ -489,6 +490,21 @@ immediately.
 The signatures are real: they verify with a plain ECDSA implementation and no
 Mastercard SDK involved, which is exactly what a second implementation would
 do.
+
+`scripts/conformance_ts/` does that with the TypeScript library from #30
+([`verifiable-intent`](https://www.npmjs.com/package/verifiable-intent) 0.1.0
+on npm). It verifies each chain twice, as the payment network and as the
+merchant, checks the cart against the checkout constraints, and compares
+every verdict with `expected`. All 8 vectors match:
+
+```bash
+python scripts/build_conformance_vectors.py
+cd scripts/conformance_ts && npm install && npm run check
+```
+
+The library's `verifyChain` checks the payment constraints only; the cart is
+checked against `line_items` by the merchant with `checkConstraints`, as with
+the Mastercard SDK.
 
 ---
 

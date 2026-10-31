@@ -1,0 +1,12 @@
+{
+  "name": "asasked-conformance-ts",
+  "private": true,
+  "description": "Checks AsAsked's conformance vectors with an independent TypeScript implementation of Verifiable Intent.",
+  "type": "module",
+  "scripts": {
+    "check": "node check.mjs ../../conformance_vectors.json"
+  },
+  "dependencies": {
+    "verifiable-intent": "0.1.0"
+  }
+}
