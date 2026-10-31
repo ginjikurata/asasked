@@ -527,7 +527,9 @@ Read the numbers with these in mind:
 This repository works *on top of* Verifiable Intent and does not modify it. The
 spec is Apache 2.0 and is expected as a sibling checkout, not vendored here.
 
-Nothing here has been raised with the standard's authors yet. As of September
-2026, a search of every issue, pull request and comment in that repository
-finds none addressing the mismatch between stated intent and encoded
-constraints. The spec itself is unchanged since April 2026 (commit `356c296`).
+The question has been put to the standard in issue
+[#37](https://github.com/agent-intent/verifiable-intent/issues/37)
+(September 2026); as of 31 October 2026 it has no replies. Before it, a
+search of every issue, pull request and comment in that repository found
+none addressing the mismatch between stated intent and encoded constraints.
+The spec itself is unchanged since April 2026 (commit `356c296`).
