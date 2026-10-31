@@ -10,6 +10,11 @@ export const CHANGELOG: Day[] = [
     changes: [
       {
         area: "guard",
+        commit: "d467191",
+        text: "Version 0.1.2 on PyPI: code comments, docstrings and script output in English. The guard's behaviour is unchanged.",
+      },
+      {
+        area: "guard",
         commit: "662dfe0",
         text:
           "A requirement no fact field holds (\"gluten-free\", \"fits an iPhone 15\") is kept in the person's words instead of dropped. The model does not judge whether the item meets it: a must becomes a question to the person, a nice-to-have becomes a note.",

@@ -9,7 +9,7 @@ export const LAUNCHED = false;
 export const GITHUB_URL = "https://github.com/ginjikurata/asasked";
 
 /** The package on PyPI and its current release; the version is the one in pyproject.toml. */
-export const VERSION = "0.1.1";
+export const VERSION = "0.1.2";
 export const PYPI_URL = "https://pypi.org/project/asasked/";
 export const RELEASE_URL = `${GITHUB_URL}/releases/tag/v${VERSION}`;
 
