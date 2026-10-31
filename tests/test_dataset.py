@@ -12,6 +12,12 @@ from asasked.store.catalog_v1 import BY_SKU
 find = BY_SKU.__getitem__
 TASKS, _REJECTED = dataset.build()
 
+# Архив исходников с PyPI несёт только пакет и тесты, без data/ и scripts/.
+REPO = dataset.DATA_DIR.parent
+needs_repo = pytest.mark.skipif(
+    not (REPO / "data" / "tasks_v2.jsonl").exists() or not (REPO / "scripts").is_dir(),
+    reason="нужны data/ и scripts/ из репозитория")
+
 
 # ---------------------------------------------------------------------------
 # Формат разметки
@@ -100,6 +106,7 @@ def test_write_puts_each_half_in_its_own_folder(tmp_path, monkeypatch):
     assert dataset.rows("hidden") == [] and dataset.rows() == dataset.rows("open")
 
 
+@needs_repo
 def test_repository_holds_no_hidden_tasks():
     hidden = {t["id"] for t in TASKS if t["split"] == "hidden"}
     for path in dataset.DATA_DIR.iterdir():
@@ -108,6 +115,7 @@ def test_repository_holds_no_hidden_tasks():
             assert not [i for i in hidden if i in text], path.name
 
 
+@needs_repo
 def test_agreement(tmp_path, capsys):
     from importlib import util
     spec = util.spec_from_file_location("bd", dataset.DATA_DIR.parent / "scripts" / "build_dataset.py")
@@ -176,6 +184,7 @@ def test_v2_open_half_is_reproducible_and_disjoint_from_v1():
     assert len(set(answers)) == len(answers) and not v1 & set(answers)
 
 
+@needs_repo
 def test_v2_open_file_matches_generator():
     import json
 

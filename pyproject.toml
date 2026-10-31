@@ -23,6 +23,10 @@ openai-agents = ["openai-agents>=0.24"]
 langchain = ["langchain>=1.4"]
 review = ["openpyxl>=3.1"]
 
+[project.urls]
+Repository = "https://github.com/ginjikurata/asasked"
+Issues = "https://github.com/ginjikurata/asasked/issues"
+
 [project.scripts]
 asasked-mcp = "asasked.mcp_server:main"
 
