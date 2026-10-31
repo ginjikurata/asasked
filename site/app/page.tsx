@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { GitHubLink } from "@/components/Chrome";
 import { GuardDemo } from "@/components/GuardDemo";
 import { LiveTry } from "@/components/LiveTry";
@@ -100,9 +101,9 @@ export default function Home() {
             <a href="#try" className="rounded-full bg-ink px-5 py-2.5 text-[15px] font-medium text-paper hover:opacity-85">
               Try the guard
             </a>
-            <a href="#spec" className="text-[15px] font-medium hover:underline">
-              Spec →
-            </a>
+            <Link href="/install" className="text-[15px] font-medium hover:underline">
+              Install →
+            </Link>
           </div>
           <div className="mt-10 flex items-start justify-between gap-6">
             <p className="meta">
@@ -282,8 +283,10 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS",
               </span>
             </li>
             <li>
-              <GitHubLink path="/blob/main/docs/install.md">docs/install.md</GitHubLink>{" "}
-              <span className="text-faint">— MCP server and agent-app configs</span>
+              <Link href="/install" className="link">
+                asasked.dev/install
+              </Link>{" "}
+              <span className="text-faint">— setup for Claude Code, Cursor and other agents</span>
             </li>
           </ul>
         </Section>

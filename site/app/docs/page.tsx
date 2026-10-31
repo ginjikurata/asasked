@@ -167,8 +167,8 @@ export default function DocsPage() {
         </p>
         <Code>{MCP}</Code>
         <p>
-          Ready configs for Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI and Gemini CLI are in{" "}
-          <GitHubLink path="/blob/main/docs/install.md">docs/install.md</GitHubLink>.
+          Ready configs for Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI and Gemini CLI are on the{" "}
+          <Link href="/install">Install</Link> page.
         </p>
         <p>
           <strong>From source,</strong> to run the sandbox store and reproduce the benchmark (sections 5–7). Checkout

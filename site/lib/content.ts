@@ -20,6 +20,7 @@ export const VI_URL = "https://github.com/agent-intent/verifiable-intent";
 export const NAV = [
   { href: "/#try", label: "Try it" },
   { href: "/#benchmark", label: "Benchmark" },
+  { href: "/install", label: "Install" },
   { href: "/spec", label: "Spec" },
   { href: "/docs", label: "Docs" },
   { href: "/dataset", label: "Dataset" },
