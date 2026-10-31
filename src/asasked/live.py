@@ -123,6 +123,10 @@ def heard(facts: IntentFacts) -> list[dict]:
                  if _is_set(k, v)]
         out.append({"k": f"item {i}", "v": ", ".join(parts) or "one more item",
                     "soft": False, "disputed": "lines" in facts.disputed})
+    for text in facts.other:
+        out.append({"k": "also", "v": text, "soft": False, "disputed": "other" in facts.disputed})
+    for text in facts.other_optional:
+        out.append({"k": "also", "v": text, "soft": True, "disputed": False})
     return out
 
 

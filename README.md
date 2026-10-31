@@ -264,6 +264,21 @@ extracted facts the person themselves marked as non-binding. A mismatch on a
 soft field produces a warning instead of a block, and does not stop the agent.
 Softness on one field does not weaken the others.
 
+### Requirements no field holds
+
+The fact schema is closed: brand, colour, size, price, quantity, returns,
+delivery. "Gluten-free", "fits an iPhone 15", "not made in China" fit none of
+them, and a closed schema would drop them without a trace. So the model also
+returns `other_conditions`: such requirements in the person's own words, each
+marked required or optional by the same signals as `soft_fields`. The model
+never judges whether the cart meets them. The shop's data has nothing to
+check them against, so the checker asks the person about each required one
+and turns each optional one into a note. If only one of the models heard a
+condition, it becomes a note too. On the 77 stress phrases these appear only
+where the person really set such a condition ("not black or white", "no
+worse than HEAD"). Fallbacks the fields already hold ("43 if there's no 42")
+sometimes show up as optional, and those produce a note, not a stop.
+
 ### Before the purchase, not after
 
 `decide_before_purchase()` runs the same check while the agent is still

@@ -60,6 +60,13 @@ class IntentFacts:
     # словарь с полями из LINE_FIELDS, которые у этой позиции свои; остальное
     # общее и берётся с верхнего уровня.
     lines: tuple = ()
+    # Остальные требования человека — те, которым нет поля выше («без
+    # глютена», «подарочная упаковка»), его же словами. Сверить их с корзиной
+    # код не может, поэтому не молчит, а спрашивает: other — обязательные
+    # (BLOCK), other_optional — «по возможности» (WARN). Решать за человека,
+    # подходит ли товар, модели не поручается.
+    other: tuple = ()
+    other_optional: tuple = ()
 
 
 LINE_FIELDS = ("brand", "model", "color", "size_label", "quantity", "needs_refundable",
@@ -148,10 +155,31 @@ def _as_soft_set(value) -> frozenset:
         return frozenset()
     if not isinstance(value, list):
         raise ExtractionError(f"Поле soft_fields: ожидался список, получено {value!r}")
+    # Мягкость прочих условий задаётся в них самих (optional); модель иногда
+    # дублирует её сюда — это не ошибка извлечения.
+    value = [v for v in value if v != "other_conditions"]
     unknown = [v for v in value if v not in _SOFTENABLE_FIELDS]
     if unknown:
         raise ExtractionError(f"Поле soft_fields: неизвестные имена полей {unknown!r}")
     return frozenset(value)
+
+
+def _as_conditions(value) -> tuple[tuple, tuple]:
+    """other_conditions модели → (обязательные, по возможности), без повторов."""
+    if value is None:
+        return (), ()
+    if not isinstance(value, list):
+        raise ExtractionError(f"Поле other_conditions: ожидался список, получено {value!r}")
+    required, optional = [], []
+    for raw in value:
+        if not isinstance(raw, dict) or not isinstance(raw.get("text"), str):
+            raise ExtractionError(f"Поле other_conditions: ожидался объект с text, "
+                                  f"получено {raw!r}")
+        text = " ".join(raw["text"].split())
+        target = optional if raw.get("optional") else required
+        if text and text.lower() not in {t.lower() for t in required + optional}:
+            target.append(text)
+    return tuple(required), tuple(optional)
 
 
 def days_until(weekday: str | None, today: str | None) -> int | None:
@@ -196,6 +224,7 @@ def extract_intent(request: str, deadline_days: int | None = None,
     if counted is not None:
         model_deadline = counted
 
+    other, other_optional = _as_conditions(data.get("other_conditions"))
     return canonical(IntentFacts(
         raw=request,
         deadline_days=deadline_days if deadline_days is not None else model_deadline,
@@ -211,6 +240,8 @@ def extract_intent(request: str, deadline_days: int | None = None,
         needs_refundable=bool(data.get("needs_refundable", False)),
         soft=_as_soft_set(data.get("soft_fields")),
         lines=_as_lines(data.get("lines"), today),
+        other=other,
+        other_optional=other_optional,
     ))
 
 
@@ -271,6 +302,11 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
     soft — объединение: если хоть одна модель услышала, что человек сам
     снял жёсткость с требования, требование не блокирует покупку.
 
+    Прочие требования (other) — свободный текст, по словам его не сравнить:
+    берутся у модели, которая услышала их больше всего. Если хоть одна
+    модель не услышала ни одного — спор "other", требования предупреждают,
+    а не останавливают, как и любой спорный факт.
+
     Строки заказа: разошлись в деталях строк — спор "lines" и "lines.<поле>"
     для каждого поля, в котором разошлись (одна модель не назвала количество —
     спорно количество, а не модель, которую обе услышали одинаково); разошлись
@@ -318,8 +354,17 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
             merged.append({k: next(line[k] for line in group if line.get(k) is not None)
                            for k in keys if any(line.get(k) is not None for line in group)})
         lines = tuple(merged)
+    other = max((r.other for r in results), key=len)
+    if other and not all(r.other for r in results):
+        disputed.add("other")
+    optional = []
+    for r in results:
+        optional += [t for t in r.other_optional
+                     if t.lower() not in {o.lower() for o in other + tuple(optional)}]
     return IntentFacts(
         raw=first.raw,
+        other=other,
+        other_optional=tuple(optional),
         soft=frozenset().union(*(r.soft for r in results)),
         disputed=frozenset(disputed),
         lines=lines,
@@ -602,6 +647,17 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
                 "quantity", sev("quantity"),
                 f"Asked for {facts.quantity}, the order has {bought}.",
             ))
+
+    # требования без поля: код их не сверяет, но и не теряет — решает человек
+    for text in facts.other:
+        findings.append(Finding(
+            "other", sev("other"),
+            f"You asked for “{text}”; I can't check that from the order details.",
+        ))
+    for text in facts.other_optional:
+        findings.append(Finding(
+            "other", WARN, f"Wished for “{text}” if possible; not checked against the order.",
+        ))
 
     return Verdict(coherent=not any(f.severity == BLOCK for f in findings), findings=findings)
 

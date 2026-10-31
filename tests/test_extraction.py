@@ -199,11 +199,12 @@ def test_openai_compat_needs_config(monkeypatch):
 
 
 def test_schema_matches_intent_facts():
-    facts_fields = {f.name for f in fields(IntentFacts)} - {"raw", "soft", "disputed", "lines"}
+    facts_fields = {f.name for f in fields(IntentFacts)} - {"raw", "soft", "disputed", "lines",
+                                                             "other", "other_optional"}
     assert set(SOFTENABLE_FIELDS) == facts_fields
     # deadline_weekday — не факт, а сырьё: дни до него считает код (days_until)
-    assert set(RESPONSE_SCHEMA["properties"]) == facts_fields | {"lines", "soft_fields",
-                                                                 "deadline_weekday"}
+    assert set(RESPONSE_SCHEMA["properties"]) == facts_fields | {
+        "lines", "soft_fields", "deadline_weekday", "other_conditions"}
     assert set(RESPONSE_SCHEMA["required"]) == set(RESPONSE_SCHEMA["properties"])
 
 
@@ -265,3 +266,54 @@ def test_named_weekday_overrides_the_models_count(monkeypatch):
     assert facts.deadline_days == 2
     # без сегодняшней даты считать не от чего — остаётся оценка модели
     assert coherence.extract_intent("by Wednesday").deadline_days == 5
+
+
+# ---------------------------------------------------------------------------
+# Требования, которым нет поля
+# ---------------------------------------------------------------------------
+
+GLUTEN_FREE = [("BAR-1", 1)]
+
+
+def _one_item(_sku):
+    return {"sku": "BAR-1", "name": "Energy bar, 12 pack", "brand": None, "color": None,
+            "size_label": None, "level": None, "price_cents": 1200, "refundable": True,
+            "ships_in_days": 2, "units": 1}
+
+
+def test_requirement_without_a_field_is_asked_about_not_lost():
+    facts = IntentFacts(other=("gluten-free",), other_optional=("gift-wrapped",))
+    verdict = check_coherence(facts, GLUTEN_FREE, (0, 10**9), find=_one_item)
+    assert not verdict.coherent
+    assert [(f.code, f.severity) for f in verdict.findings] == [("other", BLOCK), ("other", WARN)]
+    assert "gluten-free" in verdict.findings[0].text
+    assert check_coherence(IntentFacts(), GLUTEN_FREE, (0, 10**9), find=_one_item).coherent
+
+
+def test_extraction_splits_required_and_optional_conditions(monkeypatch):
+    from asasked import coherence
+    monkeypatch.setattr(coherence, "call_model", lambda r, p=None, today=None: {
+        "other_conditions": [{"text": " gluten-free ", "optional": False},
+                             {"text": "Gluten-free", "optional": True},
+                             {"text": "gift-wrapped", "optional": True}]})
+    facts = coherence.extract_intent("…")
+    assert (facts.other, facts.other_optional) == (("gluten-free",), ("gift-wrapped",))
+    monkeypatch.setattr(coherence, "call_model", lambda r, p=None, today=None: {
+        "soft_fields": ["other_conditions"],
+        "other_conditions": [{"text": "gift-wrapped", "optional": True}]})
+    assert coherence.extract_intent("…").other_optional == ("gift-wrapped",)
+    monkeypatch.setattr(coherence, "call_model", lambda r, p=None, today=None: {
+        "other_conditions": ["gluten-free"]})
+    with pytest.raises(ExtractionError):
+        coherence.extract_intent("…")
+
+
+def test_requirement_heard_by_one_model_only_warns():
+    merged = merge_facts([IntentFacts(other=("gluten-free", "no nuts")), IntentFacts()])
+    assert merged.other == ("gluten-free", "no nuts") and "other" in merged.disputed
+    verdict = check_coherence(merged, GLUTEN_FREE, (0, 10**9), find=_one_item)
+    assert verdict.coherent and {f.severity for f in verdict.findings} == {WARN}
+    both = merge_facts([IntentFacts(other=("gluten-free",)),
+                        IntentFacts(other=("Gluten free",), other_optional=("gift-wrapped",))])
+    assert both.other == ("gluten-free",) and both.disputed == frozenset()
+    assert both.other_optional == ("gift-wrapped",)
