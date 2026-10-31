@@ -346,12 +346,12 @@ def _call_gemini(request: str, system: str = SYSTEM_PROMPT) -> dict:
 
 
 def _call_anthropic(request: str, system: str = SYSTEM_PROMPT) -> dict:
-    # SDK — необязательная зависимость: pip install -e ".[anthropic]".
+    # SDK — необязательная зависимость: pip install "asasked[anthropic]".
     # Без него остальной проект (и Gemini) работает как раньше.
     try:
         import anthropic
     except ImportError as e:
-        raise ExtractionError('Нет пакета anthropic: pip install -e ".[anthropic]"') from e
+        raise ExtractionError('Нет пакета anthropic: pip install "asasked[anthropic]"') from e
 
     # Повторы на 429/5xx и сетевые сбои SDK делает сам (max_retries).
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY, base_url=CLAUDE_BASE_URL,

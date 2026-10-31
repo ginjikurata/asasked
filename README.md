@@ -17,6 +17,10 @@ is measured in, and the original demonstration of the gap in the standard.
 
 ## The pre-checkout guard
 
+```bash
+pip install asasked
+```
+
 ```python
 from asasked import Guard
 
@@ -42,8 +46,8 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
   differs; deadlines like "by Friday" count from it.
 - A Verifiable Intent mandate is optional: `guard.check(cart, mandate)` adds
   its amount limits; without one, only the person's own words are checked.
-- Facts are extracted by every model you have a key for (`CLAUDE_API_KEY`,
-  `LLM_API_KEY` for Gemini, `OPENAI_COMPAT_*`), or by `Guard(...,
+- Facts are extracted by every model you have a key for (`CLAUDE_API_KEY`
+  with `asasked[anthropic]`, `LLM_API_KEY` for Gemini, `OPENAI_COMPAT_*`), or by `Guard(...,
   providers=("anthropic",))`. One model works; two are safer, because a fact
   they disagree on is visible. A disputed detail can only warn, never block.
   The exceptions lean towards asking: if either model heard a deadline, a
@@ -56,7 +60,7 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
   gets a `check_before_checkout` tool) and `enforced` (checkout holds the
   order until the agent has asked the person).
 
-**As an MCP server.** `pip install -e ".[mcp]"` adds `asasked-mcp` (stdio)
+**As an MCP server.** `pip install "asasked[mcp]"` adds `asasked-mcp` (stdio)
 with one tool, `check_order(request, cart, answers)`. Its instructions tell
 the agent to call it before paying. On *ask* the agent shows the person the
 question as it is, then checks again with their reply in `answers`. Facts
@@ -90,9 +94,9 @@ Hooks for popular agent frameworks are thin layers over the same gate:
 
 | Framework | Install | Hook |
 |---|---|---|
-| Claude Agent SDK | `.[claude-agent]` | `hooks={"PreToolUse": [checkout_hook(guard, cart, tool="mcp__shop__checkout")]}` from `asasked.integrations.claude_agent` |
-| OpenAI Agents SDK | `.[openai-agents]` | `@function_tool(tool_input_guardrails=[checkout_guardrail(guard, cart)])` from `asasked.integrations.openai_agents` |
-| LangChain 1.x | `.[langchain]` | `create_agent(..., middleware=[CheckoutGuard(guard, cart)])` from `asasked.integrations.langchain` |
+| Claude Agent SDK | `asasked[claude-agent]` | `hooks={"PreToolUse": [checkout_hook(guard, cart, tool="mcp__shop__checkout")]}` from `asasked.integrations.claude_agent` |
+| OpenAI Agents SDK | `asasked[openai-agents]` | `@function_tool(tool_input_guardrails=[checkout_guardrail(guard, cart)])` from `asasked.integrations.openai_agents` |
+| LangChain 1.x | `asasked[langchain]` | `create_agent(..., middleware=[CheckoutGuard(guard, cart)])` from `asasked.integrations.langchain` |
 
 The benchmark runs the same agent with and without the guard and reports
 what the guard **caught**, what it **missed**, and how often it **stopped a
