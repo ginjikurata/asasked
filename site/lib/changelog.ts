@@ -11,6 +11,11 @@ export const CHANGELOG: Day[] = [
       {
         area: "benchmark",
         text:
+          "The simulated person in the three-item tasks of v2 is now told the third item is a racket bag. Before, its brief said only \"one HEAD Tour Team\", it took that for a racket, and in two runs it approved a cart without the bag. Only the simulator's brief changed; the request, the label and the task ids did not. The published runs predate this.",
+      },
+      {
+        area: "benchmark",
+        text:
           "Benchmark re-run with version 0.1.3 on the open halves (v1: 100 tasks, v2: 50), logs published in data/runs/. On v1 models bought wrong once in 500 runs without the guard and never with it; the guard stopped 9 right carts in 460 checks. On v2 wrong purchases fell from 9 of 250 to 3; the guard caught 11 wrong carts, missed none and stopped 12 right ones in 254 checks. The 3 left were carts the guard stopped and the simulated person approved. 445 v1 runs that failed on the network were run again.",
       },
     ],

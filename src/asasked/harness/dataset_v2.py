@@ -525,7 +525,8 @@ def t_bundle_three(rng):
                     "bundle-three", request,
                     f"One order from one shop, arriving by {day} ({DAYS[day]} days): {rb} {rm} "
                     f"racket, grip {size}, any colour; one can (3 balls) of {bb} {bm}; one "
-                    f"{gb} {gm}, any colour. If no shop has all three in time, ask.",
+                    f"{gb} {gm}{'' if gm.endswith('Bag') else ' racket bag'}, any size and "
+                    "colour. If no shop has all three in time, ask.",
                     ("racket", "balls", "bag"),
                     {"deadline_days": DAYS[day],
                      "lines": [{"model": rm, "size_label": size, "quantity": 1},

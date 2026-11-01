@@ -479,7 +479,10 @@ Wrong purchases fell from 9 of 250 to 3 of 250. The guard caught 11 wrong
 carts and missed none. Each of the 3 wrong purchases left with the guard on
 was stopped by it: the agent asked, and the simulated person approved a
 substitution or a missing item. That is a weakness of the simulator, not a
-pass by the guard, but a real person can say yes to the wrong thing too. The
+pass by the guard, but a real person can say yes to the wrong thing too. In
+two of the three, the simulator's brief said "one HEAD Tour Team" without
+saying it is a bag, and the simulator took it for a racket; since 1 November
+2026, after these runs, the brief names the bag. The
 cost: in 12 of 254 checks the guard stopped a right cart, and the agent had
 to ask the person one extra question. With the guard on, 5 of 250 runs ended
 with nothing bought, the same as without it.
