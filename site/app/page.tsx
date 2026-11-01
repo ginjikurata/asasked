@@ -108,7 +108,7 @@ export default function Home() {
           <div className="mt-10 flex items-start justify-between gap-6">
             <p className="meta">
               {STORE.products} products · {STORE.tasks} labelled tasks · {STORE.templates} trap templates · baseline
-              agent: {n.wrongWithout} wrong purchases without the guard, {n.wrongWith} with it
+              agent on the open {n.tasks}: {n.wrongWithout} wrong purchases without the guard, {n.wrongWith} with it
             </p>
             <ReprintButton />
           </div>
@@ -209,33 +209,33 @@ export default function Home() {
             tasks. Agents are scored against the human label, never against the guard. Each agent did every task once
             without the guard and once with it; runs of {RESULTS.runDates}.
           </p>
-          <p className="meta">baseline agent: buys the first search result · one square per task, all {n.tasks}</p>
+          <p className="meta">baseline agent: buys the first search result · one square per task, the open {n.tasks}</p>
           <div className="receipt grid gap-8 p-5 pb-8 md:grid-cols-2">
             <RunGrid total={n.tasks} wrong={n.wrongWithout} title="No guard" />
-            <RunGrid total={n.tasks} wrong={n.wrongWith} stopped={n.caught} title="With the guard" />
+            <RunGrid total={n.tasks} wrong={n.wrongWith} stopped={n.caught - n.approvedAfterStop} title="With the guard" />
           </div>
           <p className="meta">
-            ■ wrong purchase paid · □ wrong cart stopped before payment ({n.caught}) · right purchases stopped for
-            nothing: {n.falseStops}. Every wrong purchase passed Verifiable Intent.
+            ■ wrong purchase paid · □ wrong cart stopped before payment ({n.caught}; the simulated person then approved{" "}
+            {n.approvedAfterStop} of them) · right purchases stopped for nothing: {n.falseStops}. Every wrong purchase
+            passed Verifiable Intent.
           </p>
           <p>
-            Real models rarely fell into v1&apos;s traps: 4 wrong purchases in 1,000 without the guard and 4 with it.
-            Their usual failure is giving up, which the guard does not address. Across {RESULTS.v1Checks.checks} checks
-            on their carts the guard caught {RESULTS.v1Checks.caught} wrong cart, missed {RESULTS.v1Checks.missed} and
-            stopped {RESULTS.v1Checks.falseStops} right ones.
+            Real models almost never fell into v1&apos;s traps: 1 wrong purchase in 500 without the guard, 0 with it.
+            Across {RESULTS.v1Checks.checks} checks on their carts the guard caught {RESULTS.v1Checks.caught} wrong
+            cart, missed {RESULTS.v1Checks.missed} and stopped {RESULTS.v1Checks.falseStops} right ones.
           </p>
-          <ModelTable title={`Dataset v1, all ${STORE.tasks} tasks`} rows={RESULTS.v1} />
+          <ModelTable title={`Dataset v1, open half, ${n.tasks} tasks`} rows={RESULTS.v1} />
           <p>
-            On v2, wrong purchases fell from 12 of 250 to 1 of 250, almost all of them nemotron&apos;s. The guard caught{" "}
-            {RESULTS.v2Checks.caught} wrong carts and missed {RESULTS.v2Checks.missed}; the rest of the change is the
-            difference between two single runs. The cost: in {RESULTS.v2Checks.falseStops} of{" "}
+            On v2, wrong purchases fell from 9 of 250 to 3 of 250. The guard caught {RESULTS.v2Checks.caught} wrong
+            carts and missed {RESULTS.v2Checks.missed}; each of the 3 left was a cart it stopped and the simulated
+            person then approved. The cost: in {RESULTS.v2Checks.falseStops} of{" "}
             {RESULTS.v2Checks.checks} checks it stopped a right cart, and the agent had to ask the person one extra
             question. v2&apos;s templates were chosen where the guard has something to catch.
           </p>
           <ModelTable title={`Dataset v2, open half, ${STORE.v2Open} tasks`} rows={RESULTS.v2} />
           <p className="meta">
-            The runs predate the guard changes of 31 October 2026 and have not been repeated since. The run logs are
-            not published yet.
+            AsAsked 0.1.3, open halves only. The run logs are in the repository, in data/runs/, with the script that
+            computes these tables (scripts/summarize_runs.py).
           </p>
         </Section>
 

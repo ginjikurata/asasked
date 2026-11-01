@@ -420,52 +420,79 @@ Each agent did every task twice: guard off, and guard on with checkout
 asking it first (`--guard both`, the guard extracting facts with models, as in
 normal use). One run per task, scored against the labels. "Wrong" means the
 payment went through and VI accepted it, but the purchase was not what the
-person asked for. These runs date from 26 and 30 October 2026, before the
-guard changes of 31 October (requirements no field holds, stricter colour
-and size matching), and have not been repeated since. The run logs are not
-published yet.
+person asked for. The runs are from 31 October to 1 November 2026, with
+AsAsked 0.1.3, on the open halves of both datasets only.
 
-**Dataset v1, all 200 tasks** (off → on):
+**The run logs are published:** `data/runs/v1-open-0.1.3.jsonl.gz` and
+`data/runs/v2-open-0.1.3.jsonl.gz`, one JSON line per run with the request,
+the full tool-call transcript, the order, the score and every guard check.
+The tables below are computed from them:
+
+```bash
+python scripts/summarize_runs.py data/runs/v1-open-0.1.3.jsonl.gz --markdown
+python scripts/summarize_runs.py data/runs/v2-open-0.1.3.jsonl.gz --markdown
+```
+
+In the v1 run 445 runs of 1,200 failed on the network (the machine lost its
+connection), all of minimax-m3 and nemotron-3.5-lightning and 45 of
+deepseek-v4-flash. They were run again, and the v1 log holds the new run in
+place of each failed one; failed runs were replaced whatever their task, not
+chosen by result. No run in either log is an error.
+
+**Dataset v1, open half, 100 tasks** (off → on):
 
 | Agent | As asked | Wrong, VI passed | Bought nothing, should have |
 |---|---|---|---|
-| naive (first search result) | 1 → 16 | 198 → 11 | 1 → 173 |
-| claude-sonnet-5 | 199 → 198 | 1 → 1 | 0 → 1 |
-| deepseek-v4-flash | 195 → 197 | 0 → 0 | 5 → 3 |
-| gpt-6-sol | 187 → 184 | 1 → 1 | 12 → 15 |
-| minimax-m3 | 145 → 152 | 0 → 1 | 55 → 47 |
-| nemotron-3.5-lightning | 165 → 159 | 2 → 1 | 33 → 40 |
+| naive (first search result) | 1 → 9 | 99 → 3 | 0 → 88 |
+| claude-sonnet-5 | 100 → 100 | 0 → 0 | 0 → 0 |
+| deepseek-v4-flash | 100 → 100 | 0 → 0 | 0 → 0 |
+| gpt-6-sol | 100 → 99 | 0 → 0 | 0 → 1 |
+| minimax-m3 | 100 → 100 | 0 → 0 | 0 → 0 |
+| nemotron-3.5-lightning | 95 → 95 | 1 → 0 | 4 → 5 |
 
-The naive agent buys the trap almost every time; the guard stopped 187 of
-its 200 carts, let 12 wrong ones through and stopped no right one. The naive
-agent cannot answer a question, so a stop leaves it with nothing bought.
-Real models rarely fell into v1's traps: 4 wrong purchases in 1,000 without
-the guard and 4 with it. Their failures are giving up, which the guard does
-not address. Across 821 checks on the models' carts the guard caught 1 wrong
-cart, missed 3 and stopped 5 right ones.
+The naive agent buys the trap almost every time. The guard stopped 98 of
+its 99 wrong carts and missed 1. The naive agent passes the guard's question
+on to the person; twice the simulated person said yes to a wrong cart (it
+took "a can of 3 balls" for the four cans it wanted), so 3 wrong purchases
+went through. Real models almost never fell into v1's traps: 1 wrong
+purchase in 500 without the guard, 0 with it. Across 460 checks on their
+carts the guard caught that 1 wrong cart, missed none and stopped 9 right
+ones.
 
-**Dataset v2, open half, 50 tasks** (off → on). v1 did not tell the models
+**Dataset v2, open half, 50 tasks** (off → on). v1 does not tell the models
 apart, so v2 keeps only trap templates in which strong models made mistakes
 in a pilot (7 templates: corrections mid-request, an event deadline, three
 items from one merchant, cheapest-but-returnable, a brand exclusion, two
 items, deadlines in Russian). The templates were chosen where the guard has
 something to catch; read the numbers with that in mind. The open half is
-`data/tasks_v2.jsonl`; the hidden half was run too and is not reported here.
+`data/tasks_v2.jsonl`; the hidden half is not reported here.
 
 | Agent | As asked | Wrong, VI passed | Bought nothing, should have |
 |---|---|---|---|
-| claude-sonnet-5 | 49 → 50 | 1 → 0 | 0 → 0 |
-| deepseek-v4-flash | 49 → 50 | 1 → 0 | 0 → 0 |
-| gpt-6-sol | 50 → 48 | 0 → 0 | 0 → 2 |
+| claude-sonnet-5 | 48 → 48 | 2 → 1 | 0 → 1 |
+| deepseek-v4-flash | 49 → 49 | 0 → 1 | 1 → 0 |
+| gpt-6-sol | 50 → 50 | 0 → 0 | 0 → 0 |
 | minimax-m3 | 50 → 50 | 0 → 0 | 0 → 0 |
-| nemotron-3.5-lightning | 38 → 48 | 10 → 1 | 2 → 1 |
+| nemotron-3.5-lightning | 39 → 45 | 7 → 1 | 4 → 4 |
 
-Wrong purchases fell from 12 of 250 to 1 of 250, almost all of them
-nemotron's. The guard itself caught 5 wrong carts and missed 1; the rest of
-nemotron's change is the difference between two single runs. The cost: in 19
-of 255 checks the guard stopped a right cart and the agent had to ask the
-person. Such a stop costs one extra question; with the guard on, 3 of 250
-runs ended with nothing bought, against 2 without.
+Wrong purchases fell from 9 of 250 to 3 of 250. The guard caught 11 wrong
+carts and missed none. Each of the 3 wrong purchases left with the guard on
+was stopped by it: the agent asked, and the simulated person approved a
+substitution or a missing item. That is a weakness of the simulator, not a
+pass by the guard, but a real person can say yes to the wrong thing too. The
+cost: in 12 of 254 checks the guard stopped a right cart, and the agent had
+to ask the person one extra question. With the guard on, 5 of 250 runs ended
+with nothing bought, the same as without it.
+
+**Compared with the earlier runs.** The first results, from runs of 26–30
+October 2026 before the guard changes of 31 October, had on the same open
+halves: on v1, models bought wrong 1 time in 500 with and without the guard
+(1 missed, 3 right carts stopped in 403 checks) and gave up far more often
+(minimax-m3 29 of 100 without the guard, gpt-6-sol 6); that v1 run predates
+the three test-bench fixes of 27 October. On v2, wrong purchases fell from
+12 to 1 of 250, with 5 caught, 1 missed and 19 right carts stopped in 255
+checks. The logs of those runs are not published; their numbers are given
+here only for comparison.
 
 ---
 
@@ -538,11 +565,17 @@ Read the numbers with these in mind:
 - **The agent benchmark is small and was run once.** Each agent did each task
   once with the guard and once without, so a difference of one or two tasks
   is noise. Labels have a single reviewer, the person answering questions is
-  a model, and v2's templates were chosen where models make mistakes. The
-  runs predate the guard changes of 31 October 2026.
-- **On v1, the guard did not help real models**: they bought wrong 4 times
-  in 1,000 with or without it. The clear effect is on a naive agent and on
+  a model, and v2's templates were chosen where models make mistakes. Only
+  the open halves are reported.
+- **On v1, the guard has little to do for real models**: they bought wrong
+  once in 500 runs without it. The clear effect is on a naive agent and on
   one weaker model in v2.
+- **The simulated person can approve a wrong cart.** All wrong purchases
+  with the guard on in v2, and two of the naive agent's in v1, were carts the
+  guard stopped and the simulated person then said yes to.
+- **The public history starts on 31 October 2026.** The project was
+  developed in a private repository before that; commit ids older than this
+  repository, as in the site's changelog, come from that history.
 - **This is a prototype.** It is packaged and the deterministic half is
   covered by tests (`pytest`, no model or network needed), but there is no
   public API yet.

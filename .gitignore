@@ -7,7 +7,7 @@ conformance_vectors.json
 .venv/
 *.egg-info/
 .pytest_cache/
-runs/
+/runs/
 .DS_Store
 ~$*
 dist/
