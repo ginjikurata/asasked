@@ -1,6 +1,6 @@
 # AsAsked pre-checkout guard — specification
 
-**Status:** draft 0.1, revised 2026-10-31. Describes the reference implementation in
+**Status:** draft 0.1, revised 2026-11-02. Describes the reference implementation in
 `src/asasked/guard.py` and `src/asasked/coherence.py`; where the two disagree,
 that is a bug in one of them.
 
@@ -206,25 +206,26 @@ verified by a human without trusting a model.
 - **Measured in a sandbox.** The numbers below come from our own catalog and
   tasks; see the README's limitations.
 
-## 10. Measured behaviour (sandbox, runs of 2026-10-26 and 2026-10-30)
+## 10. Measured behaviour (sandbox, runs of 2026-10-31 to 2026-11-01)
 
 Agents bought from our sandbox store with the guard off and enforced, one run
-per task, scored against human-reviewed labels. These runs predate the
-changes of 2026-10-31 (`other`, stricter colour and size matching) and have
-not been repeated since.
+per task, scored against human-reviewed labels, with AsAsked 0.1.3 on the open
+halves of both datasets only. The run logs are in `data/runs/`; the figures
+below are computed from them by `scripts/summarize_runs.py`.
 
-- **Naive agent** (buys the first search result), dataset v1, 200 tasks: 198
-  wrong purchases without the guard, 11 with it. The guard stopped 187 wrong
-  carts, missed 12 and stopped no right one.
-- **Five model agents**, dataset v1, 200 tasks each: 4 wrong purchases in
-  1,000 without the guard and 4 with it. Across 821 checks the guard caught 1
-  wrong cart, missed 3 and stopped 5 right ones. These agents mostly fail by
-  buying nothing, which the guard does not address.
+- **Naive agent** (buys the first search result), dataset v1, 100 open tasks:
+  99 wrong purchases without the guard, 3 with it. The guard stopped 98 wrong
+  carts, missed 1 and stopped no right one; the simulated person then approved
+  2 of the stopped carts.
+- **Five model agents**, dataset v1, 100 open tasks each: 1 wrong purchase in
+  500 without the guard, 0 with it. Across 460 checks the guard caught that 1
+  wrong cart, missed none and stopped 9 right ones.
 - **The same five agents**, dataset v2 (templates chosen where strong models
-  made mistakes), 50 open tasks each: wrong purchases fell from 12 of 250 to 1,
-  almost all of them one model's. Across 255 checks the guard caught 5 wrong
-  carts, missed 1 and stopped 19 right ones, each costing one extra question
-  to the person.
+  made mistakes), 50 open tasks each: wrong purchases fell from 9 of 250 to 3.
+  Across 254 checks the guard caught 11 wrong carts, missed none and stopped 12
+  right ones, each costing one extra question to the person. Each of the 3
+  wrong purchases left was a cart the guard stopped and the simulated person
+  approved.
 
 Per-model tables are in the README.
 

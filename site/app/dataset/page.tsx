@@ -14,7 +14,8 @@ export default function DatasetPage() {
     <main>
       <PageHead kicker="Dataset v1" title="What people ask, and what would be right to buy">
         <p className="text-muted">
-          {STORE.tasks} tasks from {STORE.templates} trap templates over the sandbox catalog. Each has a request in a
+          {STORE.tasks} tasks from {STORE.templates} trap templates over the sandbox catalog: the 12 kinds of trap in the
+          filter below, plus Russian versions of two of them (returnable variant and deadline), counted as one more. Each has a request in a
           person&apos;s words, a label saying which purchase is right (or that buying nothing is), and at least one
           trap the payment mandate would let through. Here is the open half; ten of its tasks are in Russian. The other{" "}
           {STORE.hidden} are kept out of the repository, but the generator&apos;s seed is in it, so anyone can rebuild

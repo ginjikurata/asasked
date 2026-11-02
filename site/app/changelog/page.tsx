@@ -17,8 +17,8 @@ export default function ChangelogPage() {
           affected, the entry says so.
         </p>
         <p className="text-muted">
-          The public repository starts on 31 October 2026. The commit ids below come from the development history
-          before it, so they are not in the repository.
+          The public repository starts on 31 October 2026. Commit ids from that day on are in it; earlier ones come
+          from the private development history before it.
         </p>
       </PageHead>
       <div className="column space-y-14">

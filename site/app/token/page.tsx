@@ -7,6 +7,13 @@ export const metadata: Metadata = {
   title: "Token",
   description: `$${TOKEN.ticker}, a meme token for AsAsked: what it is, what it is not, and where creator fees go.`,
   alternates: { canonical: "/token" },
+  openGraph: {
+    type: "website",
+    siteName: "AsAsked",
+    url: "/token",
+    title: `The AsAsked token ($${TOKEN.ticker})`,
+    description: `$${TOKEN.ticker}, a meme token on pump.fun that pays for work on AsAsked. The code stays free and open.`,
+  },
 };
 
 /** Shown where a fact is not known yet. */
