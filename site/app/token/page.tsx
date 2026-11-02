@@ -13,6 +13,14 @@ export const metadata: Metadata = {
     url: "/token",
     title: `The AsAsked token ($${TOKEN.ticker})`,
     description: `$${TOKEN.ticker}, a token on pump.fun that pays for work on AsAsked. The code stays free and open.`,
+    // A page-level openGraph replaces the root one, image included, so the site image is named again here.
+    images: ["/opengraph-image"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `The AsAsked token ($${TOKEN.ticker})`,
+    description: `$${TOKEN.ticker}, a token on pump.fun that pays for work on AsAsked. The code stays free and open.`,
+    images: ["/opengraph-image"],
   },
 };
 
