@@ -38,7 +38,7 @@ export const TOKEN = {
   name: "AsAsked",
   ticker: "ASASKED",
   launched: true,
-  address: null as string | null,
+  address: "BPrLWAsozpkAQ4HTE8k2MdK3YNjBYyo38ruSCcENpump" as string | null,
   x: "https://x.com/asaskedconcord" as string | null,
   spending: [
     "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site.",
