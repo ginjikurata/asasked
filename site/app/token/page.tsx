@@ -44,6 +44,21 @@ export default function TokenPage() {
           runs, and is the one with this address, on this page:
         </p>
         <p className="font-mono break-all">{TOKEN.address ?? <Missing>not launched yet</Missing>}</p>
+        {TOKEN.address && (
+          <ul>
+            <li>
+              <a href={`https://pump.fun/coin/${TOKEN.address}`}>pump.fun</a>
+            </li>
+            <li>
+              <a href={`https://dexscreener.com/solana/${TOKEN.address}`}>DEX Screener</a>
+            </li>
+            {TOKEN.x && (
+              <li>
+                <a href={TOKEN.x}>X</a>
+              </li>
+            )}
+          </ul>
+        )}
         <p>
           If an address anywhere else differs from this one, it is not ours. If you see a fake, tell us at{" "}
           <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a>.
