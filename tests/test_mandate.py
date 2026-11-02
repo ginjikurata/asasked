@@ -206,3 +206,17 @@ def test_a_disputed_fact_is_not_blamed_on_the_agent():
     assert retelling_differences(signed, IntentFacts(color="white")) == []
     assert retelling_differences(IntentFacts(other=("gluten-free",)), IntentFacts())[0].text \
         .count("other requirements differ") == 1
+
+
+def test_the_reworded_demo_is_caught_only_from_the_mandate():
+    import importlib.util
+    import pathlib
+    path = pathlib.Path(__file__).parent.parent / "scripts" / "demo_reworded.py"
+    spec = importlib.util.spec_from_file_location("demo_reworded", path)
+    demo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(demo)
+    for task in demo.TASKS:
+        placed = {name: bool((s := demo.run(task, g)).order and s.order.placed)
+                  for name, g in demo.guards(task).items()}
+        control = task is demo.TASKS[-1]
+        assert placed == {"on the agent's words": True, "from the signed mandate": control}

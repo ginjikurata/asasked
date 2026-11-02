@@ -262,6 +262,7 @@ scripts/
                                 (loop), user_sim.py (simulated person), run.py (scoring)
 scripts/run_agents.py           real models shop in the store, results to runs/*.jsonl
 scripts/demo_store.py           a naive agent in the store, no model needed
+scripts/demo_reworded.py        an agent that retells the request; the signed mandate catches it
 scripts/serve_store.py          the store over HTTP
 tests/                          the deterministic check, VI chain, store; no model needed
 ```
@@ -341,6 +342,7 @@ sandbox store an agent drives through tools: `search_products`, `get_product`,
 
 ```bash
 python scripts/demo_store.py        # a naive agent: VI passes, the purchase is wrong
+python scripts/demo_reworded.py     # the agent drops "black" and "returnable" when it retells the request
 python scripts/serve_store.py       # the same store over HTTP on localhost
 ```
 
