@@ -87,8 +87,13 @@ export default function TokenPage() {
           <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a>.
         </p>
         <p>
-          The token is launched by Ginji Kurata, who does not buy it. The creator wallet that receives the fees is
-          shown on the token&apos;s pump.fun page, so anyone can check what comes in and goes out.
+          The token is launched by Ginji Kurata, who holds none of it: all 353,134 tokens in his wallet were sent to
+          the Solana incinerator address and cannot be recovered (
+          <a href="https://solscan.io/tx/4TJQnu2uQNtZMFqHGh3madvBS3ERbkBwuwmSG7jMmiHH8qaUevzsCVbF5mGFLp6XnJG74SSbCMVxQCwhkWseHUBc">
+            transaction
+          </a>
+          ). The creator wallet that receives the fees is shown on the token&apos;s pump.fun page, so anyone can check
+          what comes in and goes out.
         </p>
 
         <h2 id="spending"><a href="#spending">Where the money goes</a></h2>
