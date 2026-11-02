@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHead } from "@/components/PageHead";
-import { CONCORD_URL, OPERATOR } from "@/lib/content";
+import { CONCORD_URL, OPERATOR, TOKEN } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Legal notice",
@@ -13,14 +13,19 @@ export default function LegalPage() {
   return (
     <main>
       <PageHead kicker={`Legal · last updated ${OPERATOR.updated}`} title="Legal notice">
-        <p className="text-muted">Who runs this site and how to reach them. It sells nothing and offers no contracts.</p>
+        <p className="text-muted">Who runs this site and how to reach them. The site itself sells nothing and takes no payments.</p>
       </PageHead>
       <article className="doc column">
         <h2 id="operator"><a href="#operator">Who runs this site</a></h2>
         <p>
-          asasked.dev is run privately by the two founders of <a href={CONCORD_URL}>Concord</a>,{" "}
-          {OPERATOR.founders}. Concord is not a registered company: it is the name the founders use for their studio
-          and its projects. There is no commercial activity on this site.
+          asasked.dev is run privately by {OPERATOR.owner}. AsAsked is a project of{" "}
+          <a href={CONCORD_URL}>Concord</a>, a studio name, not a registered company.
+        </p>
+        <p>
+          The site sells nothing and takes no payments. {TOKEN.address ? "We have launched" : "We plan to launch"} a
+          meme token, ${TOKEN.ticker}, on pump.fun; creator fees from its trading{" "}
+          {TOKEN.address ? "pay" : "will pay"} for work on AsAsked. The token gives no share, income or rights.
+          See the <Link href="/token">token page</Link>.
         </p>
         <p>
           Email: <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a>
@@ -43,7 +48,7 @@ export default function LegalPage() {
         <h2 id="copyright"><a href="#copyright">Copyright, code and fonts</a></h2>
         <p>
           The AsAsked code and the open half of the dataset are published under the Apache-2.0 licence. The text and
-          design of this site belong to the founders of Concord unless stated otherwise. The site is set in Inter Tight
+          design of this site belong to {OPERATOR.owner} unless stated otherwise. The site is set in Inter Tight
           and IBM Plex Mono, published under the SIL Open Font License.
         </p>
 

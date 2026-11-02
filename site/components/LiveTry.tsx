@@ -246,7 +246,7 @@ export function LiveTry() {
                 )}
                 {busy && (
                   <Row k="agent">
-                    continuing with your answer{" "}
+                    continuing with your answer — this can take a while{" "}
                     <span className="inline-block h-4 w-2 animate-pulse bg-ink align-middle" />
                   </Row>
                 )}

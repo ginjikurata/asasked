@@ -25,7 +25,28 @@ export const NAV = [
   { href: "/docs", label: "Docs" },
   { href: "/dataset", label: "Dataset" },
   { href: "/about", label: "About" },
+  { href: "/token", label: "Token" },
 ] as const;
+
+/**
+ * The $ASKED meme token on pump.fun (/token). `address` stays null until the token exists;
+ * `spending` lists where creator fees go, in the owner's own words; `reports` are the monthly reports.
+ */
+export const TOKEN = {
+  name: "AsAsked",
+  ticker: "ASKED",
+  address: null as string | null,
+  spending: [
+    "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site.",
+    "The server and the domain for asasked.dev.",
+    "A paid DEX Screener profile for $ASKED, so its page shows the real logo, links and description.",
+    "Development time on the guard, the sandbox store and the benchmark.",
+    "Building our own AI agents that help us develop AsAsked.",
+    "Paying a second person to label and check dataset tasks, so the labels do not rest on one reviewer.",
+    "If the fees are enough: testing the guard ourselves with real agents in real online stores, not only in the sandbox.",
+  ] as string[],
+  reports: [] as { month: string; text: string }[],
+};
 
 /** Status line in the header: facts about the last benchmark run. */
 export const STATUS = `guard v${VERSION} · benchmark runs 31 Oct – 1 Nov 2026 · 6 agents`;
@@ -145,8 +166,8 @@ export const REVIEW = {
 
 /** Who runs the site: the same facts as concord.solutions/legal. */
 export const OPERATOR = {
-  founders: "Cos Arthro and Ginji Kurata",
+  owner: "Ginji Kurata",
   email: "pigeon@concord.solutions",
   hosting: "a server rented from UltaHost in Frankfurt am Main, Germany",
-  updated: "31 October 2026",
+  updated: "2 November 2026",
 } as const;

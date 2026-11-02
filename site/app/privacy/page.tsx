@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHead } from "@/components/PageHead";
-import { OPERATOR } from "@/lib/content";
+import { OPERATOR, TOKEN } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
@@ -22,8 +22,9 @@ export default function PrivacyPage() {
       <article className="doc column">
         <h2 id="who"><a href="#who">Who is responsible</a></h2>
         <p>
-          The site is run privately by the two founders of Concord, {OPERATOR.founders}. Concord is not a registered
-          company, and the site is not run for profit. “We” and “us” mean the two founders. This policy covers
+          The site is run privately by {OPERATOR.owner}. AsAsked is a project of Concord, which is not a registered
+          company. The site sells nothing and takes no payments; {TOKEN.address ? "we fund" : "we plan to fund"} work on
+          AsAsked with creator fees from a meme token (see the <Link href="/token">token page</Link>). “We” and “us” mean {OPERATOR.owner}. This policy covers
           asasked.dev.
         </p>
 
