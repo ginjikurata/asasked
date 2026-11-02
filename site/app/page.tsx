@@ -132,7 +132,7 @@ export default function Home() {
           <h3 className="pt-8 font-medium text-ink">Or write your own</h3>
           <p>
             Type a request the way you&apos;d say it to a person. A real agent shops in the sandbox tennis store, and the
-            guard checks the cart against your words before it pays. A run takes one to three minutes, so give it a
+            guard checks the cart against your words before it pays. A run takes about half a minute to a minute, so give it a
             moment after you press send.
           </p>
           <div className="pt-2">

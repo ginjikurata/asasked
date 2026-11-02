@@ -186,7 +186,7 @@ export function LiveTry() {
           <dl className="min-h-[200px] space-y-1.5 p-4 pb-16 font-mono text-[12.5px] leading-relaxed md:text-[13px]">
             {busy && !run && (
               <Row k="agent">
-                shopping — searching, opening products, filling the cart. Takes one to three minutes{" "}
+                shopping — searching, opening products, filling the cart. Takes about half a minute to a minute{" "}
                 <span className="inline-block h-4 w-2 animate-pulse bg-ink align-middle" />
               </Row>
             )}
@@ -246,7 +246,7 @@ export function LiveTry() {
                 )}
                 {busy && (
                   <Row k="agent">
-                    continuing with your answer — this can take a while{" "}
+                    continuing with your answer — this can take a moment{" "}
                     <span className="inline-block h-4 w-2 animate-pulse bg-ink align-middle" />
                   </Row>
                 )}
@@ -352,7 +352,7 @@ export function LiveTry() {
       )}
 
       <p className="meta mt-3">
-        A real model ({run?.agent ?? "deepseek-v4-flash"}) shops in the sandbox store; the payment is checked by
+        A real model ({run?.agent ?? "claude-sonnet-5"}) shops in the sandbox store; the payment is checked by
         Verifiable Intent, the guard stands in front of it. No money moves. When the agent or the guard needs your
         answer, the run pauses and you can reply right here. Up to 5 requests a day — a request where the agent
         didn&apos;t shop (a plain “hi”) doesn&apos;t count; answers don&apos;t count. What you type goes to AI model
