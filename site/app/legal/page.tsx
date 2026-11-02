@@ -22,9 +22,9 @@ export default function LegalPage() {
           <a href={CONCORD_URL}>Concord</a>, a studio name, not a registered company.
         </p>
         <p>
-          The site sells nothing and takes no payments. {TOKEN.address ? "We have launched" : "We plan to launch"} a
+          The site sells nothing and takes no payments. {TOKEN.launched ? "We have launched" : "We plan to launch"} a
           meme token, ${TOKEN.ticker}, on pump.fun; creator fees from its trading{" "}
-          {TOKEN.address ? "pay" : "will pay"} for work on AsAsked. The token gives no share, income or rights.
+          {TOKEN.launched ? "pay" : "will pay"} for work on AsAsked. The token gives no share, income or rights.
           See the <Link href="/token">token page</Link>.
         </p>
         <p>

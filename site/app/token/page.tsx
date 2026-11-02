@@ -19,13 +19,13 @@ export default function TokenPage() {
     <main>
       <PageHead kicker={`Token · $${TOKEN.ticker}`} title="The AsAsked token">
         <p className="text-muted">
-          {TOKEN.address ? "We launched" : "We plan to launch"} ${TOKEN.ticker}, a meme token on pump.fun, to pay for
-          work on AsAsked. Creator fees from trading {TOKEN.address ? "go" : "will go"} to development. The code stays
+          {TOKEN.launched ? "We launched" : "We plan to launch"} ${TOKEN.ticker}, a meme token on pump.fun, to pay for
+          work on AsAsked. Creator fees from trading {TOKEN.launched ? "go" : "will go"} to development. The code stays
           free and open, and nothing about it depends on the token.
         </p>
         <p className="meta mt-8">Contract address · Solana</p>
         <p className="mt-2 font-mono text-[15px] break-all md:text-base">
-          {TOKEN.address ? <CopyInline>{TOKEN.address}</CopyInline> : <Missing>not launched yet</Missing>}
+          {TOKEN.address ? <CopyInline>{TOKEN.address}</CopyInline> : <Missing>{TOKEN.launched ? "address coming soon" : "not launched yet"}</Missing>}
         </p>
         {(TOKEN.address || TOKEN.x) && (
           <p className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[15px]">
@@ -51,7 +51,7 @@ export default function TokenPage() {
         <h2 id="companies"><a href="#companies">For companies and standards people</a></h2>
         <p>
           AsAsked remains an open reference under Apache-2.0. The guard, the sandbox store, the benchmark and the open
-          dataset work the same whether or not anyone holds the token. The token {TOKEN.address ? "is" : "will be"} how we fund development; it
+          dataset work the same whether or not anyone holds the token. The token {TOKEN.launched ? "is" : "will be"} how we fund development; it
           is not part of the guard and is never needed to use it.
         </p>
 

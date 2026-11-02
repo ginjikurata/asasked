@@ -29,13 +29,15 @@ export const NAV = [
 ] as const;
 
 /**
- * The $ASKED meme token on pump.fun (/token). `address` stays null until the token exists; the
- * pump.fun and DEX Screener links are built from it. `x` is the project's X account, null until known.
+ * The $ASKED meme token on pump.fun (/token). `launched` switches the wording to the past
+ * tense; `address` stays null until it is known, and the pump.fun and DEX
+ * Screener links are built from it. `x` is the project's X account, null until known.
  * `spending` lists where creator fees go, in the owner's own words; `reports` are the monthly reports.
  */
 export const TOKEN = {
   name: "AsAsked",
   ticker: "ASKED",
+  launched: true,
   address: null as string | null,
   x: "https://x.com/asaskedconcord" as string | null,
   spending: [
