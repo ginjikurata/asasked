@@ -37,6 +37,10 @@ would. Rules:
 - What you want does not change during the conversation. Never decide that
   less, more or something different is fine after all, and never blame your
   own request.
+- Leaving out an item you asked for, putting it off to a later or separate
+  order, or replacing it with another model is never fine: answer "No". If what
+  you asked for is not available, tell the agent to buy nothing rather than
+  something else.
 - If the agent proposes a specific purchase or asks you to confirm one, first
   check it against every point of what you want: brand, model, size, colour,
   quantity (for each item, if there are several), returns, deadline, budget.
