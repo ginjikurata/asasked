@@ -44,17 +44,21 @@ export default function TokenPage() {
           runs, and is the one with this address, on this page:
         </p>
         <p className="font-mono break-all">{TOKEN.address ?? <Missing>not launched yet</Missing>}</p>
-        {TOKEN.address && (
+        {(TOKEN.address || TOKEN.x) && (
           <ul>
-            <li>
-              <a href={`https://pump.fun/coin/${TOKEN.address}`}>pump.fun</a>
-            </li>
-            <li>
-              <a href={`https://dexscreener.com/solana/${TOKEN.address}`}>DEX Screener</a>
-            </li>
+            {TOKEN.address && (
+              <>
+                <li>
+                  <a href={`https://pump.fun/coin/${TOKEN.address}`}>pump.fun</a>
+                </li>
+                <li>
+                  <a href={`https://dexscreener.com/solana/${TOKEN.address}`}>DEX Screener</a>
+                </li>
+              </>
+            )}
             {TOKEN.x && (
               <li>
-                <a href={TOKEN.x}>X</a>
+                Our X account: <a href={TOKEN.x}>{TOKEN.x.replace("https://", "")}</a>
               </li>
             )}
           </ul>

@@ -37,7 +37,7 @@ export const TOKEN = {
   name: "AsAsked",
   ticker: "ASKED",
   address: null as string | null,
-  x: null as string | null,
+  x: "https://x.com/asaskedconcord" as string | null,
   spending: [
     "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site.",
     "The server and the domain for asasked.dev.",
