@@ -40,6 +40,7 @@ export const TOKEN = {
     "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site.",
     "The server and the domain for asasked.dev.",
     "A paid DEX Screener profile for $ASKED, so its page shows the real logo, links and description.",
+    "The verified checkmark for the AsAsked account on X, so people can tell it from fakes.",
     "Development time on the guard, the sandbox store and the benchmark.",
     "Building our own AI agents that help us develop AsAsked.",
     "Paying a second person to label and check dataset tasks, so the labels do not rest on one reviewer.",
