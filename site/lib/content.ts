@@ -29,7 +29,7 @@ export const NAV = [
 ] as const;
 
 /**
- * The $ASKED meme token on pump.fun (/token). `launched` switches the wording to the past
+ * The $ASKED token on pump.fun (/token). `launched` switches the wording to the past
  * tense; `address` stays null until it is known, and the pump.fun and DEX
  * Screener links are built from it. `x` is the project's X account, null until known.
  * `spending` lists where creator fees go, in the owner's own words; `reports` are the monthly reports.

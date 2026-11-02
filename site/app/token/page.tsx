@@ -5,14 +5,14 @@ import { GITHUB_URL, OPERATOR, TOKEN } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Token",
-  description: `$${TOKEN.ticker}, a meme token for AsAsked: what it is, what it is not, and where creator fees go.`,
+  description: `$${TOKEN.ticker}, a token for AsAsked: what it is, what it is not, and where creator fees go.`,
   alternates: { canonical: "/token" },
   openGraph: {
     type: "website",
     siteName: "AsAsked",
     url: "/token",
     title: `The AsAsked token ($${TOKEN.ticker})`,
-    description: `$${TOKEN.ticker}, a meme token on pump.fun that pays for work on AsAsked. The code stays free and open.`,
+    description: `$${TOKEN.ticker}, a token on pump.fun that pays for work on AsAsked. The code stays free and open.`,
   },
 };
 
@@ -26,7 +26,7 @@ export default function TokenPage() {
     <main>
       <PageHead kicker={`Token · $${TOKEN.ticker}`} title="The AsAsked token">
         <p className="text-muted">
-          {TOKEN.launched ? "We launched" : "We plan to launch"} ${TOKEN.ticker}, a meme token on pump.fun, to pay for
+          {TOKEN.launched ? "We launched" : "We plan to launch"} ${TOKEN.ticker}, a token on pump.fun, to pay for
           work on AsAsked. Creator fees from trading {TOKEN.launched ? "go" : "will go"} to development. The code stays
           free and open, and nothing about it depends on the token.
         </p>
@@ -66,7 +66,7 @@ export default function TokenPage() {
         <ul>
           <li>Not a share in AsAsked or Concord, and not a claim on any income.</li>
           <li>No voting rights, no access to anything, no promise of a price or a return.</li>
-          <li>Not financial advice. Meme tokens can lose all their value.</li>
+          <li>Not financial advice. Tokens like this can lose all their value.</li>
         </ul>
 
         <h2 id="address"><a href="#address">The only real address</a></h2>

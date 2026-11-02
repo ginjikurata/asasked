@@ -23,7 +23,7 @@ export default function LegalPage() {
         </p>
         <p>
           The site sells nothing and takes no payments. {TOKEN.launched ? "We have launched" : "We plan to launch"} a
-          meme token, ${TOKEN.ticker}, on pump.fun; creator fees from its trading{" "}
+          token, ${TOKEN.ticker}, on pump.fun; creator fees from its trading{" "}
           {TOKEN.launched ? "pay" : "will pay"} for work on AsAsked. The token gives no share, income or rights.
           See the <Link href="/token">token page</Link>.
         </p>

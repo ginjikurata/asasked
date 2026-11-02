@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <p>
           The site is run privately by {OPERATOR.owner}. AsAsked is a project of Concord, which is not a registered
           company. The site sells nothing and takes no payments; {TOKEN.launched ? "we fund" : "we plan to fund"} work on
-          AsAsked with creator fees from a meme token (see the <Link href="/token">token page</Link>). “We” and “us” mean {OPERATOR.owner}. This policy covers
+          AsAsked with creator fees from a token (see the <Link href="/token">token page</Link>). “We” and “us” mean {OPERATOR.owner}. This policy covers
           asasked.dev.
         </p>
 
