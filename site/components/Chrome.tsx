@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MARK_END, MARK_PATH } from "@/lib/mark";
-import { CONCORD_URL, GITHUB_URL, NAV, PYPI_URL, RELEASE_URL, STATUS, VERSION, VI_URL } from "@/lib/content";
+import { CONCORD_URL, GITHUB_URL, NAV, PYPI_URL, RELEASE_URL, STATUS, TOKEN, VERSION, VI_URL } from "@/lib/content";
 
 /** Link into the public repository. */
 export function GitHubLink({ path = "", children }: { path?: string; children: React.ReactNode }) {
@@ -46,6 +46,11 @@ export function Header() {
           <a href={PYPI_URL} className="link">
             PyPI
           </a>
+          {TOKEN.x && (
+            <a href={TOKEN.x} className="link">
+              X
+            </a>
+          )}
         </nav>
       </div>
     </header>
@@ -96,6 +101,11 @@ export function Footer() {
           <Link href="/privacy" className="link">
             Privacy
           </Link>
+          {TOKEN.x && (
+            <a href={TOKEN.x} className="link">
+              X
+            </a>
+          )}
         </nav>
       </div>
     </footer>
