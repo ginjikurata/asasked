@@ -300,6 +300,11 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS",
               </li>
             ))}
           </ul>
+          <p>
+            The guard has only been run against our sandbox store, not a real one. If you put it in front of your
+            agent&apos;s payment step, we would be glad to hear how it went, wrong stops and misses included:{" "}
+            <GitHubLink path="/issues">open an issue</GitHubLink>.
+          </p>
         </Section>
       </main>
     </>
