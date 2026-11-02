@@ -23,6 +23,29 @@ export default function TokenPage() {
           work on AsAsked. Creator fees from trading {TOKEN.address ? "go" : "will go"} to development. The code stays
           free and open, and nothing about it depends on the token.
         </p>
+        <p className="meta mt-8">Contract address · Solana</p>
+        <p className="mt-2 font-mono text-[15px] break-all md:text-base">
+          {TOKEN.address ? <CopyInline>{TOKEN.address}</CopyInline> : <Missing>not launched yet</Missing>}
+        </p>
+        {(TOKEN.address || TOKEN.x) && (
+          <p className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[15px]">
+            {TOKEN.address && (
+              <>
+                <a href={`https://pump.fun/coin/${TOKEN.address}`} className="link">
+                  pump.fun
+                </a>
+                <a href={`https://dexscreener.com/solana/${TOKEN.address}`} className="link">
+                  DEX Screener
+                </a>
+              </>
+            )}
+            {TOKEN.x && (
+              <a href={TOKEN.x} className="link">
+                X: {TOKEN.x.replace("https://x.com/", "@")}
+              </a>
+            )}
+          </p>
+        )}
       </PageHead>
       <article className="doc column">
         <h2 id="companies"><a href="#companies">For companies and standards people</a></h2>
@@ -42,30 +65,8 @@ export default function TokenPage() {
         <h2 id="address"><a href="#address">The only real address</a></h2>
         <p>
           Anyone can launch a token with the same name. The real ${TOKEN.ticker} exists only on Solana, where pump.fun
-          runs, and is the one with this address, on this page:
+          runs, and is the one with the address at the top of this page.
         </p>
-        <p className="font-mono break-all">
-          {TOKEN.address ? <CopyInline>{TOKEN.address}</CopyInline> : <Missing>not launched yet</Missing>}
-        </p>
-        {(TOKEN.address || TOKEN.x) && (
-          <ul>
-            {TOKEN.address && (
-              <>
-                <li>
-                  <a href={`https://pump.fun/coin/${TOKEN.address}`}>pump.fun</a>
-                </li>
-                <li>
-                  <a href={`https://dexscreener.com/solana/${TOKEN.address}`}>DEX Screener</a>
-                </li>
-              </>
-            )}
-            {TOKEN.x && (
-              <li>
-                Our X account: <a href={TOKEN.x}>{TOKEN.x.replace("https://", "")}</a>
-              </li>
-            )}
-          </ul>
-        )}
         <p>
           If an address anywhere else differs from this one, it is not ours. If you see a fake, tell us at{" "}
           <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a>.

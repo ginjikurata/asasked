@@ -67,7 +67,7 @@ body {
 
 @utility link {
   text-decoration: underline;
-  text-decoration-color: var(--color-line);
+  text-decoration-color: var(--color-faint);
   text-underline-offset: 4px;
   &:hover {
     text-decoration-color: currentColor;
@@ -128,7 +128,7 @@ body {
 }
 .doc a {
   text-decoration: underline;
-  text-decoration-color: var(--color-line);
+  text-decoration-color: var(--color-faint);
   text-underline-offset: 4px;
 }
 .doc a:hover {
