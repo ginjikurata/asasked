@@ -38,7 +38,11 @@ export function Header() {
         </div>
         <nav aria-label="Sections" className="hidden shrink-0 items-center gap-6 whitespace-nowrap text-sm lg:flex">
           {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="text-muted hover:text-ink">
+            <Link
+              key={item.href}
+              href={item.href}
+              className={item.href === "/token" ? "font-medium text-ink" : "text-muted hover:text-ink"}
+            >
               {item.label}
             </Link>
           ))}
