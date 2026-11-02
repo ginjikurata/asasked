@@ -593,9 +593,9 @@ Read the numbers with these in mind:
 - **The public history starts on 31 October 2026.** The project was
   developed in a private repository before that; commit ids older than this
   repository, as in the site's changelog, come from that history.
-- **This is a prototype.** It is packaged and the deterministic half is
-  covered by tests (`pytest`, no model or network needed), but there is no
-  public API yet.
+- **This is a prototype.** It is on PyPI and the deterministic half is
+  covered by tests (`pytest`, no model or network needed), but at 0.x the
+  API (`Guard`, `check_order`) may still change between versions.
 
 ---
 
@@ -606,7 +606,11 @@ spec is Apache 2.0 and is expected as a sibling checkout, not vendored here.
 
 The question has been put to the standard in issue
 [#37](https://github.com/agent-intent/verifiable-intent/issues/37)
-(September 2026); as of 31 October 2026 it has no replies. Before it, a
+(September 2026); as of 3 November 2026 it has no replies. A narrower
+proposal followed in
+[#45](https://github.com/agent-intent/verifiable-intent/issues/45)
+(November 2026): that the L2 `prompt_summary` carry the person's own words,
+in one place, disclosed with the checkout mandate. Before it, a
 search of every issue, pull request and comment in that repository found
 none addressing the mismatch between stated intent and encoded constraints.
 The spec itself is unchanged since April 2026 (commit `356c296`).
