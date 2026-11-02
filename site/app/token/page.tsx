@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CopyInline } from "@/components/InstallTabs";
 import { PageHead } from "@/components/PageHead";
 import { GITHUB_URL, OPERATOR, TOKEN } from "@/lib/content";
 
@@ -43,7 +44,9 @@ export default function TokenPage() {
           Anyone can launch a token with the same name. The real ${TOKEN.ticker} exists only on Solana, where pump.fun
           runs, and is the one with this address, on this page:
         </p>
-        <p className="font-mono break-all">{TOKEN.address ?? <Missing>not launched yet</Missing>}</p>
+        <p className="font-mono break-all">
+          {TOKEN.address ? <CopyInline>{TOKEN.address}</CopyInline> : <Missing>not launched yet</Missing>}
+        </p>
         {(TOKEN.address || TOKEN.x) && (
           <ul>
             {TOKEN.address && (

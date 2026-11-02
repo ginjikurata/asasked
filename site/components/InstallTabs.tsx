@@ -61,29 +61,40 @@ export function InstallTabs({ tabs }: { tabs: InstallTab[] }) {
   );
 }
 
+/** Copies text to the clipboard; returns whether it worked. */
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Clipboard API blocked (insecure context, permissions): fall back to the old copy command.
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    return ok;
+  }
+}
+
+/** True for 1.5 s after `flash()` is called: the "copied" state of a copy button. */
+function useCopied() {
+  const [copied, setCopied] = useState(false);
+  const flash = () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return [copied, flash] as const;
+}
+
 /** A code block with a copy button. */
 export function CopyCode({ children, title }: { children: string; title?: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, flash] = useCopied();
   const copy = async () => {
-    let ok = false;
-    try {
-      await navigator.clipboard.writeText(children);
-      ok = true;
-    } catch {
-      // Clipboard API blocked (insecure context, permissions): fall back to the old copy command.
-      const area = document.createElement("textarea");
-      area.value = children;
-      area.style.position = "fixed";
-      area.style.opacity = "0";
-      document.body.appendChild(area);
-      area.select();
-      ok = document.execCommand("copy");
-      area.remove();
-    }
-    if (ok) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    }
+    if (await copyText(children)) flash();
   };
   return (
     <figure>
@@ -97,5 +108,22 @@ export function CopyCode({ children, title }: { children: string; title?: string
         <code>{children}</code>
       </pre>
     </figure>
+  );
+}
+
+/** Text that copies itself when clicked, such as the token address. */
+export function CopyInline({ children }: { children: string }) {
+  const [copied, flash] = useCopied();
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        if (await copyText(children)) flash();
+      }}
+      title="Click to copy"
+      className="cursor-pointer text-left font-mono break-all hover:text-signal"
+    >
+      {children} <span className="meta whitespace-nowrap">{copied ? "copied" : "click to copy"}</span>
+    </button>
   );
 }
