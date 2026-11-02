@@ -51,6 +51,14 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
   differs; deadlines like "by Friday" count from it.
 - A Verifiable Intent mandate is optional: `guard.check(cart, mandate)` adds
   its amount limits; without one, only the person's own words are checked.
+- With the person's signed L2 mandate, `Guard.from_mandate(l2, user_jwk)`
+  takes the request from its `prompt_summary` instead of from the agent, so
+  an agent cannot reword it: a changed request breaks the signature. The key
+  is `cnf.jwk` of an L1 your chain verification has already checked. A
+  mandate with no request in it fails closed: every check asks. Note that the
+  Mastercard Python SDK (`356c296`) does not write `prompt_summary` into the
+  signed L2, so its mandates carry no request; the TypeScript implementation
+  does.
 - Facts are extracted by every model you have a key for (`CLAUDE_API_KEY`
   with `asasked[anthropic]`, `LLM_API_KEY` for Gemini, `OPENAI_COMPAT_*`), or by `Guard(...,
   providers=("anthropic",))`. One model works; two are safer, because a fact
@@ -235,6 +243,7 @@ src/asasked/
   scenarios.py                  8 scenarios: request -> constraints -> purchase
   vi_runner.py                  builds a real VI chain, verifies it with the Mastercard SDK
   guard.py                      the pre-checkout guard: proceed or ask, with the question
+  mandate.py                    the person's request read from their signed L2 mandate
   coherence.py                  extraction + deterministic checking + pre-purchase decision
   llm_extract.py                the language model call — the only AI in the project
   stress_phrases.py             37 real-speech phrases in Russian for testing extraction

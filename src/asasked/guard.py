@@ -24,7 +24,9 @@ For an agent developer it is one call, with the cart as plain dicts:
     result["decision"]   # "proceed" or "ask"; result["question"] is the question for the person
 
 A Verifiable Intent mandate is optional. A feature the cart does not have is
-not checked but goes into notes ("could not be checked").
+not checked but goes into notes ("could not be checked"). With the person's
+signed L2 mandate, Guard.from_mandate(l2, user_jwk) takes the request from it
+rather than from the agent.
 
 So that the agent cannot pay around the guard, the check goes into payment itself:
 
@@ -49,6 +51,7 @@ from dataclasses import dataclass, field
 
 from .coherence import ASK, PROCEED, IntentFacts, decide_before_purchase, extract_intent_agreed
 from .llm_extract import ExtractionError
+from .mandate import request_from_mandate
 
 
 # Without a VI mandate there are no amount limits: only what the person said is checked.
@@ -132,6 +135,21 @@ class Guard:
     def __post_init__(self) -> None:
         if self.today is None:
             self.today = today_in_words()
+
+    @classmethod
+    def from_mandate(cls, l2: str, user_jwk: dict, **kwargs) -> Guard:
+        """The guard for the request the person signed, not the agent's retelling of it.
+
+        l2 is the person's L2 mandate as presented, user_jwk their public key
+        from the verified L1 (see asasked.mandate). A bad signature raises
+        MandateError. A mandate with no request in it cannot be checked, so
+        every check asks the person, as when extraction fails.
+        """
+        request = request_from_mandate(l2, user_jwk)
+        guard = cls(request or "", **kwargs)
+        if request is None:
+            guard._error = "The mandate carries no request from the person (prompt_summary)."
+        return guard
 
     def facts(self) -> IntentFacts | None:
         """Facts are extracted once per request, not on every check."""
