@@ -58,7 +58,10 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
   mandate with no request in it fails closed: every check asks. Note that the
   Mastercard Python SDK (`356c296`) does not write `prompt_summary` into the
   signed L2, so its mandates carry no request; the TypeScript implementation
-  does.
+  does. Pass the agent's own account of the request as `claimed=` and the
+  guard compares the two fact by fact: where the agent says something the
+  person did not sign (another colour, no returns), the check adds a note.
+  The cart is checked against the signed request either way.
 - Facts are extracted by every model you have a key for (`CLAUDE_API_KEY`
   with `asasked[anthropic]`, `LLM_API_KEY` for Gemini, `OPENAI_COMPAT_*`), or by `Guard(...,
   providers=("anthropic",))`. One model works; two are safer, because a fact

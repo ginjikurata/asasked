@@ -756,3 +756,58 @@ def decide_before_purchase(facts: IntentFacts, purchase, allowed_band, allowlist
     reasons = [f for f in verdict.findings if f.severity == BLOCK]
     notes = [f for f in verdict.findings if f.severity == WARN]
     return Decision(action=ASK if reasons else PROCEED, reasons=reasons, notes=notes)
+
+
+# What the person would call each fact, for the retelling note.
+_FACT_NAMES = {
+    "brand": "brand", "brand_not": "brands to avoid", "model": "model", "color": "colour",
+    "size_label": "size", "level": "level", "price_preference": "price",
+    "explicit_max_cents": "price limit", "quantity": "quantity",
+    "needs_refundable": "returns", "deadline_days": "delivery deadline",
+}
+
+
+def _shown(name: str, value) -> str:
+    if value in (None, (), False):
+        return "not said"
+    if name == "explicit_max_cents":
+        return f"{value / 100:.2f}"
+    if name == "needs_refundable":
+        return "must be returnable"
+    if name == "deadline_days":
+        return f"{value} days"
+    return ", ".join(value) if isinstance(value, tuple) else str(value)
+
+
+def retelling_differences(signed: IntentFacts, claimed: IntentFacts) -> list[Finding]:
+    """Where the agent's retelling of the request says something other than the signed request.
+
+    Both sets of facts come from the same extraction; the comparison itself is
+    plain code. A field either extraction is unsure of (disputed) is skipped:
+    a difference there may be the models', not the agent's. The cart is
+    checked against the signed request regardless; a difference here says the
+    agent is shopping for something the person did not sign.
+    """
+    signed, claimed = canonical(signed), canonical(claimed)
+    unsure = signed.disputed | claimed.disputed
+    found = []
+    for name in _COMPARED_FIELDS:
+        a, b = getattr(signed, name), getattr(claimed, name)
+        if name in unsure or _norm(a) == _norm(b):
+            continue
+        found.append(f"{_FACT_NAMES[name]}: the person signed {_shown(name, a)}, "
+                     f"the agent says {_shown(name, b)}")
+    def items(facts):
+        return sorted(sorted((k, repr(_norm(v))) for k, v in line.items()) for line in facts.lines)
+    if "lines" not in unsure and items(signed) != items(claimed):
+        found.append("the items in the order differ")
+    if {t.lower() for t in signed.other} != {t.lower() for t in claimed.other} \
+            and "other" not in unsure:
+        found.append("other requirements differ: the person signed "
+                     f"{'; '.join(signed.other) or 'none'}, "
+                     f"the agent says {'; '.join(claimed.other) or 'none'}")
+    if not found:
+        return []
+    return [Finding("agent_retold_request", WARN,
+                    "The agent's account of your request differs from the one you signed ("
+                    + "; ".join(found) + "). This order was checked against what you signed.")]

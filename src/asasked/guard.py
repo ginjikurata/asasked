@@ -26,7 +26,8 @@ For an agent developer it is one call, with the cart as plain dicts:
 A Verifiable Intent mandate is optional. A feature the cart does not have is
 not checked but goes into notes ("could not be checked"). With the person's
 signed L2 mandate, Guard.from_mandate(l2, user_jwk) takes the request from it
-rather than from the agent.
+rather than from the agent; with claimed=, the agent's account of the request,
+it also notes where that account differs from what the person signed.
 
 So that the agent cannot pay around the guard, the check goes into payment itself:
 
@@ -49,7 +50,8 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .coherence import ASK, PROCEED, IntentFacts, decide_before_purchase, extract_intent_agreed
+from .coherence import (ASK, PROCEED, IntentFacts, decide_before_purchase, extract_intent_agreed,
+                        retelling_differences)
 from .llm_extract import ExtractionError
 from .mandate import request_from_mandate
 
@@ -127,6 +129,11 @@ class Guard:
     # Replaced in tests and for runs with facts known in advance.
     extract: Callable[[str], IntentFacts] | None = None
     checks: list[dict] = field(default_factory=list)
+    # The agent's own account of the request, when the request itself comes
+    # from the signed mandate (from_mandate): the two are compared once.
+    claimed: str | None = None
+    _signed: str = ""
+    _retold: list | None = None
     _facts: IntentFacts | None = None
     _error: str = ""
     # The question the guard asked that the person has not answered yet.
@@ -137,34 +144,64 @@ class Guard:
             self.today = today_in_words()
 
     @classmethod
-    def from_mandate(cls, l2: str, user_jwk: dict, **kwargs) -> Guard:
+    def from_mandate(cls, l2: str, user_jwk: dict, claimed: str | None = None,
+                     **kwargs) -> Guard:
         """The guard for the request the person signed, not the agent's retelling of it.
 
         l2 is the person's L2 mandate as presented, user_jwk their public key
         from the verified L1 (see asasked.mandate). A bad signature raises
         MandateError. A mandate with no request in it cannot be checked, so
         every check asks the person, as when extraction fails.
+
+        claimed is the request as the agent tells it, if it does. The cart is
+        checked against the signed request either way; where the agent's
+        version says something else (another colour, no returns), the check
+        adds a note: the agent is shopping for something the person did not sign.
         """
         request = request_from_mandate(l2, user_jwk)
-        guard = cls(request or "", **kwargs)
+        guard = cls(request or "", claimed=claimed, **kwargs)
+        guard._signed = request or ""
         if request is None:
             guard._error = "The mandate carries no request from the person (prompt_summary)."
         return guard
+
+    def _extract(self, text: str) -> IntentFacts:
+        if self.extract is not None:
+            return self.extract(text)
+        if self.providers is not None:
+            return extract_intent_agreed(text, today=self.today, providers=self.providers)
+        return extract_intent_agreed(text, today=self.today)
 
     def facts(self) -> IntentFacts | None:
         """Facts are extracted once per request, not on every check."""
         if self._facts is None and not self._error:
             try:
-                if self.extract is not None:
-                    self._facts = self.extract(self.request)
-                elif self.providers is not None:
-                    self._facts = extract_intent_agreed(self.request, today=self.today,
-                                                        providers=self.providers)
-                else:
-                    self._facts = extract_intent_agreed(self.request, today=self.today)
+                self._facts = self._extract(self.request)
             except ExtractionError as e:
                 self._error = str(e)
         return self._facts
+
+    def retold(self) -> list:
+        """Where the agent's account (claimed) differs from the signed request.
+
+        Compared once, against the request as signed, before the person's
+        later answers: those are new words, not a retelling.
+        """
+        if self._retold is None:
+            self._retold = []
+            same = " ".join((self.claimed or "").split()) == " ".join(self._signed.split())
+            if self.claimed and self._signed and not same:
+                try:
+                    # Before any answer the request is the signed one: its facts are at hand.
+                    signed = self._facts if self.request == self._signed and self._facts \
+                        else self._extract(self._signed)
+                    claimed = self._extract(self.claimed)
+                except ExtractionError as e:
+                    self._retold = ["Could not compare the agent's account of the request "
+                                    f"with the one you signed: {e}"]
+                else:
+                    self._retold = [f.text for f in retelling_differences(signed, claimed)]
+        return self._retold
 
     def hear(self, question: str, answer: str) -> None:
         """The person answered the agent's question: the clarification joins their request.
@@ -206,7 +243,7 @@ class Guard:
                 "decision": decision.action,
                 "reasons": [f.text for f in decision.reasons],
                 "question": decision.question,
-                "notes": [f.text for f in decision.notes],
+                "notes": [f.text for f in decision.notes] + self.retold(),
             }
         self.checks.append({"purchase": list(purchase), **result})
         return result

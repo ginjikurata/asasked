@@ -158,3 +158,51 @@ def test_mastercard_sdk_leaves_the_request_out():
     assert SCENARIOS[0].prompt_summary
     assert request_from_mandate(result["artifacts"]["layer2"],
                                 result["keys"]["user_public_jwk"]) is None
+
+
+def _facts(request):
+    if "white" in request.lower():
+        return IntentFacts(brand="ASICS", color="white", size_label="42")
+    return IntentFacts(brand="ASICS", color="black", size_label="42", needs_refundable=True)
+
+
+def test_the_agent_retelling_the_request_is_flagged(key):
+    heard = []
+
+    def extract(request):
+        heard.append(request)
+        return _facts(request)
+
+    guard = Guard.from_mandate(_l2(key, {}, [_checkout(REQUEST)]), _jwk(key),
+                               claimed="White ASICS, size 42.", extract=extract)
+    result = guard.check([{**SHOE, "color": "White", "returnable": True}])
+    # The cart is checked against the signed words, not the agent's.
+    assert result["decision"] == "ask" and "black" in result["reasons"][0].lower()
+    note = result["notes"][-1]
+    assert "colour: the person signed black, the agent says white" in note
+    assert "returns: the person signed must be returnable, the agent says not said" in note
+    assert "size" not in note
+    guard.check([{**SHOE, "returnable": True}])
+    assert heard == [REQUEST, "White ASICS, size 42."]   # compared once
+
+
+def test_the_same_request_in_other_spacing_is_not_a_retelling(key):
+    guard = Guard.from_mandate(_l2(key, {}, [_checkout(REQUEST)]), _jwk(key),
+                               claimed="  " + REQUEST.replace(" ", "  "), extract=_facts)
+    assert guard.check([{**SHOE, "returnable": True}]) == {
+        "decision": "proceed", "reasons": [], "question": None, "notes": []}
+
+
+def test_a_retelling_with_the_same_facts_is_not_flagged(key):
+    guard = Guard.from_mandate(_l2(key, {}, [_checkout(REQUEST)]), _jwk(key),
+                               claimed="They want black ASICS 42 that can be returned.",
+                               extract=_facts)
+    assert guard.check([{**SHOE, "returnable": True}])["notes"] == []
+
+
+def test_a_disputed_fact_is_not_blamed_on_the_agent():
+    from asasked.coherence import retelling_differences
+    signed = IntentFacts(color="black", disputed=frozenset({"color"}))
+    assert retelling_differences(signed, IntentFacts(color="white")) == []
+    assert retelling_differences(IntentFacts(other=("gluten-free",)), IntentFacts())[0].text \
+        .count("other requirements differ") == 1
