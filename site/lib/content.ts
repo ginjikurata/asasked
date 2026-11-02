@@ -29,21 +29,21 @@ export const NAV = [
 ] as const;
 
 /**
- * The $ASKED token on pump.fun (/token). `launched` switches the wording to the past
+ * The $ASASKED token on pump.fun (/token). `launched` switches the wording to the past
  * tense; `address` stays null until it is known, and the pump.fun and DEX
  * Screener links are built from it. `x` is the project's X account, null until known.
  * `spending` lists where creator fees go, in the owner's own words; `reports` are the monthly reports.
  */
 export const TOKEN = {
   name: "AsAsked",
-  ticker: "ASKED",
+  ticker: "ASASKED",
   launched: true,
   address: null as string | null,
   x: "https://x.com/asaskedconcord" as string | null,
   spending: [
     "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site.",
     "The server and the domain for asasked.dev.",
-    "A paid DEX Screener profile for $ASKED, so its page shows the real logo, links and description.",
+    "A paid DEX Screener profile for $ASASKED, so its page shows the real logo, links and description.",
     "The verified checkmark for the AsAsked account on X, so people can tell it from fakes.",
     "Development time on the guard, the sandbox store and the benchmark.",
     "Building our own AI agents that help us develop AsAsked.",
