@@ -42,7 +42,7 @@ export default function TokenPage() {
         <p className="mt-2 font-mono text-[15px] break-all md:text-base">
           {TOKEN.address ? <CopyInline>{TOKEN.address}</CopyInline> : <Missing>{TOKEN.launched ? "address coming soon" : "not launched yet"}</Missing>}
         </p>
-        {(TOKEN.address || TOKEN.x) && (
+        {(TOKEN.address || TOKEN.x || TOKEN.telegram) && (
           <p className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[15px]">
             {TOKEN.address && (
               <>
@@ -57,6 +57,11 @@ export default function TokenPage() {
             {TOKEN.x && (
               <a href={TOKEN.x} className="link">
                 X: {TOKEN.x.replace("https://x.com/", "@")}
+              </a>
+            )}
+            {TOKEN.telegram && (
+              <a href={TOKEN.telegram} className="link">
+                Telegram: {TOKEN.telegram.replace("https://", "")}
               </a>
             )}
           </p>

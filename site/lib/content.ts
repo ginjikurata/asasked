@@ -31,7 +31,7 @@ export const NAV = [
 /**
  * The $ASASKED token on pump.fun (/token). `launched` switches the wording to the past
  * tense; `address` stays null until it is known, and the pump.fun and DEX
- * Screener links are built from it. `x` is the project's X account, null until known.
+ * Screener links are built from it. `x` and `telegram` are the project's X account and Telegram group, null until known.
  * `spending` lists where creator fees go, in the owner's own words, with `paid` once an item is paid for (shown underlined); `reports` are the monthly reports.
  */
 export const TOKEN = {
@@ -40,6 +40,7 @@ export const TOKEN = {
   launched: true,
   address: "BPrLWAsozpkAQ4HTE8k2MdK3YNjBYyo38ruSCcENpump" as string | null,
   x: "https://x.com/asaskedconcord" as string | null,
+  telegram: "https://t.me/asasked" as string | null,
   spending: [
     { text: "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site." },
     { text: "The server and the domain for asasked.dev." },
