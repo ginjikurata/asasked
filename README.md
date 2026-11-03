@@ -62,6 +62,11 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
   guard compares the two fact by fact: where the agent says something the
   person did not sign (another colour, no returns), the check adds a note.
   The cart is checked against the signed request either way.
+- In AP2 v0.2, `asasked.ap2.protect_presentation(guard, create_checkout_presentation,
+  details=...)` checks the merchant's checkout JWT before the agent signs the
+  closed Checkout Mandate over it. AP2 v0.2 mandates carry no request, so the
+  person's words come from the conversation, passed by your code; colour, size
+  and returns come from the merchant's catalog through `details(item_id)`.
 - Facts are extracted by every model you have a key for (`CLAUDE_API_KEY`
   with `asasked[anthropic]`, `LLM_API_KEY` for Gemini, `OPENAI_COMPAT_*`), or by `Guard(...,
   providers=("anthropic",))`. One model works; two are safer, because a fact
@@ -247,6 +252,7 @@ src/asasked/
   vi_runner.py                  builds a real VI chain, verifies it with the Mastercard SDK
   guard.py                      the pre-checkout guard: proceed or ask, with the question
   mandate.py                    the person's request read from their signed L2 mandate
+  ap2.py                        the guard before an AP2 agent signs the closed Checkout Mandate
   coherence.py                  extraction + deterministic checking + pre-purchase decision
   llm_extract.py                the language model call — the only AI in the project
   stress_phrases.py             37 real-speech phrases in Russian for testing extraction
