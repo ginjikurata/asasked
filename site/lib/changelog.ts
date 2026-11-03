@@ -6,6 +6,17 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-03",
+    changes: [
+      {
+        area: "benchmark",
+        text:
+          "v2 re-run on the open half with version 0.1.4 and a stricter simulated person, which never accepts a missing, deferred or substituted item. Wrong purchases fell from 11 of 250 without the guard to 0 with it; the guard caught 8 wrong carts, missed none and stopped 14 right ones in 255 checks. The stricter rule was written after the 0.1.3 run on these same open tasks. Log: data/runs/v2-open-0.1.4.jsonl.gz; the 0.1.3 log stays published.",
+        commit: "c3f15a2",
+      },
+    ],
+  },
+  {
     date: "2026-11-01",
     changes: [
       {

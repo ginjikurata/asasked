@@ -227,15 +227,15 @@ export default function Home() {
           </p>
           <ModelTable title={`Dataset v1, open half, ${n.tasks} tasks`} rows={RESULTS.v1} />
           <p>
-            On v2, wrong purchases fell from 9 of 250 to 3 of 250. The guard caught {RESULTS.v2Checks.caught} wrong
-            carts and missed {RESULTS.v2Checks.missed}; each of the 3 left was a cart it stopped and the simulated
-            person then approved. The cost: in {RESULTS.v2Checks.falseStops} of{" "}
+            On v2, wrong purchases fell from 11 of 250 to 0 of 250. The guard caught {RESULTS.v2Checks.caught} wrong
+            carts and missed {RESULTS.v2Checks.missed}. The simulated person here never accepts a missing or
+            substituted item; that rule was tuned on these open tasks. The cost: in {RESULTS.v2Checks.falseStops} of{" "}
             {RESULTS.v2Checks.checks} checks it stopped a right cart, and the agent had to ask the person one extra
             question. v2&apos;s templates were chosen where the guard has something to catch.
           </p>
           <ModelTable title={`Dataset v2, open half, ${STORE.v2Open} tasks`} rows={RESULTS.v2} />
           <p className="meta">
-            AsAsked 0.1.3, open halves only. The run logs are in the repository, in data/runs/, with the script that
+            v1 with AsAsked 0.1.3, v2 with 0.1.4, open halves only. The run logs are in the repository, in data/runs/, with the script that
             computes these tables (scripts/summarize_runs.py).
           </p>
         </Section>

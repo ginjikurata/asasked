@@ -434,17 +434,18 @@ Each agent did every task twice: guard off, and guard on with checkout
 asking it first (`--guard both`, the guard extracting facts with models, as in
 normal use). One run per task, scored against the labels. "Wrong" means the
 payment went through and VI accepted it, but the purchase was not what the
-person asked for. The runs are from 31 October to 1 November 2026, with
-AsAsked 0.1.3, on the open halves of both datasets only.
+person asked for. The v1 runs are from 31 October to 1 November 2026, with
+AsAsked 0.1.3; the v2 runs are from 3 November 2026, with AsAsked 0.1.4 and
+the stricter simulated person of commit c3f15a2. Open halves only.
 
 **The run logs are published:** `data/runs/v1-open-0.1.3.jsonl.gz` and
-`data/runs/v2-open-0.1.3.jsonl.gz`, one JSON line per run with the request,
+`data/runs/v2-open-0.1.4.jsonl.gz`, one JSON line per run with the request,
 the full tool-call transcript, the order, the score and every guard check.
 The tables below are computed from them:
 
 ```bash
 python scripts/summarize_runs.py data/runs/v1-open-0.1.3.jsonl.gz --markdown
-python scripts/summarize_runs.py data/runs/v2-open-0.1.3.jsonl.gz --markdown
+python scripts/summarize_runs.py data/runs/v2-open-0.1.4.jsonl.gz --markdown
 ```
 
 In the v1 run 445 runs of 1,200 failed on the network (the machine lost its
@@ -483,23 +484,23 @@ something to catch; read the numbers with that in mind. The open half is
 
 | Agent | As asked | Wrong, VI passed | Bought nothing, should have |
 |---|---|---|---|
-| claude-sonnet-5 | 48 → 48 | 2 → 1 | 0 → 1 |
-| deepseek-v4-flash | 49 → 49 | 0 → 1 | 1 → 0 |
+| claude-sonnet-5 | 49 → 49 | 1 → 0 | 0 → 1 |
+| deepseek-v4-flash | 50 → 50 | 0 → 0 | 0 → 0 |
 | gpt-6-sol | 50 → 50 | 0 → 0 | 0 → 0 |
-| minimax-m3 | 50 → 50 | 0 → 0 | 0 → 0 |
-| nemotron-3.5-lightning | 39 → 45 | 7 → 1 | 4 → 4 |
+| minimax-m3 | 49 → 48 | 0 → 0 | 1 → 2 |
+| nemotron-3.5-lightning | 37 → 48 | 10 → 0 | 3 → 2 |
 
-Wrong purchases fell from 9 of 250 to 3 of 250. The guard caught 11 wrong
-carts and missed none. Each of the 3 wrong purchases left with the guard on
-was stopped by it: the agent asked, and the simulated person approved a
-substitution or a missing item. That is a weakness of the simulator, not a
-pass by the guard, but a real person can say yes to the wrong thing too. In
-two of the three, the simulator's brief said "one HEAD Tour Team" without
-saying it is a bag, and the simulator took it for a racket; since 1 November
-2026, after these runs, the brief names the bag. The
-cost: in 12 of 254 checks the guard stopped a right cart, and the agent had
-to ask the person one extra question. With the guard on, 5 of 250 runs ended
-with nothing bought, the same as without it.
+Wrong purchases fell from 11 of 250 to 0 of 250. The guard caught 8 wrong
+carts and missed none. The cost: in 14 of 255 checks the guard stopped a
+right cart, and the agent had to ask the person one extra question. With the
+guard on, 5 of 250 runs ended with nothing bought, 4 without it.
+
+The simulated person in these runs is stricter than in the 0.1.3 runs: it
+never accepts a missing, deferred or substituted item (commit c3f15a2). In
+the 0.1.3 runs every wrong purchase left with the guard on was a cart the
+guard had stopped and the simulator then approved. The stricter rule was
+written after looking at those open tasks, so it is tuned on them; the
+hidden half has not been run with it.
 
 **Compared with the earlier runs.** The first results, from runs of 26–30
 October 2026 before the guard changes of 31 October, had on the same open
@@ -509,7 +510,11 @@ halves: on v1, models bought wrong 1 time in 500 with and without the guard
 the three test-bench fixes of 27 October. On v2, wrong purchases fell from
 12 to 1 of 250, with 5 caught, 1 missed and 19 right carts stopped in 255
 checks. The logs of those runs are not published; their numbers are given
-here only for comparison.
+here only for comparison. The v2 run of 31 October – 1 November with AsAsked 0.1.3 and
+the earlier simulator is published as `data/runs/v2-open-0.1.3.jsonl.gz`:
+wrong purchases fell from 9 to 3 of 250, with 11 caught, 0 missed and 12
+right carts stopped in 254 checks; all 3 were carts the guard stopped and
+the simulator approved.
 
 ---
 
