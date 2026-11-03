@@ -32,7 +32,7 @@ export const NAV = [
  * The $ASASKED token on pump.fun (/token). `launched` switches the wording to the past
  * tense; `address` stays null until it is known, and the pump.fun and DEX
  * Screener links are built from it. `x` is the project's X account, null until known.
- * `spending` lists where creator fees go, in the owner's own words; `reports` are the monthly reports.
+ * `spending` lists where creator fees go, in the owner's own words, with `paid` once an item is paid for (shown underlined); `reports` are the monthly reports.
  */
 export const TOKEN = {
   name: "AsAsked",
@@ -41,15 +41,15 @@ export const TOKEN = {
   address: "BPrLWAsozpkAQ4HTE8k2MdK3YNjBYyo38ruSCcENpump" as string | null,
   x: "https://x.com/asaskedconcord" as string | null,
   spending: [
-    "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site.",
-    "The server and the domain for asasked.dev.",
-    "A paid DEX Screener profile for $ASASKED, so its page shows the real logo, links and description. Done: paid from creator fees on 3 November 2026.",
-    "The verified checkmark for the AsAsked account on X, so people can tell it from fakes. Done: paid from creator fees on 3 November 2026.",
-    "Development time on the guard, the sandbox store and the benchmark.",
-    "Building our own AI agents that help us develop AsAsked.",
-    "Paying a second person to label and check dataset tasks, so the labels do not rest on one reviewer.",
-    "If the fees are enough: testing the guard ourselves with real agents in real online stores, not only in the sandbox.",
-  ] as string[],
+    { text: "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site." },
+    { text: "The server and the domain for asasked.dev." },
+    { text: "A paid DEX Screener profile for $ASASKED, so its page shows the real logo, links and description.", paid: "Done: paid from creator fees on 3 November 2026." },
+    { text: "The verified checkmark for the AsAsked account on X, so people can tell it from fakes.", paid: "Done: paid from creator fees on 3 November 2026." },
+    { text: "Development time on the guard, the sandbox store and the benchmark." },
+    { text: "Building our own AI agents that help us develop AsAsked." },
+    { text: "Paying a second person to label and check dataset tasks, so the labels do not rest on one reviewer." },
+    { text: "If the fees are enough: testing the guard ourselves with real agents in real online stores, not only in the sandbox." },
+  ] as { text: string; paid?: string }[],
   reports: [] as { month: string; text: string }[],
 };
 

@@ -100,7 +100,10 @@ export default function TokenPage() {
         {TOKEN.spending.length ? (
           <ul>
             {TOKEN.spending.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item.text}>
+                {item.text}
+                {item.paid && <> <span className="underline underline-offset-4">{item.paid}</span></>}
+              </li>
             ))}
           </ul>
         ) : (
