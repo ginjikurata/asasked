@@ -206,11 +206,12 @@ verified by a human without trusting a model.
 - **Measured in a sandbox.** The numbers below come from our own catalog and
   tasks; see the README's limitations.
 
-## 10. Measured behaviour (sandbox, runs of 2026-10-31 to 2026-11-01)
+## 10. Measured behaviour (sandbox, runs of 2026-10-31 to 2026-11-03)
 
 Agents bought from our sandbox store with the guard off and enforced, one run
-per task, scored against human-reviewed labels, with AsAsked 0.1.3 on the open
-halves of both datasets only. The run logs are in `data/runs/`; the figures
+per task, scored against human-reviewed labels, on the open halves of both
+datasets only: v1 with AsAsked 0.1.3, v2 with 0.1.4 and a stricter simulated
+person. The run logs are in `data/runs/`; the figures
 below are computed from them by `scripts/summarize_runs.py`.
 
 - **Naive agent** (buys the first search result), dataset v1, 100 open tasks:
@@ -221,11 +222,11 @@ below are computed from them by `scripts/summarize_runs.py`.
   500 without the guard, 0 with it. Across 460 checks the guard caught that 1
   wrong cart, missed none and stopped 9 right ones.
 - **The same five agents**, dataset v2 (templates chosen where strong models
-  made mistakes), 50 open tasks each: wrong purchases fell from 9 of 250 to 3.
-  Across 254 checks the guard caught 11 wrong carts, missed none and stopped 12
-  right ones, each costing one extra question to the person. Each of the 3
-  wrong purchases left was a cart the guard stopped and the simulated person
-  approved.
+  made mistakes), 50 open tasks each: wrong purchases fell from 11 of 250 to 0.
+  Across 255 checks the guard caught 8 wrong carts, missed none and stopped 14
+  right ones, each costing one extra question to the person. The simulated
+  person never accepts a missing, deferred or substituted item; that rule was
+  written after an earlier run on these same tasks.
 
 Per-model tables are in the README.
 

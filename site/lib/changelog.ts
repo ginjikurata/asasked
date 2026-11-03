@@ -14,6 +14,12 @@ export const CHANGELOG: Day[] = [
           "v2 re-run on the open half with version 0.1.4 and a stricter simulated person, which never accepts a missing, deferred or substituted item. Wrong purchases fell from 11 of 250 without the guard to 0 with it; the guard caught 8 wrong carts, missed none and stopped 14 right ones in 255 checks. The stricter rule was written after the 0.1.3 run on these same open tasks. Log: data/runs/v2-open-0.1.4.jsonl.gz; the 0.1.3 log stays published.",
         commit: "c3f15a2",
       },
+      {
+        area: "guard",
+        text:
+          "Version 0.1.4: the guard can take the person's request from their signed L2 mandate instead of the agent's word (Guard.from_mandate). With claimed=, it notes where the agent's account of the request differs from the signed one.",
+        commit: "220feb5",
+      },
     ],
   },
   {
