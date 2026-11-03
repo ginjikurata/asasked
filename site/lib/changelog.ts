@@ -9,6 +9,12 @@ export const CHANGELOG: Day[] = [
     date: "2026-11-03",
     changes: [
       {
+        area: "guard",
+        text:
+          "Version 0.1.5: an AP2 adapter. asasked.ap2.protect_presentation checks the merchant's checkout before the agent signs the closed Checkout Mandate over it, and refuses a checkout_hash that is not the hash of the checkout it checked. AP2 v0.2 mandates carry no request, so the person's words come from the conversation, passed by your code; colour, size and returns come from the merchant's catalog.",
+        commit: "a2c9648",
+      },
+      {
         area: "benchmark",
         text:
           "v2 re-run on the open half with version 0.1.4 and a stricter simulated person, which never accepts a missing, deferred or substituted item. Wrong purchases fell from 11 of 250 without the guard to 0 with it; the guard caught 8 wrong carts, missed none and stopped 14 right ones in 255 checks. The stricter rule was written after the 0.1.3 run on these same open tasks. Log: data/runs/v2-open-0.1.4.jsonl.gz; the 0.1.3 log stays published.",
