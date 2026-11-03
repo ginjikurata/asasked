@@ -43,8 +43,8 @@ export const TOKEN = {
   spending: [
     "AI model costs: benchmark runs with more agents and the live “Try it” demo on this site.",
     "The server and the domain for asasked.dev.",
-    "A paid DEX Screener profile for $ASASKED, so its page shows the real logo, links and description.",
-    "The verified checkmark for the AsAsked account on X, so people can tell it from fakes.",
+    "A paid DEX Screener profile for $ASASKED, so its page shows the real logo, links and description. Done: paid from creator fees on 3 November 2026.",
+    "The verified checkmark for the AsAsked account on X, so people can tell it from fakes. Done: paid from creator fees on 3 November 2026.",
     "Development time on the guard, the sandbox store and the benchmark.",
     "Building our own AI agents that help us develop AsAsked.",
     "Paying a second person to label and check dataset tasks, so the labels do not rest on one reviewer.",
