@@ -58,7 +58,8 @@ function BurnProgress() {
       </div>
       <p>
         Part of the creator fees buys back ${TOKEN.ticker}, which is then burned on chain: the total supply goes down,
-        and nobody can get those tokens back. The goal is 2% of the {fmt(TOKEN.supply)} supply. The launcher&apos;s
+        and nobody can get those tokens back. The goal is 2% of the {fmt(TOKEN.supply)} supply. That is a first goal, not a limit: we may burn more
+        after it. The launcher&apos;s
         353,134 tokens do not count toward it. A burn is not a promise of a price.
       </p>
       {TOKEN.burns.length > 0 && (
