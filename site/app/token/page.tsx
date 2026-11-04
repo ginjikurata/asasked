@@ -29,6 +29,52 @@ function Missing({ children }: { children: React.ReactNode }) {
   return <span className="text-signal">[{children}]</span>;
 }
 
+const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+
+/** Burned from creator fees so far, against the 2% goal. Figures come from TOKEN.burns, each with its transactions. */
+function BurnProgress() {
+  const burned = TOKEN.burns.reduce((sum, b) => sum + b.amount, 0);
+  const share = Math.min(burned / TOKEN.burnTarget, 1);
+  const pct = (share * 100).toFixed(1);
+  return (
+    <>
+      <div className="mt-6">
+        <div className="meta flex flex-wrap justify-between gap-x-4">
+          <span>Burned from fees · {fmt(burned)}</span>
+          <span>Goal · {fmt(TOKEN.burnTarget)} (2% of supply)</span>
+        </div>
+        <div
+          className="relative mt-2 h-3 w-full bg-panel"
+          role="progressbar"
+          aria-label="Tokens burned from creator fees, against the goal"
+          aria-valuemin={0}
+          aria-valuemax={TOKEN.burnTarget}
+          aria-valuenow={Math.round(burned)}
+          aria-valuetext={`${fmt(burned)} of ${fmt(TOKEN.burnTarget)} tokens, ${pct}%`}
+        >
+          <div className="h-full bg-signal" style={{ width: `${Math.max(share * 100, burned > 0 ? 0.6 : 0)}%` }} />
+        </div>
+        <p className="meta mt-2">{pct}% of the goal</p>
+      </div>
+      <p>
+        Part of the creator fees buys back ${TOKEN.ticker}, which is then burned on chain: the total supply goes down,
+        and nobody can get those tokens back. The goal is 2% of the {fmt(TOKEN.supply)} supply. The launcher&apos;s
+        353,134 tokens do not count toward it. A burn is not a promise of a price.
+      </p>
+      {TOKEN.burns.length > 0 && (
+        <ul>
+          {TOKEN.burns.map((b) => (
+            <li key={b.burnTx}>
+              {b.date}: {fmt(b.amount)} burned (<a href={`https://solscan.io/tx/${b.buyTx}`}>buyback</a>,{" "}
+              <a href={`https://solscan.io/tx/${b.burnTx}`}>burn</a>).
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 export default function TokenPage() {
   return (
     <main>
@@ -101,7 +147,35 @@ export default function TokenPage() {
           what comes in and goes out.
         </p>
 
+        <h2 id="tokenomics"><a href="#tokenomics">Tokenomics</a></h2>
+        <ul>
+          <li>Launched on pump.fun on 2 November 2026. No presale, no team allocation.</li>
+          <li>
+            Total supply at launch: {fmt(TOKEN.supply)} tokens, sold only on the open pump.fun curve. Nobody can mint
+            more or freeze accounts: both authorities are revoked on chain.
+          </li>
+          <li>The launcher holds 0%: his 353,134 tokens were sent to the incinerator address, as above.</li>
+          <li>
+            Creator fees are the only income. They are split as below, and each monthly report shows the split with
+            receipts and burn transactions.
+          </li>
+        </ul>
+
         <h2 id="spending"><a href="#spending">Where the money goes</a></h2>
+        <ul>
+          {TOKEN.split.map((s) => (
+            <li key={s.what}>
+              <strong>{s.pct}%</strong> {s.what}
+            </li>
+          ))}
+        </ul>
+        <p>
+          The split can change; any change is dated on this page and in the next monthly report. The shares for
+          buyback and burn and for bug bounties are fixed. While the fees are small, the 30% for development time may
+          go instead to hosting and the domain, the X checkmark and development tools. The monthly report shows what
+          that share was actually spent on, with receipts.
+        </p>
+        <p>In more detail:</p>
         {TOKEN.spending.length ? (
           <ul>
             {TOKEN.spending.map((item) => (
@@ -117,6 +191,9 @@ export default function TokenPage() {
           </p>
         )}
         <p>Each month we publish what came in from creator fees and what it was spent on.</p>
+
+        <h2 id="burn"><a href="#burn">Buyback and burn</a></h2>
+        <BurnProgress />
 
         <h2 id="scams"><a href="#scams">What we never do</a></h2>
         <ul>

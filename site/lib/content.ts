@@ -49,9 +49,34 @@ export const TOKEN = {
     { text: "Development time on the guard, the sandbox store and the benchmark." },
     { text: "Building our own AI agents that help us develop AsAsked." },
     { text: "Paying a second person to label and check dataset tasks, so the labels do not rest on one reviewer." },
-    { text: "If the fees are enough: testing the guard ourselves with real agents in real online stores, not only in the sandbox." },
+    { text: "Bug bounties for verified guard failures, under rules we publish before the first payout." },
+    { text: "Buying back $ASASKED with part of the creator fees and burning it on chain, which lowers the total supply. Each burn goes into the monthly report with its transaction. It is not a promise of a price." },
+    { text: "Later, after at least two months of buyback and burn, once the burned tokens add up to 2% of the total supply: testing the guard ourselves on real purchases, made by AI agents in real online stores, not only in the sandbox. Until then it has no share of the fees." },
   ] as { text: string; paid?: string }[],
+  /** How creator fees are split, in percent; approved by the owner on 4 November 2026. Must add up to 100. */
+  split: [
+    { pct: 30, what: "Development time" },
+    { pct: 25, what: "AI models" },
+    { pct: 10, what: "A second dataset reviewer" },
+    { pct: 10, what: "Our own development agents" },
+    { pct: 10, what: "Bug bounties for verified guard failures" },
+    { pct: 10, what: "Buying back and burning $ASASKED" },
+    { pct: 5, what: "The server and the domain" },
+  ],
   reports: [] as { month: string; text: string }[],
+  /** Total supply on chain at launch (getTokenSupply, 4 November 2026: 999,999,994.42 — pump.fun's 1,000,000,000 less ~5.58 burned by someone else). */
+  supply: 1_000_000_000,
+  /** Buyback-and-burn goal: 2% of the supply, burned from creator fees. The launcher's 353,134 tokens on the incinerator address do not count. */
+  burnTarget: 20_000_000,
+  /** Buybacks paid from creator fees and burned with the token program's burn instruction (the supply on chain goes down). */
+  burns: [
+    {
+      date: "4 November 2026",
+      amount: 477_122.446398,
+      buyTx: "37ygb1qYfwiXDB8CuuFBgYdNNwpq2rfqEW3JCy1pwiAM9x8xL49ozdqvY2HBmMh63CpAqD2uJ64nsBJfJT1XU56y",
+      burnTx: "5NozHmoep28AzjauSTnKRzFhr3gxrG13hRqz6EyWffaE4AHdh4ntKrYUmqKv1NAqzALUipzAP7EUbqkUzfxRLaGc",
+    },
+  ] as { date: string; amount: number; buyTx: string; burnTx: string }[],
 };
 
 /** Status line in the header: facts about the last benchmark run. */
