@@ -442,7 +442,8 @@ normal use). One run per task, scored against the labels. "Wrong" means the
 payment went through and VI accepted it, but the purchase was not what the
 person asked for. The v1 runs are from 31 October to 1 November 2026, with
 AsAsked 0.1.3; the v2 runs are from 3 November 2026, with AsAsked 0.1.4 and
-the stricter simulated person of commit c3f15a2. Open halves only.
+the stricter simulated person of commit c3f15a2; the hidden v2 half was run
+on 4–5 November 2026 with AsAsked 0.1.5 and the same simulator.
 
 **The run logs are published:** `data/runs/v1-open-0.1.3.jsonl.gz` and
 `data/runs/v2-open-0.1.4.jsonl.gz`, one JSON line per run with the request,
@@ -486,7 +487,7 @@ in a pilot (7 templates: corrections mid-request, an event deadline, three
 items from one merchant, cheapest-but-returnable, a brand exclusion, two
 items, deadlines in Russian). The templates were chosen where the guard has
 something to catch; read the numbers with that in mind. The open half is
-`data/tasks_v2.jsonl`; the hidden half is not reported here.
+`data/tasks_v2.jsonl`; the hidden half is reported below.
 
 | Agent | As asked | Wrong, VI passed | Bought nothing, should have |
 |---|---|---|---|
@@ -505,8 +506,42 @@ The simulated person in these runs is stricter than in the 0.1.3 runs: it
 never accepts a missing, deferred or substituted item (commit c3f15a2). In
 the 0.1.3 runs every wrong purchase left with the guard on was a cart the
 guard had stopped and the simulator then approved. The stricter rule was
-written after looking at those open tasks, so it is tuned on them; the
-hidden half has not been run with it.
+written after looking at those open tasks, so it is tuned on them. The
+hidden half below was not used for tuning.
+
+**Dataset v2, hidden half, 47 tasks** (off → on), AsAsked 0.1.5, runs of
+4–5 November 2026, the same simulated person. Neither the guard's rules nor
+the simulator were tuned on these tasks. The hidden file has 50 tasks; 3
+have the same answer as a pilot task, which can be rebuilt from the open
+code, so they are not counted (`dataset_v2.load_v2`). One
+nemotron-3.5-lightning run in each mode timed out and is not counted, so it
+has 46.
+
+| Agent | As asked | Wrong, VI passed | Bought nothing, should have |
+|---|---|---|---|
+| claude-sonnet-5 | 41 → 43 | 2 → 0 | 4 → 4 |
+| deepseek-v4-flash | 47 → 47 | 0 → 0 | 0 → 0 |
+| gpt-6-sol | 47 → 46 | 0 → 0 | 0 → 1 |
+| minimax-m3 | 45 → 46 | 1 → 0 | 1 → 1 |
+| nemotron-3.5-lightning | 39 → 43 | 4 → 0 | 3 → 3 |
+
+Wrong purchases fell from 7 of 234 to 0 of 234. The guard caught 5 wrong
+carts and missed none; the other 2 wrong purchases did not recur in the run
+with the guard (an agent does not act the same way every run). In 12 of 228
+checks of right carts the guard stopped one, and the agent had to ask the
+person one extra question. With the guard on, 9 of 234 runs ended with
+nothing bought, 8 without it.
+
+**The hidden tasks and their log are not published yet.** Publishing them
+would leave no tasks to measure the next guard version on honestly. They
+will be published once the next guard version has been measured on them, or
+once a new hidden set exists, whichever comes first. Until then, their
+SHA-256, so the published files can be checked against these runs:
+
+```
+ce1da227d8da1daa5bf4eef405777adc1f02d9bb87d2d143de71ec1e5d32898c  tasks_v2.jsonl (hidden, all 50 tasks)
+670b5c1cb8fe0254000883bfbbde0496a65c48b8561708727eee471e8e55139f  v2-hidden-0.1.5.jsonl (run log, 470 runs)
+```
 
 **Compared with the earlier runs.** The first results, from runs of 26–30
 October 2026 before the guard changes of 31 October, had on the same open

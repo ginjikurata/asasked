@@ -61,7 +61,7 @@ export default function AboutPage() {
         <h2 id="status"><a href="#status">Status</a></h2>
         <p>
           Draft. The <Link href="/spec">spec</Link> is version 0.1. Benchmark results on this site come from runs of{" "}
-          {RESULTS.runDates}, with guard versions 0.1.3 (v1) and 0.1.4 (v2). Code:{" "}
+          {RESULTS.runDates}, with guard versions 0.1.3 (v1), 0.1.4 (v2, open half) and 0.1.5 (v2, hidden half). Code:{" "}
           <GitHubLink>the repository</GitHubLink>.
         </p>
       </article>

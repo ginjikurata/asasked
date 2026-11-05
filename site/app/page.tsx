@@ -234,9 +234,22 @@ export default function Home() {
             question. v2&apos;s templates were chosen where the guard has something to catch.
           </p>
           <ModelTable title={`Dataset v2, open half, ${STORE.v2Open} tasks`} rows={RESULTS.v2} />
+          <p>
+            Then the hidden half of v2: {RESULTS.v2HiddenTasks} tasks that neither the guard&apos;s rules nor the
+            simulated person were ever tuned on, run on {RESULTS.v2HiddenDates} with AsAsked 0.1.5. Wrong purchases
+            fell from 7 of {RESULTS.v2HiddenChecks.runs} to 0. The guard caught {RESULTS.v2HiddenChecks.caught} wrong
+            carts and missed {RESULTS.v2HiddenChecks.missed}; it stopped {RESULTS.v2HiddenChecks.falseStops} of{" "}
+            {RESULTS.v2HiddenChecks.rightCarts} right carts for one extra question.
+          </p>
+          <ModelTable title={`Dataset v2, hidden half, ${RESULTS.v2HiddenTasks} tasks`} rows={RESULTS.v2Hidden} />
           <p className="meta">
-            v1 with AsAsked 0.1.3, v2 with 0.1.4, open halves only. The run logs are in the repository, in data/runs/, with the script that
-            computes these tables (scripts/summarize_runs.py).
+            v1 with AsAsked 0.1.3, v2 open half with 0.1.4. The open halves&apos; run logs are in the repository, in
+            data/runs/, with the script that computes these tables (scripts/summarize_runs.py). v2 hidden half with
+            0.1.5: its tasks and log stay private until the next guard version has been measured on them or a new
+            hidden set exists; then they are published. Until then, their SHA-256: tasks{" "}
+            <span className="break-all">{RESULTS.v2HiddenSha256.tasks}</span>, log{" "}
+            <span className="break-all">{RESULTS.v2HiddenSha256.log}</span>. Two nemotron-3.5-lightning runs timed out
+            and are not counted.
           </p>
         </Section>
 

@@ -80,7 +80,7 @@ export const TOKEN = {
 };
 
 /** Status line in the header: facts about the last benchmark run. */
-export const STATUS = `guard v${VERSION} · benchmark runs 31 Oct – 3 Nov 2026 · 6 agents`;
+export const STATUS = `guard v${VERSION} · benchmark runs 31 Oct – 5 Nov 2026 · 6 agents`;
 
 /** Constraint types Verifiable Intent v0.1 defines, and what each can express. */
 export const VI_CONSTRAINTS = [
@@ -137,7 +137,7 @@ export const STORE = {
  * published logs in data/runs/ with scripts/summarize_runs.py.
  */
 export const RESULTS = {
-  runDates: "31 October – 3 November 2026",
+  runDates: "31 October – 5 November 2026",
   /** approvedAfterStop: wrong carts the guard stopped and the simulated person then said yes to. */
   naive: { tasks: 100, wrongWithout: 99, wrongWith: 3, caught: 98, missed: 1, falseStops: 0, approvedAfterStop: 2 },
   /** Dataset v1, open half, 100 tasks. Each figure is [guard off, guard on]. */
@@ -158,6 +158,28 @@ export const RESULTS = {
     { agent: "nemotron-3.5-lightning", asked: [37, 48], wrong: [10, 0], nothing: [3, 2] },
   ],
   v2Checks: { checks: 255, caught: 8, missed: 0, falseStops: 14 },
+  /**
+   * Dataset v2, hidden half: 47 counted tasks (3 of the 50 repeat a pilot's answer and are not
+   * counted, see dataset_v2.load_v2), AsAsked 0.1.5, runs of 4–5 November 2026. The guard's rules
+   * and the simulated person were never tuned on these tasks. The tasks and the log stay private
+   * for now; their SHA-256 below lets anyone check them once they are published.
+   * nemotron-3.5-lightning has 46: one run in each mode timed out and is not counted.
+   */
+  v2Hidden: [
+    { agent: "claude-sonnet-5", asked: [41, 43], wrong: [2, 0], nothing: [4, 4] },
+    { agent: "deepseek-v4-flash", asked: [47, 47], wrong: [0, 0], nothing: [0, 0] },
+    { agent: "gpt-6-sol", asked: [47, 46], wrong: [0, 0], nothing: [0, 1] },
+    { agent: "minimax-m3", asked: [45, 46], wrong: [1, 0], nothing: [1, 1] },
+    { agent: "nemotron-3.5-lightning", asked: [39, 43], wrong: [4, 0], nothing: [3, 3] },
+  ],
+  v2HiddenChecks: { checks: 233, caught: 5, missed: 0, falseStops: 12, runs: 234, rightCarts: 228 },
+  v2HiddenTasks: 47,
+  v2HiddenDates: "4–5 November 2026",
+  /** SHA-256 of the hidden task file (all 50 rows) and of the run log, both outside the repository. */
+  v2HiddenSha256: {
+    tasks: "ce1da227d8da1daa5bf4eef405777adc1f02d9bb87d2d143de71ec1e5d32898c",
+    log: "670b5c1cb8fe0254000883bfbbde0496a65c48b8561708727eee471e8e55139f",
+  },
 } as const;
 
 export const LIMITATIONS = [
@@ -165,7 +187,7 @@ export const LIMITATIONS = [
   "One person reviewed the dataset: 44 tasks row by row, every other template through a concrete question about the right purchase. There is no inter-annotator agreement to report.",
   "On dataset v1 the guard has little to do for real models: they bought wrong once in 500 runs without it. The clear effect is on a naive agent and on one weaker model in v2.",
   "v2 keeps only templates where strong models made mistakes in a pilot, so the guard has something to catch there. Read its numbers with that in mind.",
-  "The benchmark is small and was run once per task, so a difference of one or two tasks is noise. The person answering the agent's questions is simulated by a model, and it can say yes to a wrong cart: in the 0.1.3 run of v2, every wrong purchase with the guard on was a cart the guard had stopped. The stricter simulator of the 3 November run was tuned on the open v2 tasks. Only the open halves are reported.",
+  "The benchmark is small and was run once per task, so a difference of one or two tasks is noise. The person answering the agent's questions is simulated by a model, and it can say yes to a wrong cart: in the 0.1.3 run of v2, every wrong purchase with the guard on was a cart the guard had stopped. The stricter simulator of the 3 November run was tuned on the open v2 tasks; the hidden v2 half, run on 4–5 November, was not used for tuning. Its tasks and log are not published yet, only their SHA-256: they will be published once the next guard version has been measured on them, or once a new hidden set exists.",
   "A vague request cannot be checked: only the person knows the missing details.",
   "Extraction is not bit-reproducible. The deterministic half is, and it is the half that belongs in a dispute.",
   "The hidden half of v1 is not really hidden: the generator's seed is in the repository, so anyone can rebuild it. Treat all 200 v1 tasks as public; v2's hidden seed is kept outside the repository.",
