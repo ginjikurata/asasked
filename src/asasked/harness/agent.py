@@ -87,16 +87,18 @@ def parse_agent(text: str) -> AgentSpec:
 
 
 def run_agent(spec: AgentSpec, session: Session, request: str,
-              max_steps: int = MAX_STEPS) -> AgentResult:
+              max_steps: int = MAX_STEPS, system: str = SYSTEM_PROMPT) -> AgentResult:
+    """Runs the agent on one request. system replaces the benchmark prompt
+    only for the live window (live.LIVE_SYSTEM_PROMPT); runs keep the default."""
     result = AgentResult()
     started = time.monotonic()
     try:
         if spec.provider == "anthropic":
-            _loop_anthropic(spec, session, request, max_steps, result)
+            _loop_anthropic(spec, session, request, max_steps, result, system)
         elif spec.provider == "naive":
             _loop_naive(session, request, result)
         else:
-            _loop_openai(spec, session, request, max_steps, result)
+            _loop_openai(spec, session, request, max_steps, result, system)
     except (AgentError, ExtractionError) as e:
         result.stop, result.error = "error", str(e)
     result.seconds = round(time.monotonic() - started, 1)
@@ -172,7 +174,7 @@ def _loop_naive(session, request, result):
 # ---------------------------------------------------------------------------
 
 
-def _loop_anthropic(spec, session, request, max_steps, result):
+def _loop_anthropic(spec, session, request, max_steps, result, system=SYSTEM_PROMPT):
     try:
         import anthropic
     except ImportError as e:
@@ -185,7 +187,7 @@ def _loop_anthropic(spec, session, request, max_steps, result):
     result.messages = messages
     while result.steps < max_steps:
         response = _create_with_proxy_retries(anthropic, client, model=spec.model,
-                                              max_tokens=4096, system=SYSTEM_PROMPT,
+                                              max_tokens=4096, system=system,
                                               tools=session.tools(), messages=messages)
 
         result.steps += 1
@@ -246,12 +248,12 @@ def _create_with_proxy_retries(anthropic, client, attempts: int = 3, **kwargs):
 # ---------------------------------------------------------------------------
 
 
-def _loop_openai(spec, session, request, max_steps, result):
+def _loop_openai(spec, session, request, max_steps, result, system=SYSTEM_PROMPT):
     base = llm_extract.OPENAI_COMPAT_BASE_URL
     if not (base and llm_extract.OPENAI_COMPAT_API_KEY):
         raise AgentError("openai_compat needs OPENAI_COMPAT_BASE_URL and OPENAI_COMPAT_API_KEY")
     tools = openai_tools(session.tools())
-    messages = [{"role": "system", "content": SYSTEM_PROMPT},
+    messages = [{"role": "system", "content": system},
                 {"role": "user", "content": request}]
     result.messages = messages
     while result.steps < max_steps:

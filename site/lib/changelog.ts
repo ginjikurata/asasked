@@ -6,6 +6,16 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-05",
+    changes: [
+      {
+        area: "extraction",
+        text:
+          "Version 0.1.6: requests in Spanish, French, Japanese and Chinese. The fact extraction returns brands and models in Latin letters even when they are written in katakana or Chinese characters, and weekdays, counters and refund wishes in these languages are read. Stress sets for the four languages (48 phrases, both models): no field differs from the expected one; the English and Russian sets did not change. Amounts are not converted between currencies. The live window's agent now answers in the language of the request; the benchmark's agent prompt is unchanged.",
+      },
+    ],
+  },
+  {
     date: "2026-11-03",
     changes: [
       {

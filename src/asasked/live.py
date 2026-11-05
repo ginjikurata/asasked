@@ -40,11 +40,12 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import fields
 from datetime import datetime, timezone
+from functools import partial
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .coherence import IntentFacts, decide_before_purchase
 from .guard import Guard
-from .harness.agent import AGENTS, AgentResult, AgentSpec, run_agent
+from .harness.agent import AGENTS, SYSTEM_PROMPT, AgentResult, AgentSpec, run_agent
 from .harness.tasks import TODAY
 from .store.catalog_v1 import CATALOG
 from .store.store import Mandate, Store
@@ -62,6 +63,14 @@ MAX_ANSWER_CHARS = 300
 ANSWER_WAIT = 600          # how long a question waits for an answer, seconds
 RUN_WAIT = 290             # how long we wait for the agent per turn (the site route waits 300)
 MAX_OPEN = 40              # conversations waiting for an answer at once
+
+# The live window talks to people in their own language; the benchmark prompt
+# stays neutral and unchanged (harness/agent.py), so runs measure the same thing.
+LIVE_SYSTEM_PROMPT = SYSTEM_PROMPT + """
+Talk to the person in the language they wrote their request in: every
+ask_user question and your final summary are in that language, including
+questions the store asks you to pass on, which may come in English."""
+LIVE_RUN = partial(run_agent, system=LIVE_SYSTEM_PROMPT)
 
 
 class LimitError(Exception):
@@ -224,7 +233,7 @@ class Conversation:
 
     def __init__(self, request: str, visitor: str = "", agent: AgentSpec | None = None,
                  extract: Callable[[str], IntentFacts] | None = None,
-                 run: Callable[..., AgentResult] = run_agent):
+                 run: Callable[..., AgentResult] = LIVE_RUN):
         self.id = secrets.token_urlsafe(16)
         self.request, self.visitor = request, visitor
         self.spec = agent or AGENTS[LIVE_AGENT]

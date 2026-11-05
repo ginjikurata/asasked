@@ -121,7 +121,11 @@ SOFTENABLE_FIELDS = [
 ]
 
 SYSTEM_PROMPT = """You extract purchase facts from a person's request to a shopping agent.
-The request may be in English or Russian. The person asks for one or more
+The request may be in any language: English, Russian, Spanish, French,
+Japanese, Chinese (simplified or traditional) or another. Whatever the
+language, return the values in the canonical forms below: brands and models
+in Latin letters, colours, levels and weekdays in English. Only the texts in
+"other_conditions" stay in the person's own words and language. The person asks for one or more
 items (a racket, balls, shoes, clothes, anything a shop sells), sometimes in a
 muddled way, with caveats or contradictions. Your only job is to return the facts the person stated
 explicitly. Do not invent anything that is not in the text.
@@ -132,13 +136,18 @@ keys (use null when the attribute is not stated):
 - "brand": string, the canonical brand name in Latin letters, if named
   (e.g. "Babolat", "HEAD", "Wilson", "ASICS"). Normalise colloquial,
   misspelled and transliterated forms ("babbolat", "Бабблат" -> "Babolat";
-  "asix", "асиксы" -> "ASICS"). A brand the person excludes ("anything but
+  "asix", "асиксы" -> "ASICS"), including brands written in another
+  script ("バボラ", "百保力" -> "Babolat"; "ウィルソン", "威尔胜" -> "Wilson";
+  "ヘッド", "海德" -> "HEAD"; "アシックス", "亚瑟士", "亞瑟士" -> "ASICS"). A brand the person excludes ("anything but
   Wilson") or takes back is not a choice: null.
 - "brand_not": array of brands the person explicitly does NOT want ("anything
   but Wilson", "не HEAD"), canonical names; otherwise [].
 - "model": string, the product model or line if the person names one, as
   they named it, without the brand ("Pure Aero 98", "EZONE 98",
-  "Gel-Resolution 9", "Ti.S6"). Only a named model, never a guess: "something
+  "Gel-Resolution 9", "Ti.S6"), in Latin letters as the maker writes it:
+  a model written in katakana or Chinese characters is given its maker's
+  Latin name ("クラッシュ100" -> "Clash 100", "ピュアアエロ" -> "Pure Aero").
+  Only a named model, never a guess: "something
   like my old one" is null. Otherwise null.
 - "color": one of "black", "white", "blue", "yellow", "silver", "red",
   "green", "grey", "pink", "brown", "beige", "orange", "purple" (the
@@ -155,19 +164,24 @@ keys (use null when the attribute is not stated):
   otherwise null. A spending limit alone ("under $200", "до 15 000") is NOT a
   cheap preference: put it in explicit_max_cents and leave this null.
 - "explicit_max_cents": integer, an explicitly stated spending limit in minor
-  units of whatever currency is named (amount x 100: "$150" -> 15000,
-  "15k" or "до 15 000" -> 1500000). Hyperbole ("not a million") is not a
+  units of whatever currency is named, with no conversion (amount x 100:
+  "$150" or "150 euros" -> 15000, "15k" or "до 15 000" -> 1500000,
+  "1万5千円" -> 1500000, "800元" -> 80000). Hyperbole ("not a million") is not a
   limit. Otherwise null.
 - "quantity": integer number of items if stated explicitly, including in
-  words ("a couple", "пару" = 2; "half a dozen" = 6); otherwise null.
+  words or with counters ("a couple", "пару", "un par", "两罐", "二缶" = 2;
+  "half a dozen", "une demi-douzaine" = 6; "三罐", "3缶" = 3); otherwise null.
 - "needs_refundable": true if the person wants to be able to return or
-  exchange the item if it doesn't fit or work out; otherwise false.
+  exchange the item if it doesn't fit or work out ("devolver", "renvoyer",
+  "返品", "退货"); otherwise false.
 - "deadline_days": integer number of days if the person states a deadline
   ("by Saturday", "urgently", "within two days", "к субботе", "до субботы");
   estimate a reasonable number of days; otherwise null. "By <day>" and
   "до <дня>" include that day: from Monday, "by Saturday" is 5 days.
 - "deadline_weekday": when the deadline is a named day of the week ("by
-  Friday", "Friday at the latest", "к пятнице", "до среды"), that day in
+  Friday", "Friday at the latest", "к пятнице", "до среды", "para el
+  viernes", "d'ici mercredi", "金曜日までに", "周五之前", "星期三之前",
+  "下週一前"), that day in
   lowercase English ("friday"); otherwise null. The number of days to it is
   then counted by code, not by you.
 - "lines": only when the person asks for several different items or variants
@@ -188,7 +202,8 @@ keys (use null when the attribute is not stated):
 - "soft_fields": array of names of the fields above (only non-null ones)
   that the person themselves marked as optional, approximate or not
   important. Signals: "if not, fine", "not a big deal", "give or take",
-  "around", "не принципиально", "плюс-минус", the person correcting
+  "around", "не принципиально", "плюс-минус", "me da igual", "peu importe",
+  "何でも構いません", "无所谓", the person correcting
   themselves or dropping a requirement. Do NOT add a field just because you
   are unsure of the extraction, only when it comes from the person's words.
   If there are none, an empty array [].

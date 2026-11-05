@@ -18,8 +18,14 @@ from asasked.coherence import extract_intent, extract_intent_agreed
 from asasked.llm_extract import DEFAULT_PROVIDER, PROVIDERS, ExtractionError
 from asasked.stress_phrases import CASES
 from asasked.stress_phrases_en import CASES_EN
+from asasked.stress_phrases_intl import CASES_ES, CASES_FR, CASES_INTL, CASES_JA, CASES_ZH
 
-SETS = {"ru": CASES, "en": CASES_EN, "all": CASES + CASES_EN}
+# Deadlines in the intl sets are counted from this date; the ru and en deadline
+# cases are read by hand, so a fixed date changes nothing for them.
+TODAY = "Monday, 2 November 2026"
+
+SETS = {"ru": CASES, "en": CASES_EN, "es": CASES_ES, "fr": CASES_FR, "ja": CASES_JA, "zh": CASES_ZH,
+        "intl": CASES_INTL, "all": CASES + CASES_EN + CASES_INTL}
 
 G, R, Y, B, D, X = "\033[32m", "\033[31m", "\033[33m", "\033[1m", "\033[2m", "\033[0m"
 
@@ -33,8 +39,8 @@ def main() -> int:
 
     def extract(phrase):
         if args.provider == "both":
-            return extract_intent_agreed(phrase, deadline_days=None)
-        return extract_intent(phrase, deadline_days=None, provider=args.provider)
+            return extract_intent_agreed(phrase, deadline_days=None, today=TODAY)
+        return extract_intent(phrase, deadline_days=None, provider=args.provider, today=TODAY)
 
     print(f"{D}Set: {args.lang}, phrases: {len(cases)}, provider: {args.provider}{X}")
     errors = []

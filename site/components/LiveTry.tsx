@@ -354,7 +354,8 @@ export function LiveTry() {
       <p className="meta mt-3">
         A real model ({run?.agent ?? "claude-sonnet-5"}) shops in the sandbox store; the payment is checked by
         Verifiable Intent, the guard stands in front of it. No money moves. When the agent or the guard needs your
-        answer, the run pauses and you can reply right here. Up to 5 requests a day — a request where the agent
+        answer, the run pauses and you can reply right here. Write in English, Spanish, French, Japanese, Chinese or
+        Russian; the agent answers in your language. Up to 5 requests a day — a request where the agent
         didn&apos;t shop (a plain “hi”) doesn&apos;t count; answers don&apos;t count. What you type goes to AI model
         providers and isn&apos;t stored; see the{" "}
         <a href="/privacy" className="link">
