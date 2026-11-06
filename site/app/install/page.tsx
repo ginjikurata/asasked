@@ -27,6 +27,9 @@ const CLAUDE_CODE_JSON = `{
   }
 }`;
 
+const CLAUDE_PLUGIN = `/plugin marketplace add ginjikurata/asasked
+/plugin install asasked@asasked`;
+
 const CLAUDE_DESKTOP = `{
   "mcpServers": {
     "asasked": {
@@ -147,6 +150,23 @@ const TABS: InstallTab[] = [
           <code>.mcp.json</code>, keep the key in your environment instead of the file:
         </p>
         <CopyCode title=".mcp.json">{CLAUDE_CODE_JSON}</CopyCode>
+      </>
+    ),
+  },
+  {
+    id: "claude-plugin",
+    label: "Claude Code plugin",
+    content: (
+      <>
+        <p>
+          The plugin adds the same server plus a skill that tells Claude to call <code>check_order</code> before it
+          pays. Type in Claude Code:
+        </p>
+        <CopyCode title="Claude Code">{CLAUDE_PLUGIN}</CopyCode>
+        <p className="text-muted">
+          The server reads the key from the environment Claude Code starts in: set <code>CLAUDE_API_KEY</code> in your
+          shell before you run <code>claude</code>.
+        </p>
       </>
     ),
   },

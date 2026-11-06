@@ -1,0 +1,16 @@
+{
+  "name": "asasked",
+  "owner": {
+    "name": "Ginji Kurata",
+    "url": "https://github.com/ginjikurata"
+  },
+  "description": "AsAsked: checks that what a shopping agent is about to buy is what the person asked for.",
+  "plugins": [
+    {
+      "name": "asasked",
+      "source": "./",
+      "description": "Before your agent pays, check the cart against the person's own words. On a mismatch it asks the person instead of paying.",
+      "category": "productivity"
+    }
+  ]
+}

@@ -92,6 +92,19 @@ through `.mcp.json`, keep the key in your environment:
 }
 ```
 
+### Claude Code plugin
+
+The plugin adds the same server plus a skill that tells Claude to call
+`check_order` before it pays. In Claude Code:
+
+```
+/plugin marketplace add ginjikurata/asasked
+/plugin install asasked@asasked
+```
+
+The server reads the key from the environment Claude Code starts in, so
+set `CLAUDE_API_KEY` in your shell before you run `claude`.
+
 ### Claude Desktop
 
 Settings → Developer → Edit Config opens `claude_desktop_config.json`

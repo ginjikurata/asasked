@@ -1,0 +1,20 @@
+{
+  "name": "asasked",
+  "displayName": "AsAsked",
+  "version": "0.1.6",
+  "description": "Before your agent pays, check the cart against the person's own words. On a mismatch it asks the person instead of paying.",
+  "author": {
+    "name": "Ginji Kurata",
+    "url": "https://github.com/ginjikurata"
+  },
+  "homepage": "https://asasked.dev/install",
+  "repository": "https://github.com/ginjikurata/asasked",
+  "license": "Apache-2.0",
+  "keywords": ["shopping", "agents", "payments", "mcp", "intent"],
+  "mcpServers": {
+    "asasked": {
+      "command": "uvx",
+      "args": ["--from", "asasked[mcp,anthropic]", "asasked-mcp"]
+    }
+  }
+}
