@@ -76,6 +76,18 @@ export const TOKEN = {
       buyTx: "37ygb1qYfwiXDB8CuuFBgYdNNwpq2rfqEW3JCy1pwiAM9x8xL49ozdqvY2HBmMh63CpAqD2uJ64nsBJfJT1XU56y",
       burnTx: "5NozHmoep28AzjauSTnKRzFhr3gxrG13hRqz6EyWffaE4AHdh4ntKrYUmqKv1NAqzALUipzAP7EUbqkUzfxRLaGc",
     },
+    {
+      date: "5 November 2026",
+      amount: 1_001_164.320074,
+      buyTx: "2JCZWqyzkkNa9TQTVyTdsv6EcP4nsqZZk51eKfauGMNFZBJgjBgjiT45cS57fakjxFCx5oiBoWm4KMt5ydjNShun",
+      burnTx: "5FmbHEjhRHSkYqzWBcFeU7RPizSTW4nLSYJanTvJUCmcorTE83rJkNqAapWKJGzDW1YTsZAY4F7xaybC8EPFq76t",
+    },
+    {
+      date: "6 November 2026",
+      amount: 777_277.383961,
+      buyTx: "38FxXF3245yT2FoXGkr14548GLn9GXmr9CCq1usmzizi6SpjYpiKbMoTcJpSZrNPMFgkx1xUEmCdMDo5htESD8pT",
+      burnTx: "4QQL9q8ddCZ1vDvfyyjJyiHjKGQKh47LkicGrm3tWAfwE6V8WTStpyoqef7CboL3iEcAL4BucVuPpFzgBKf92iQc",
+    },
   ] as { date: string; amount: number; buyTx: string; burnTx: string }[],
 };
 
