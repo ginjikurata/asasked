@@ -121,7 +121,7 @@ export default function Home() {
         </section>
 
         {/* ── 01 Try ── */}
-        <Section id="try" n="01" title="Try it">
+        <Section id="examples" n="01" title="Try it">
           <p>
             Eight tasks from the open half of the dataset. A baseline agent bought the first search result; payment
             would have gone through. Pick a request and see what the guard says, then switch to the right purchase.
@@ -129,7 +129,7 @@ export default function Home() {
           <div className="pt-2">
             <GuardDemo />
           </div>
-          <h3 className="pt-8 font-medium text-ink">Or write your own</h3>
+          <h3 id="try" className="pt-8 font-medium text-ink">Or write your own</h3>
           <p>
             Type a request the way you&apos;d say it to a person. A real agent shops in the sandbox tennis store, and the
             guard checks the cart against your words before it pays. A run takes about half a minute to a minute, so give it a
