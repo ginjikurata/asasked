@@ -46,7 +46,11 @@ class CartItem(BaseModel):
     price: float = Field(ge=0, description="Price of one item, in the same currency "
                                            "the person used for any limit")
     quantity: int = Field(1, ge=1)
-    units: int = Field(1, description="Pieces per item, e.g. 6 for a 6-pack")
+    units: int = Field(1, ge=1, description=(
+        "How many of what the person counts one item holds, counted their way: "
+        "if they asked for cans of balls, a can of 3 balls is 1 and a pack of 4 "
+        "cans is 4; if they asked for balls, the can is 3. 1 when one item is "
+        "one of what they asked for"))
     returnable: bool | None = Field(None, description="Can it be returned; null if the shop doesn't say")
     delivery_days: int | None = Field(None, description="Days until it arrives")
     level: str | None = Field(None, description="beginner / intermediate / advanced, if the shop says")

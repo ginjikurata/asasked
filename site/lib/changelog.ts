@@ -6,6 +6,21 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-07",
+    changes: [
+      {
+        area: "guard",
+        text:
+          "Version 0.1.7: the check_order tool now tells the agent to count units the way the person does. If they asked for cans of balls, a can of 3 balls is 1. In a trial through Claude Code with the plugin (Sonnet, 8 open v2 tasks, version 0.1.6), all 8 purchases were right and check_order ran before payment in all 8. But 4 of 11 checks stopped right carts, on 3 tasks, mostly because the agent passed 3 balls per can. After the fix those 3 tasks were run again: no check stopped over units. One check still stopped a right cart, over a bag line the fact extraction added once and did not add in 3 repeats. The guard's checks are unchanged.",
+      },
+      {
+        area: "benchmark",
+        text:
+          "Benchmark runs through Claude Code: scripts/run_claude_code.py starts claude -p with the plugin and the sandbox store as an MCP server (scripts/claude_code_store_mcp.py), and counts how often check_order runs before payment and what it decides. --local-guard uses the guard from the checkout instead of the published package. The trial is not a full run and is not in data/runs.",
+      },
+    ],
+  },
+  {
     date: "2026-11-05",
     changes: [
       {
