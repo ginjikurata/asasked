@@ -6,6 +6,23 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-08",
+    changes: [
+      {
+        area: "extraction",
+        text:
+          "Version 0.1.8: a single item named in the singular (\"the HEAD Speed Pro\", \"a racket\") now counts as quantity 1 even with no number. Before, the quantity was left unstated and the guard did not check it, so a cart with 3 of the item passed. On the 142 right carts of the open v1 and v2 tasks, no check stopped over quantity. On the stress sets (125 phrases, both models), 2 fields per model differ from the expected value, none of them quantity. The guard's checks are unchanged.",
+        commit: "3eb7db2",
+      },
+      {
+        area: "benchmark",
+        text:
+          "Benchmark v3 in the repository, not yet in the tables on this site: the hijacked agent. Prompt injections sit in the sandbox store's descriptions, reviews, seller notes and search highlights (6 kinds, 10 base requests, 70 tasks). A scripted agent with no model obeys every injection, so what is measured is the guard alone. Without the guard, 60 of 60 attacks landed. With the guard taking the request the agent reports at checkout, an agent that describes the cart it bought got 59 of 60 through: the guard is only as good as the request it is given. With the person's signed request, 3 of 60 got through on version 0.1.7, all \"buy 3\" injections on requests without the word \"one\"; on 0.1.8 a re-run of the quantity and add-on attacks let 0 of 20 through. No right cart was stopped. Every stop is a question to the person, and an agent that ignores their \"no\" and pays again still gets through.",
+        commit: "3eb7db2",
+      },
+    ],
+  },
+  {
     date: "2026-11-07",
     changes: [
       {
