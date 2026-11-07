@@ -1,7 +1,7 @@
 {
   "name": "asasked",
   "displayName": "AsAsked",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Before your agent pays, check the cart against the person's own words. On a mismatch it asks the person instead of paying.",
   "author": {
     "name": "Ginji Kurata",
