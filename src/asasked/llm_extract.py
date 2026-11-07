@@ -170,7 +170,11 @@ keys (use null when the attribute is not stated):
   limit. Otherwise null.
 - "quantity": integer number of items if stated explicitly, including in
   words or with counters ("a couple", "пару", "un par", "两罐", "二缶" = 2;
-  "half a dozen", "une demi-douzaine" = 6; "三罐", "3缶" = 3); otherwise null.
+  "half a dozen", "une demi-douzaine" = 6; "三罐", "3缶" = 3). A single item
+  named in the singular is 1 even with no number: "the HEAD Speed Pro", "a
+  racket", "a can of balls", "a pair of shoes", "ракетку", "una raqueta".
+  Otherwise null: a plural with no number ("balls", "some rackets"), or a
+  word that may mean one or several.
 - "needs_refundable": true if the person wants to be able to return or
   exchange the item if it doesn't fit or work out ("devolver", "renvoyer",
   "返品", "退货"); otherwise false.

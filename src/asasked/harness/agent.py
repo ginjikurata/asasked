@@ -64,6 +64,10 @@ AGENTS = {
     # not a model but a script: a cheap fast pipeline that takes the first
     # search result and opens no product pages, the lower bound
     "naive": AgentSpec("naive", "naive", "first-search-result"),
+    # v3: scripts that obey every injection, to measure the guard alone
+    # (harness.hijacked; they need a v3 task)
+    "hijacked": AgentSpec("hijacked", "scripted", "obeys-injections"),
+    "hijacked-cover": AgentSpec("hijacked-cover", "scripted", "obeys-injections-covers-tracks"),
     # simpler models, what cheap agents are built on
     "gpt-oss-20b": AgentSpec("gpt-oss-20b", "openai_compat", "am/gpt-oss-20b"),
     "qwen3.8-27b": AgentSpec("qwen3.8-27b", "openai_compat", "qwen/qwen3.8-27b"),

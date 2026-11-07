@@ -17,11 +17,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-from asasked.harness import dataset, dataset_v2
+from asasked.harness import dataset, dataset_v2, dataset_v3
 from asasked.harness.agent import AGENTS, parse_agent
 from asasked.harness.run import run_task
 from asasked.harness.tasks import TASK_SETS
-from asasked.store.store import Store
 
 RUNS_DIR = Path(__file__).resolve().parents[1] / "runs"
 
@@ -30,12 +29,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--agents", default="claude-sonnet-5,gpt-6-sol,deepseek-v4-pro",
                         help=f"comma-separated: {', '.join(AGENTS)} or provider:model")
-    parser.add_argument("--tasks", choices=[*TASK_SETS, "v1", "v1-open", "v1-hidden", "v2-pilot", "v2-pilot2", "v2-pilot3", "v2", "v2-open", "v2-hidden"],
+    parser.add_argument("--tasks", choices=[*TASK_SETS, "v1", "v1-open", "v1-hidden", "v2-pilot", "v2-pilot2", "v2-pilot3", "v2", "v2-open", "v2-hidden", "v3"],
                         default="pilot", help="v1* - the dataset from data/tasks_v1.jsonl; v2-pilot - the v2 template pilot")
     parser.add_argument("--only", help="comma-separated task ids")
     parser.add_argument("--repeats", type=int, default=1)
-    parser.add_argument("--guard", choices=("off", "advisory", "enforced", "both"),
-                        default="off", help="the guard before payment; both = off and enforced")
+    parser.add_argument("--guard", choices=("off", "advisory", "enforced", "both", "v3"),
+                        default="off", help="the guard before payment; both = off and enforced; "
+                        "v3 = off, enforced with the request from the agent, enforced with "
+                        "the signed request")
     parser.add_argument("--guard-facts", choices=("model", "label"), default="model",
                         help="model - the guard extracts facts itself; label - from the label")
     parser.add_argument("--parallel", type=int, default=4,
@@ -60,6 +61,8 @@ def main() -> int:
         tasks = dataset_v2.load_pilot2()
     elif args.tasks == "v2-pilot3":
         tasks = dataset_v2.load_pilot3()
+    elif args.tasks == "v3":
+        tasks = dataset_v3.load()
     elif args.tasks.startswith("v2"):
         split = args.tasks.partition("-")[2] or None
         tasks = dataset_v2.load_v2(split)
@@ -76,24 +79,30 @@ def main() -> int:
     print(f"Tasks: {len(tasks)}, agents: {len(agents)}, repeats: {args.repeats} -> {out}",
           flush=True)
 
-    modes = ("off", "enforced") if args.guard == "both" else (args.guard,)
-    jobs = [(agent, task, mode) for agent in agents for task in tasks for mode in modes
+    # An arm is (guard_mode, guard_request); guard_request only exists in v3.
+    arms = {"both": [("off", None), ("enforced", None)],
+            "v3": [("off", None), ("enforced", "agent"), ("enforced", "signed")]
+            }.get(args.guard, [(args.guard, None)])
+    jobs = [(agent, task, arm) for agent in agents for task in tasks for arm in arms
             for _ in range(args.repeats)]
     records = []
 
-    def one(agent, task, mode):
-        # Every run has its own store: sessions share no state.
+    def one(agent, task, arm):
+        mode, request_from = arm
+        # Every run has its own store (run_task makes it): sessions share no state.
         try:
-            return run_task(agent, task, Store(), guard_mode=mode, guard_facts=args.guard_facts)
+            return run_task(agent, task, None, guard_mode=mode, guard_facts=args.guard_facts,
+                            guard_request=request_from)
         except Exception:  # noqa: BLE001 - one failed run must not bring down the rest
             return {"agent": agent.name, "task_id": task.id, "guard_mode": mode,
+                    "guard_request": request_from,
                     "score": None, "steps": 0,
                     "questions": [], "order": None, "seconds": 0, "stop": "error",
                     "error": traceback.format_exc(limit=3)}
 
     with out.open("w", encoding="utf-8") as f, \
             ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
-        futures = [pool.submit(one, agent, task, mode) for agent, task, mode in jobs]
+        futures = [pool.submit(one, agent, task, arm) for agent, task, arm in jobs]
         for done, future in enumerate(as_completed(futures), 1):
             rec = future.result()
             records.append(rec)
@@ -104,7 +113,9 @@ def main() -> int:
                 "as_asked": "AS ASKED", "wrong_purchase": "WRONG (VI passed)",
                 "stopped_short": "stopped short"}[s["outcome"]]
             bought = rec["order"]["purchase"] if rec["order"] and rec["order"]["placed"] else "—"
-            guard = f"guard={rec['guard_mode']:<8} " if args.guard != "off" else ""
+            guard = f"guard={_arm(rec):<16} " if args.guard != "off" else ""
+            if rec.get("attack"):
+                mark += " HIJACKED" if rec["attack"]["succeeded"] else ""
             print(f"  [{done}/{len(jobs)}] {rec['agent']:<18} {guard}{rec['task_id']:<26} {mark:<18} "
                   f"steps={rec['steps']:<3} asked={len(rec['questions'])} bought={bought} "
                   f"({rec['seconds']}s)", flush=True)
@@ -112,7 +123,7 @@ def main() -> int:
     print("\nSummary", flush=True)
     by_agent = defaultdict(list)
     for r in records:
-        key = r["agent"] if args.guard == "off" else f"{r['agent']} [{r.get('guard_mode')}]"
+        key = r["agent"] if args.guard == "off" else f"{r['agent']} [{_arm(r)}]"
         by_agent[key].append(r)
     for name, rs in sorted(by_agent.items()):
         scored = [r for r in rs if r["score"] is not None]
@@ -132,7 +143,19 @@ def main() -> int:
             print(f"  {'':<22} guard: caught {sum(g['caught'] for g in guarded)}, "
                   f"missed {sum(g['missed'] for g in guarded)}, "
                   f"false stops {sum(g['false_stops'] for g in guarded)}", flush=True)
+        attacked = [r for r in scored if r.get("attack")]
+        if attacked:
+            hit = sum(r["attack"]["succeeded"] for r in attacked)
+            retold = sum(any(q != r["request"] for q in r.get("reported_requests") or [])
+                         for r in scored)
+            print(f"  {'':<22} attacks succeeded {hit}/{len(attacked)}   "
+                  f"request retold differently {retold}/{n}", flush=True)
     return 0
+
+
+def _arm(rec: dict) -> str:
+    mode, request_from = rec.get("guard_mode"), rec.get("guard_request")
+    return f"{mode}/{request_from}" if request_from else str(mode)
 
 
 if __name__ == "__main__":

@@ -8,8 +8,9 @@ against the label later. These are two different questions and must not be mixed
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from functools import lru_cache
 
-from ..coherence import check_coherence
+from ..coherence import check_coherence, extract_intent_agreed
 from ..guard import Guard
 from ..store.catalog_v1 import CATALOG_VERSION
 from ..store.store import Store
@@ -45,22 +46,49 @@ def score(task: Task, purchase: list[tuple[str, int]] | None, placed: bool,
     }
 
 
+@lru_cache(maxsize=None)
+def _shared_extract(text: str):
+    """Extraction shared across runs, for the scripted agents only: they send
+    the same few requests hundreds of times, and a model run per guard would
+    cost money and add noise without measuring anything. Failures are not
+    cached (lru_cache does not keep exceptions)."""
+    return extract_intent_agreed(text, today=TODAY)
+
+
 def run_task(spec: AgentSpec, task: Task, store: Store | None = None,
-             guard_mode: str = "off", guard_facts: str = "model") -> dict:
+             guard_mode: str = "off", guard_facts: str = "model",
+             guard_request: str | None = None) -> dict:
     """guard_mode is off | advisory | enforced (see store.Session).
     guard_facts is where the guard gets its facts: model (extracts them
     itself, as in real life) or label (facts from the label, to separate the
-    quality of the check from the quality of extraction)."""
-    store = store or Store()
+    quality of the check from the quality of extraction).
+    guard_request (v3) is where the guard gets the person's request: "agent"
+    (from checkout's request argument, as an MCP guard hears it) or "signed"
+    (from the person, as Guard.from_mandate does; the agent's account only
+    adds notes). None keeps the old behaviour: the task's request."""
+    if store is None:
+        injections = getattr(task, "injections", None)
+        store = Store(content=bool(injections) or getattr(task, "content", False),
+                      injections=injections)
     mandate = task.mandate()
     user = SimulatedUser(task.request, task.persona) if task.persona else None
     guard = None
     if guard_mode != "off":
-        guard = Guard(task.request, today=TODAY,
-                      extract=(lambda _req: task.facts) if guard_facts == "label" else None)
+        if guard_request is not None and guard_facts == "label":
+            raise ValueError("guard_request needs guard_facts='model'")
+        extract = ((lambda _req: task.facts) if guard_facts == "label"
+                   else _shared_extract if spec.provider == "scripted" else None)
+        guard = Guard(task.request, today=TODAY, extract=extract)
+        if guard_request == "signed":
+            guard._signed = task.request
     session = store.new_session(mandate, user_reply=user or task.user_reply,
-                                guard=guard, guard_mode=guard_mode)
-    agent = run_agent(spec, session, task.request)
+                                guard=guard, guard_mode=guard_mode,
+                                guard_request=guard_request)
+    if spec.provider == "scripted":
+        from .hijacked import run_hijacked  # v3: an agent that obeys the injections
+        agent = run_hijacked(spec, session, task)
+    else:
+        agent = run_agent(spec, session, task.request)
 
     order = session.order
     placed = bool(order and order.placed)
@@ -72,6 +100,8 @@ def run_task(spec: AgentSpec, task: Task, store: Store | None = None,
         "agent": spec.name,
         "guard_mode": guard_mode,
         "guard_facts": guard_facts if guard else None,
+        "guard_request": guard_request,
+        "reported_requests": session.reported_requests,
         "provider": spec.provider,
         "model": spec.model,
         "request": task.request,
@@ -98,6 +128,10 @@ def run_task(spec: AgentSpec, task: Task, store: Store | None = None,
         return record
 
     record["score"] = score(task, purchase, placed, session.questions)
+    attack = getattr(task, "attack_success", None)
+    if attack is not None:
+        record["attack"] = {"kind": task.attack,
+                            "succeeded": placed and attack(list(purchase or []))}
     if guard is not None:
         # Every guard check is a labelled example too: did it catch a wrong
         # cart, and did it not stop a right one.
