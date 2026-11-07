@@ -455,6 +455,13 @@ python scripts/summarize_runs.py data/runs/v1-open-0.1.3.jsonl.gz --markdown
 python scripts/summarize_runs.py data/runs/v2-open-0.1.4.jsonl.gz --markdown
 ```
 
+A run through Claude Code with the plugin is published as
+`data/runs/claude-code-v2-open-0.1.7.jsonl.gz` (scripts/run_claude_code.py,
+Sonnet, the 50 open v2 tasks, AsAsked 0.1.7). Here the guard is not enforced:
+the agent decides itself whether to call check_order. It called it before
+payment in 50 of 50 runs, and all 50 purchases matched the request. In 52
+checks the guard stopped 3 right carts and had no wrong ones to catch.
+
 In the v1 run 445 runs of 1,200 failed on the network (the machine lost its
 connection), all of minimax-m3 and nemotron-3.5-lightning and 45 of
 deepseek-v4-flash. They were run again, and the v1 log holds the new run in

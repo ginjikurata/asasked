@@ -16,7 +16,7 @@ export const CHANGELOG: Day[] = [
       {
         area: "benchmark",
         text:
-          "Benchmark runs through Claude Code: scripts/run_claude_code.py starts claude -p with the plugin and the sandbox store as an MCP server (scripts/claude_code_store_mcp.py), and counts how often check_order runs before payment and what it decides. --local-guard uses the guard from the checkout instead of the published package. The trial is not a full run and is not in data/runs.",
+          "Benchmark runs through Claude Code: scripts/run_claude_code.py starts claude -p with the plugin and the sandbox store as an MCP server (scripts/claude_code_store_mcp.py), and counts how often check_order runs before payment and what it decides. --local-guard uses the guard from the checkout instead of the published package. Full run with version 0.1.7 (Sonnet, the 50 open v2 tasks): all 50 purchases matched the request, and check_order ran before payment in all 50. In 52 checks the guard stopped 3 right carts, all over \"one order, not three deliveries\": the cart it gets has no merchant, so it cannot check that. There were no wrong carts, so this run does not measure catching. Log: data/runs/claude-code-v2-open-0.1.7.jsonl.gz.",
       },
     ],
   },
