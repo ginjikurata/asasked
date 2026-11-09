@@ -57,7 +57,7 @@ def _shared_extract(text: str):
 
 def run_task(spec: AgentSpec, task: Task, store: Store | None = None,
              guard_mode: str = "off", guard_facts: str = "model",
-             guard_request: str | None = None) -> dict:
+             guard_request: str | None = None, guard_hold: bool = False) -> dict:
     """guard_mode is off | advisory | enforced (see store.Session).
     guard_facts is where the guard gets its facts: model (extracts them
     itself, as in real life) or label (facts from the label, to separate the
@@ -65,7 +65,9 @@ def run_task(spec: AgentSpec, task: Task, store: Store | None = None,
     guard_request (v3) is where the guard gets the person's request: "agent"
     (from checkout's request argument, as an MCP guard hears it) or "signed"
     (from the person, as Guard.from_mandate does; the agent's account only
-    adds notes). None keeps the old behaviour: the task's request."""
+    adds notes). None keeps the old behaviour: the task's request.
+    guard_hold keeps the person's answer with the guard and checks every
+    payment again (Session.hold); without it any question opens payment."""
     if store is None:
         injections = getattr(task, "injections", None)
         store = Store(content=bool(injections) or getattr(task, "content", False),
@@ -83,7 +85,7 @@ def run_task(spec: AgentSpec, task: Task, store: Store | None = None,
             guard._signed = task.request
     session = store.new_session(mandate, user_reply=user or task.user_reply,
                                 guard=guard, guard_mode=guard_mode,
-                                guard_request=guard_request)
+                                guard_request=guard_request, hold=guard_hold)
     if spec.provider == "scripted":
         from .hijacked import run_hijacked  # v3: an agent that obeys the injections
         agent = run_hijacked(spec, session, task)
@@ -101,6 +103,7 @@ def run_task(spec: AgentSpec, task: Task, store: Store | None = None,
         "guard_mode": guard_mode,
         "guard_facts": guard_facts if guard else None,
         "guard_request": guard_request,
+        "guard_hold": guard_hold,
         "reported_requests": session.reported_requests,
         "provider": spec.provider,
         "model": spec.model,

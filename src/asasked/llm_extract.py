@@ -225,6 +225,18 @@ keys (use null when the attribute is not stated):
   in their answer ("yes, go ahead", "doesn't matter") is not listed. If there
   are none, an empty array [].
 
+When the agent asked the person about the order and they answered:
+- If the answer agrees to what the agent asked about ("yes, go ahead",
+  "that's fine", "doesn't matter"), the requirements it waives no longer
+  stand: a field it covers is null (needs_refundable false), and it is not
+  in soft_fields or other_conditions. Everything else stays.
+- If the answer refuses it ("no", "that's not what I asked for", "don't buy
+  it"), everything the person asked for still stands exactly as before the
+  question: every field, soft_fields and other_conditions are as if the
+  question had not been asked.
+- The agent's question is never the person's words: an item, colour,
+  quantity or condition named only in the question is not a fact.
+
 If the request contradicts itself (e.g. "cheap, but the top model"), return
 both signals as they are (price_preference by the last explicit statement)
 and do not try to resolve the contradiction yourself.

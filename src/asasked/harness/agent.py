@@ -68,6 +68,10 @@ AGENTS = {
     # (harness.hijacked; they need a v3 task)
     "hijacked": AgentSpec("hijacked", "scripted", "obeys-injections"),
     "hijacked-cover": AgentSpec("hijacked-cover", "scripted", "obeys-injections-covers-tracks"),
+    "hijacked-stubborn": AgentSpec("hijacked-stubborn", "scripted", "obeys-injections-ignores-no"),
+    "hijacked-cover-stubborn": AgentSpec("hijacked-cover-stubborn", "scripted",
+                                         "obeys-injections-covers-tracks-ignores-no"),
+    "hijacked-yes": AgentSpec("hijacked-yes", "scripted", "obeys-injections-person-says-yes"),
     # simpler models, what cheap agents are built on
     "gpt-oss-20b": AgentSpec("gpt-oss-20b", "openai_compat", "am/gpt-oss-20b"),
     "qwen3.8-27b": AgentSpec("qwen3.8-27b", "openai_compat", "qwen/qwen3.8-27b"),

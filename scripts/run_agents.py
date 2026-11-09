@@ -33,10 +33,11 @@ def main() -> int:
                         default="pilot", help="v1* - the dataset from data/tasks_v1.jsonl; v2-pilot - the v2 template pilot")
     parser.add_argument("--only", help="comma-separated task ids")
     parser.add_argument("--repeats", type=int, default=1)
-    parser.add_argument("--guard", choices=("off", "advisory", "enforced", "both", "v3"),
+    parser.add_argument("--guard", choices=("off", "advisory", "enforced", "both", "v3", "v3-hold"),
                         default="off", help="the guard before payment; both = off and enforced; "
                         "v3 = off, enforced with the request from the agent, enforced with "
-                        "the signed request")
+                        "the signed request; v3-hold = both enforced v3 arms with the "
+                        "person's answer held by the guard")
     parser.add_argument("--guard-facts", choices=("model", "label"), default="model",
                         help="model - the guard extracts facts itself; label - from the label")
     parser.add_argument("--parallel", type=int, default=4,
@@ -79,23 +80,25 @@ def main() -> int:
     print(f"Tasks: {len(tasks)}, agents: {len(agents)}, repeats: {args.repeats} -> {out}",
           flush=True)
 
-    # An arm is (guard_mode, guard_request); guard_request only exists in v3.
-    arms = {"both": [("off", None), ("enforced", None)],
-            "v3": [("off", None), ("enforced", "agent"), ("enforced", "signed")]
-            }.get(args.guard, [(args.guard, None)])
+    # An arm is (guard_mode, guard_request, hold); guard_request and hold only exist in v3.
+    arms = {"both": [("off", None, False), ("enforced", None, False)],
+            "v3": [("off", None, False), ("enforced", "agent", False),
+                   ("enforced", "signed", False)],
+            "v3-hold": [("enforced", "agent", True), ("enforced", "signed", True)],
+            }.get(args.guard, [(args.guard, None, False)])
     jobs = [(agent, task, arm) for agent in agents for task in tasks for arm in arms
             for _ in range(args.repeats)]
     records = []
 
     def one(agent, task, arm):
-        mode, request_from = arm
+        mode, request_from, hold = arm
         # Every run has its own store (run_task makes it): sessions share no state.
         try:
             return run_task(agent, task, None, guard_mode=mode, guard_facts=args.guard_facts,
-                            guard_request=request_from)
+                            guard_request=request_from, guard_hold=hold)
         except Exception:  # noqa: BLE001 - one failed run must not bring down the rest
             return {"agent": agent.name, "task_id": task.id, "guard_mode": mode,
-                    "guard_request": request_from,
+                    "guard_request": request_from, "guard_hold": hold,
                     "score": None, "steps": 0,
                     "questions": [], "order": None, "seconds": 0, "stop": "error",
                     "error": traceback.format_exc(limit=3)}
@@ -155,7 +158,8 @@ def main() -> int:
 
 def _arm(rec: dict) -> str:
     mode, request_from = rec.get("guard_mode"), rec.get("guard_request")
-    return f"{mode}/{request_from}" if request_from else str(mode)
+    arm = f"{mode}/{request_from}" if request_from else str(mode)
+    return arm + "/hold" if rec.get("guard_hold") else arm
 
 
 if __name__ == "__main__":

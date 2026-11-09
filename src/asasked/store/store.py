@@ -151,13 +151,16 @@ class Store:
     def new_session(self, mandate: Mandate,
                     user_reply: str | Callable[[str], str] | None = None,
                     guard=None, guard_mode: str = "off",
-                    guard_request: str | None = None) -> Session:
+                    guard_request: str | None = None, hold: bool = False) -> Session:
+        if hold and guard_mode != "enforced":
+            raise ValueError("hold needs guard_mode='enforced'")
         if guard_mode not in GUARD_MODES:
             raise ValueError(f"guard_mode: one of {GUARD_MODES}")
         if guard_mode != "off" and guard is None:
             raise ValueError("guard_mode without a guard")
         session = Session(self, f"s-{next(self._ids):04d}", mandate, user_reply,
-                          guard=guard, guard_mode=guard_mode, guard_request=guard_request)
+                          guard=guard, guard_mode=guard_mode, guard_request=guard_request,
+                          hold=hold)
         self.sessions[session.session_id] = session
         return session
 
@@ -178,9 +181,17 @@ class Session:
     #   off       - no guard;
     #   advisory  - the agent has a check_before_checkout tool and decides whether to call it;
     #   enforced  - checkout calls the guard itself; on "ask" the order does not
-    #               go through until the agent asks the person (ask_user): the
-    #               guard makes the agent consult, it does not forbid.
+    #               go through until the agent asks the person (ask_user). With
+    #               hold off, any question opens payment, whatever the person
+    #               answered: the guard makes the agent consult, it does not
+    #               forbid. With hold on, see below.
     guard: object | None = None
+    # The guard holds the person's answer, as Guard.gate does in the library:
+    # the reply to its question joins the request (Guard.hear) and every
+    # checkout is checked again. A "no" keeps the cart stopped however often
+    # the agent pays; a "yes" that settles the question lets it through.
+    hold: bool = False
+    answers: list[tuple[str, str]] = field(default_factory=list)
     guard_mode: str = "off"
     # Benchmark v3: where the guard takes the person's request from.
     #   None    - the guard keeps the request it was built with;
@@ -192,6 +203,8 @@ class Session:
     reported_requests: list[str] = field(default_factory=list)
     _guard_blocked: bool = False
     _human_consulted: bool = False
+    _guard_question: str | None = None
+    _agent_request: str | None = None
 
     def tools(self) -> list[dict]:
         """The tools the agent sees in this session."""
@@ -291,11 +304,20 @@ class Session:
 
     def ask_user(self, question: str) -> dict:
         self.questions.append(question)
-        if self._guard_blocked:
-            self._human_consulted = True
         if callable(self.user_reply):
-            return {"reply": self.user_reply(question) or DEFAULT_USER_REPLY}
-        return {"reply": self.user_reply or DEFAULT_USER_REPLY}
+            reply = self.user_reply(question) or DEFAULT_USER_REPLY
+        else:
+            reply = self.user_reply or DEFAULT_USER_REPLY
+        if self._guard_blocked:
+            if self.hold:
+                # The person's words, not the agent's: the reply is heard here,
+                # where it comes back from the person, against the guard's own
+                # question rather than whatever the agent asked.
+                self.answers.append((self._guard_question or question, reply))
+                self.guard.hear(*self.answers[-1])
+            else:
+                self._human_consulted = True
+        return {"reply": reply}
 
     def check_before_checkout(self, confirm: bool = False) -> dict:
         if self.guard is None:
@@ -319,6 +341,7 @@ class Session:
             check = self.guard.check(list(self.cart.items()), self.mandate, self.store.find)
             if check["decision"] == "ask":
                 self._guard_blocked = True
+                self._guard_question = check["question"]
                 return {"status": "needs_confirmation",
                         "reasons": check["reasons"],
                         "question": check["question"],
@@ -356,9 +379,13 @@ class Session:
         if self.guard is None or self.guard_request is None:
             return
         if self.guard_request == "agent":
-            if self.guard.request != request:
+            # The person's answers so far stay with the request the agent gives now.
+            if self._agent_request != request:
+                self._agent_request = request
                 self.guard.request = request
                 self.guard._facts, self.guard._error = None, ""
+                for q, a in self.answers:
+                    self.guard.hear(q, a)
         elif self.guard_request == "signed":
             if self.guard.claimed != request:
                 self.guard.claimed, self.guard._retold = request, None
