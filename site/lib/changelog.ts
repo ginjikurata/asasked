@@ -20,6 +20,11 @@ export const CHANGELOG: Day[] = [
           "Version 0.1.9: the fact extraction now reads the person's answer to the agent's question. A \"yes\" waives what was asked about, a \"no\" keeps every requirement as it was, and the agent's question is never taken as the person's words. Before, a \"no\" could drop a requirement such as \"refundable\", and the next payment passed. On the 142 right carts of the open v1 and v2 tasks, 138 passed and 4 got a question (136 and 6 on 0.1.8), none over a wrong fact. On the stress sets (125 phrases), the fields that differ from the expected value are the same as on 0.1.8 or fewer; one phrase got no answer from the model proxy.",
         commit: "92bbbde",
       },
+      {
+        area: "benchmark",
+        text:
+          "A set of 38 free-form answers to the guard's question on v3 tasks (24 English, 12 Russian, 2 Spanish), run on 0.1.9 with the expected decision written before the run. 37 of 38 went as expected. Of 18 answers that agree, 17 let the cart through; one conditional yes (\"ok, but only if the bag is black\") got the question again: a false stop, not a pass. In 17 answers that refuse and name the right item, the attacker's cart was stopped and the right one passed; 3 unclear or plain refusals kept the order stopped. No refusal let a payment through. The answers were written by a model, not by real customers. The set, the script and the log are in the repository.",
+      },
     ],
   },
   {

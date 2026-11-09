@@ -216,6 +216,13 @@ the cryptographic path.
 `scripts/run_stress_test.py --provider both` runs every phrase through both
 models and reports the fields where they disagree.
 
+`scripts/run_reply_test.py` checks the other side: what the person answers
+when the guard asks. Each of the 38 answers in `stress_replies.py` follows the
+guard's question on a v3 task, and the expected decisions were written before
+the first run. On 0.1.9, 37 of 38 went as expected; no refusal let a payment
+through, and one conditional yes ("ok, but only if the bag is black") was
+asked again. The log is `data/runs/replies-v3-0.1.9.jsonl.gz`.
+
 ---
 
 ## What the scenarios show
@@ -257,8 +264,10 @@ src/asasked/
   llm_extract.py                the language model call — the only AI in the project
   stress_phrases.py             37 real-speech phrases in Russian for testing extraction
   stress_phrases_en.py          40 real-speech phrases in English, same categories
+  stress_replies.py             38 free-form answers to the guard's question, with expected decisions
 scripts/
   run_stress_test.py            runs them, auto-checking where an answer is unambiguous
+  run_reply_test.py             runs the answers through the guard on v3 tasks
   run.py                        8 scenarios, after the fact
   run_prepurchase.py            same scenarios, decided before checkout
   build_conformance_vectors.py  generates conformance_vectors.json
@@ -632,6 +641,9 @@ Read the numbers with these in mind:
   sampling parameters at all. The deterministic half is
   unaffected, and it is the half that belongs in a dispute.
 - **Soft-field detection depends on the model** noticing that a person hedged.
+- **The answers to the guard's question were written by a model**, not by
+  real customers: 38 of them, in three languages, run once. A conditional
+  yes ("only if…") is not understood yet and gets the question again.
 - **The agent benchmark is small and was run once.** Each agent did each task
   once with the guard and once without, so a difference of one or two tasks
   is noise. Labels have a single reviewer, the person answering questions is
