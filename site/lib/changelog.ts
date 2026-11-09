@@ -6,6 +6,23 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-10",
+    changes: [
+      {
+        area: "guard",
+        text:
+          "Version 0.1.9 closes the gap left open in the v3 entry below: an agent that ignores the person's \"no\" and pays again. In the sandbox store the guard now holds the person's answer, as Guard.gate and protect already do in the library: the reply joins the request and every payment is checked again. Two new scripted agents obey every injection and, after a \"no\", pay twice more. With the person's signed request, 0 of 60 attacks got through for either agent (60 of 60 before). With the request the agent reports at checkout, an agent that lies about the request still gets through, as before: the guard needs the signed request. When the person says \"yes\", 57 of 60 carts pass; the other 3 are stopped again by mistake, not let through.",
+        commit: "92bbbde",
+      },
+      {
+        area: "extraction",
+        text:
+          "Version 0.1.9: the fact extraction now reads the person's answer to the agent's question. A \"yes\" waives what was asked about, a \"no\" keeps every requirement as it was, and the agent's question is never taken as the person's words. Before, a \"no\" could drop a requirement such as \"refundable\", and the next payment passed. On the 142 right carts of the open v1 and v2 tasks, 138 passed and 4 got a question (136 and 6 on 0.1.8), none over a wrong fact. On the stress sets (125 phrases), the fields that differ from the expected value are the same as on 0.1.8 or fewer; one phrase got no answer from the model proxy.",
+        commit: "92bbbde",
+      },
+    ],
+  },
+  {
     date: "2026-11-08",
     changes: [
       {
