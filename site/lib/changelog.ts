@@ -6,6 +6,26 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-11",
+    changes: [
+      {
+        area: "guard",
+        text:
+          "Hidden subscriptions. A cart item can now say that it renews and charges again: \"recurring\": {\"every\": \"month\", \"price\": 12.99}. Such an item is asked about unless the person asked for a subscription or agreed to one; this check is never softened, and both models must agree that a subscription is wanted. An amount limit counts the item at the higher of today's and the renewal price, so a $0 free trial that turns into $10.99 a month is over a $10 limit. The \"Subscribe & Save\" listing of the very item the person asked for passed every check before: same brand, same model, a lower price. An item without \"recurring\" counts as a one-time purchase; the guard cannot see a subscription the cart does not mark. In the 16 cases all went as expected.",
+      },
+      {
+        area: "extraction",
+        text:
+          "The fact extraction has a new fact, wants_recurring: the person asks for a subscription or a repeat order (\"every month\", \"подписка\", \"cada mes\") or agrees to one. Buying something that gets used up is not a wish for a subscription. A separate set of 16 cases in three languages (stress_subscription.py) checks the whole chain, with expected decisions written before any run; it is not part of the v3 tasks, so the published tasks stay as they are. In the 16 cases all went as expected.",
+      },
+      {
+        area: "guard",
+        text:
+          "After the person answers the guard's question, a disagreement between the two models no longer softens anything: in a run, three refusals (\"without returns, no\", \"ok, but only if the bag is black\" on a yellow bag) got through because the models read them differently. A requirement is waived only if both models heard it waived. The extraction also refuses impossible numbers (a deadline in the past, a limit under one cent) and asks the model once more. Ten conditional answers were added to the reply set; 42 of 48 now go as expected, no refusal lets a payment through, and 6 agreements, mostly to an added bag, are asked again.",
+      },
+    ],
+  },
+  {
     date: "2026-11-10",
     changes: [
       {

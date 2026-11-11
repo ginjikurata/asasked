@@ -201,7 +201,8 @@ def test_openai_compat_needs_config(monkeypatch):
 def test_schema_matches_intent_facts():
     facts_fields = {f.name for f in fields(IntentFacts)} - {"raw", "soft", "disputed", "lines",
                                                              "other", "other_optional"}
-    assert set(SOFTENABLE_FIELDS) == facts_fields
+    # a subscription is never "not a big deal": it always asks (coherence._item_findings)
+    assert set(SOFTENABLE_FIELDS) == facts_fields - {"wants_recurring"}
     # deadline_weekday is not a fact but raw material: the code counts days to it (days_until)
     assert set(RESPONSE_SCHEMA["properties"]) == facts_fields | {
         "lines", "soft_fields", "deadline_weekday", "other_conditions"}

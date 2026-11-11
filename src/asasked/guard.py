@@ -21,6 +21,8 @@ For an agent developer it is one call, with the cart as plain dicts:
     result = guard.check([{"name": "Nike Pegasus 41", "brand": "Nike",
                            "color": "Triple Black", "size": "42", "price": 129.99,
                            "quantity": 1, "returnable": True, "delivery_days": 3}])
+    # an item that renews and charges again also gets
+    # "recurring": {"every": "month", "price": 12.99}
     result["decision"]   # "proceed" or "ask"; result["question"] is the question for the person
 
 A Verifiable Intent mandate is optional. A feature the cart does not have is
@@ -93,8 +95,40 @@ def _cart_item(i: int, item: dict) -> tuple[str, dict, int]:
         "refundable": item.get("returnable"),
         "ships_in_days": item.get("delivery_days"),
         "units": item.get("units", 1),
+        "recurring": _recurring(i, item.get("recurring")),
     }
     return product["sku"], product, quantity
+
+
+def _recurring(i: int, value) -> dict | None:
+    """A cart line's "recurring" -> {"every", "price_cents"} or None.
+
+    {"every": "month", "price": 12.99}: the item renews and charges again;
+    "price" is what each renewal costs, if not the item's price (a free trial
+    that becomes $12.99 a month). None or false: a one-time purchase, or the
+    shop doesn't say.
+    """
+    if value is None or value is False:
+        return None
+    if not isinstance(value, dict) or not isinstance(value.get("every"), str) \
+            or not value["every"].strip():
+        raise ValueError(f'cart[{i}]: recurring is {{"every": "month", "price": 12.99}} '
+                         "(price optional) or null")
+    price = value.get("price")
+    if price is not None and (isinstance(price, bool) or not isinstance(price, (int, float))
+                              or not price >= 0):
+        raise ValueError(f"cart[{i}]: recurring price must be a number not below zero")
+    return {"every": value["every"].strip(),
+            "price_cents": None if price is None else round(price * 100)}
+
+
+def _renews(product: dict) -> str:
+    recurring = product.get("recurring")
+    if not recurring:
+        return ""
+    cents = recurring.get("price_cents")
+    cents = product["price_cents"] if cents is None else cents
+    return f", then ${cents / 100:.2f} every {recurring['every']}"
 
 
 def _quoted(agent_text: str) -> str:
@@ -225,7 +259,7 @@ class Guard:
             # The question must name the order: the person cannot meaningfully
             # confirm or reject "may I?" with no subject.
             items = "\n".join(f"  - {find(sku)['name']} ×{qty}, "
-                               f"${find(sku)['price_cents'] / 100:.2f} each"
+                               f"${find(sku)['price_cents'] / 100:.2f} each{_renews(find(sku))}"
                                for sku, qty in purchase)
             result = {
                 "decision": ASK,

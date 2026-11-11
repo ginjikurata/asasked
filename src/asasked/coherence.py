@@ -45,6 +45,10 @@ class IntentFacts:
     quantity: int | None = None
     needs_refundable: bool = False
     deadline_days: int | None = None
+    # The person asked for a subscription or agreed to one ("every month",
+    # "yes, the subscription is fine"). Without it any item that renews and
+    # charges again is asked about: nobody says "and not a subscription".
+    wants_recurring: bool = False
     raw: str = ""
     # Names of the fields above that the person marked as optional or
     # approximate ("not a big deal", "give or take"). A mismatch on such a
@@ -93,6 +97,14 @@ class Verdict:
 # ---------------------------------------------------------------------------
 # 1. Extraction: a real language model (llm_extract.py)
 # ---------------------------------------------------------------------------
+
+
+def _plausible(data: dict) -> bool:
+    """No negative deadline, no limit below one cent: such numbers are a broken answer."""
+    def below(name, low):
+        value = data.get(name)
+        return isinstance(value, int) and not isinstance(value, bool) and value < low
+    return not (below("deadline_days", 0) or below("explicit_max_cents", 1))
 
 
 def _as_int(value, field_name: str) -> int | None:
@@ -209,6 +221,14 @@ def extract_intent(request: str, deadline_days: int | None = None,
     days at random and disagree with each other.
     """
     data = call_model(request, provider, today=today)
+    if not _plausible(data):
+        # Seen in a run on 2026-11-11: for a few minutes a model filled
+        # deadlines of -1 days and limits of a cent into requests that named
+        # neither. Asked again, it answered null. One more try, then fail.
+        data = call_model(request, provider, today=today)
+        if not _plausible(data):
+            raise ExtractionError("The model returned a negative deadline or a limit "
+                                  f"below one cent: {data!r}")
 
     level = _as_str(data.get("level"), "level")
     if level == "advanced":
@@ -238,6 +258,7 @@ def extract_intent(request: str, deadline_days: int | None = None,
         explicit_max_cents=_as_int(data.get("explicit_max_cents"), "explicit_max_cents"),
         quantity=_as_int(data.get("quantity"), "quantity"),
         needs_refundable=bool(data.get("needs_refundable", False)),
+        wants_recurring=bool(data.get("wants_recurring", False)),
         soft=_as_soft_set(data.get("soft_fields")),
         lines=_as_lines(data.get("lines"), today),
         other=other,
@@ -275,9 +296,12 @@ def canonical(facts: IntentFacts) -> IntentFacts:
 
 _COMPARED_FIELDS = (
     "brand", "brand_not", "model", "color", "size_label", "level", "price_preference",
-    "explicit_max_cents", "quantity", "needs_refundable", "deadline_days",
+    "explicit_max_cents", "quantity", "needs_refundable", "deadline_days", "wants_recurring",
 )
 
+
+# How Guard.hear marks the person's answer inside the request.
+ANSWERED = "\nThe person answered: "
 
 _STRICTEST_WINS = ("deadline_days", "explicit_max_cents")
 
@@ -288,8 +312,15 @@ def _norm(value):
     return value.lower() if isinstance(value, str) else value
 
 
-def merge_facts(results: list[IntentFacts]) -> IntentFacts:
+def merge_facts(results: list[IntentFacts], strict: bool = False) -> IntentFacts:
     """Merges facts from several models into one set.
+
+    strict is for a request the person has already been asked about (their
+    answer is part of it). Then nothing is weakened by one model alone: a
+    requirement is soft only if every model either marked it soft or dropped
+    it, and models disagreeing does not turn a stop into a warning (nothing is
+    disputed). Otherwise a "no" that one model misread as "yes" would let the
+    very cart the person refused go through.
 
     Where the models agree, the shared value is taken. A deadline and an amount
     limit, if any model found them, take the strictest value found, with no
@@ -299,7 +330,9 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
     model returned null and the other found something, the found value is
     taken; if both found different values, the first model's value is taken.
     needs_refundable on disagreement is True: the person may have asked for
-    returns.
+    returns. wants_recurring on disagreement is False, and not disputed: a
+    subscription only one model heard the person accept is asked about again,
+    since a charge that repeats every month costs more than one more question.
 
     soft is a union: if any model heard the person relax a requirement, that
     requirement does not block the purchase.
@@ -317,9 +350,17 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
     more items: models rarely invent an item but often merge two into one
     (Gemini sees "a racket and a can of balls" one time and not the next). With
     the same number of items, lines are merged field by field, like facts.
+    When strict and the models disagree on how many items there are, the
+    reading of the model that heard more items is taken whole (its lines and
+    its value for every fact the models disagree on), without a dispute:
+    after "yes, take the bag too" one model often keeps only the original
+    item, and merging the two readings would drop the lines altogether.
     """
     if not results:
         raise ValueError("merge_facts: no results at all")
+    recounted = strict and len({len(r.lines) for r in results}) > 1
+    if recounted:
+        results = sorted(results, key=lambda r: -len(r.lines))
     first = results[0]
     values, disputed = {}, set()
     for name in _COMPARED_FIELDS:
@@ -340,26 +381,34 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
         if name == "brand_not":
             values[name] = tuple(sorted({b for v in found for b in v}))
             continue
-        disputed.add(name)
+        if name == "wants_recurring":
+            values[name] = False
+            continue
+        if not strict:
+            disputed.add(name)
         if name == "needs_refundable":
             values[name] = any(found)
+        elif recounted:
+            values[name] = found[0]
         else:
             values[name] = next((v for v in found if v is not None), None)
     lines = max((r.lines for r in results), key=len)
-    if len({len(r.lines) for r in results}) > 1:
+    if recounted:
+        lines = first.lines
+    elif len({len(r.lines) for r in results}) > 1:
         disputed |= {"lines", "line_count"}
     elif lines:
         merged = []
         for group in zip(*(_align_lines(first.lines, r.lines) for r in results)):
             keys = sorted({k for line in group for k in line})
             for k in keys:
-                if len({_norm(line.get(k)) for line in group}) > 1:
+                if len({_norm(line.get(k)) for line in group}) > 1 and not strict:
                     disputed |= {"lines", f"lines.{k}"}
             merged.append({k: next(line[k] for line in group if line.get(k) is not None)
                            for k in keys if any(line.get(k) is not None for line in group)})
         lines = tuple(merged)
     other = max((r.other for r in results), key=len)
-    if other and not all(r.other for r in results):
+    if other and not all(r.other for r in results) and not strict:
         disputed.add("other")
     optional = []
     for r in results:
@@ -369,11 +418,21 @@ def merge_facts(results: list[IntentFacts]) -> IntentFacts:
         raw=first.raw,
         other=other,
         other_optional=tuple(optional),
-        soft=frozenset().union(*(r.soft for r in results)),
+        soft=_merged_soft(results, strict),
         disputed=frozenset(disputed),
         lines=lines,
         **values,
     )
+
+
+def _merged_soft(results: list[IntentFacts], strict: bool) -> frozenset:
+    """Any model's soft fields; when strict, only those every model let go of
+    (marked soft, or left empty: a waived requirement is often just dropped)."""
+    soft = frozenset().union(*(r.soft for r in results))
+    if not strict:
+        return soft
+    return frozenset(f for f in soft if all(
+        f in r.soft or (f in _COMPARED_FIELDS and not getattr(r, f)) for r in results))
 
 
 def _align_lines(base: tuple, other: tuple) -> tuple:
@@ -388,16 +447,22 @@ def _align_lines(base: tuple, other: tuple) -> tuple:
 
 
 def extract_intent_agreed(request: str, deadline_days: int | None = None,
-                          providers=AGREE_PROVIDERS, today: str | None = None) -> IntentFacts:
+                          providers=AGREE_PROVIDERS, today: str | None = None,
+                          strict: bool | None = None) -> IntentFacts:
     """Extracts facts with several independent models and merges them.
 
     One model can be confidently wrong, and that does not show. Two models
-    disagreeing on a fact does show: the field goes into disputed.
+    disagreeing on a fact does show: the field goes into disputed. strict
+    (see merge_facts) defaults to whether the request holds the person's
+    answer to the agent's question.
     """
+    if strict is None:
+        strict = ANSWERED in request
     if not providers:
         raise ExtractionError("no model key: set CLAUDE_API_KEY, LLM_API_KEY (Gemini) "
                               "or OPENAI_COMPAT_API_KEY")
-    return merge_facts([extract_intent(request, deadline_days, p, today) for p in providers])
+    return merge_facts([extract_intent(request, deadline_days, p, today) for p in providers],
+                       strict=strict)
 
 
 # ---------------------------------------------------------------------------
@@ -547,6 +612,17 @@ def _item_findings(product: dict, facts: IntentFacts, sev) -> list[Finding]:
             f"Asked to be able to return it, the item is final sale: {name}.",
         ))
 
+    # Not "unchecked" when the shop says nothing: nobody asks for "not a
+    # subscription", so a note on every item would only be noise. Never soft
+    # or disputed either (see merge_facts): it always asks.
+    recurring = product.get("recurring")
+    if recurring and not facts.wants_recurring:
+        out.append(Finding(
+            "recurring", BLOCK,
+            f"Not a one-time purchase: a subscription that charges "
+            f"${_renewal_cents(product) / 100:.2f} every {recurring['every']}: {name}.",
+        ))
+
     if (facts.deadline_days is not None
             and not unknown("ships_in_days", f"delivery within {facts.deadline_days} days")
             and product["ships_in_days"] > facts.deadline_days):
@@ -555,6 +631,14 @@ def _item_findings(product: dict, facts: IntentFacts, sev) -> list[Finding]:
             f"Needed within {facts.deadline_days} days, the item ships in {product['ships_in_days']} days: {name}.",
         ))
     return out
+
+
+def _renewal_cents(product: dict) -> int:
+    """What a subscription charges each time; the item's price if the shop
+    gives no separate one."""
+    recurring = product.get("recurring") or {}
+    cents = recurring.get("price_cents")
+    return product["price_cents"] if cents is None else cents
 
 
 def _describe(line: dict) -> str:
@@ -683,11 +767,17 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
                 f"while {best['name']} fits too at ${best['price_cents']/100:.2f}.",
             ))
 
-    if facts.explicit_max_cents and total > facts.explicit_max_cents:
+    # A subscription counts at what it charges each time, whichever is more:
+    # a free trial is not free, and "no more than $10" is broken by $10.99 a
+    # month whatever today's price.
+    limited = sum(max(p["price_cents"], _renewal_cents(p) if p.get("recurring") else 0) * q
+                  for p, q in items)
+    if facts.explicit_max_cents and limited > facts.explicit_max_cents:
+        renewing = " at the subscription price" if limited != total else ""
         findings.append(Finding(
             "explicit-max", sev("explicit_max_cents"),
             f"Set a limit of ${facts.explicit_max_cents/100:.2f}, "
-            f"the order costs ${total/100:.2f}.",
+            f"the order costs ${limited/100:.2f}{renewing}.",
         ))
 
     # quantity in the units the person counts (cans of balls, not packs);
@@ -764,6 +854,7 @@ _FACT_NAMES = {
     "size_label": "size", "level": "level", "price_preference": "price",
     "explicit_max_cents": "price limit", "quantity": "quantity",
     "needs_refundable": "returns", "deadline_days": "delivery deadline",
+    "wants_recurring": "subscription",
 }
 
 
@@ -774,6 +865,8 @@ def _shown(name: str, value) -> str:
         return f"{value / 100:.2f}"
     if name == "needs_refundable":
         return "must be returnable"
+    if name == "wants_recurring":
+        return "a subscription is fine"
     if name == "deadline_days":
         return f"{value} days"
     return ", ".join(value) if isinstance(value, tuple) else str(value)

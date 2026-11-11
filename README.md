@@ -43,6 +43,12 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
 - The cart is plain dicts; only `name` is required. A fact the person stated
   that the cart says nothing about (no `returnable`, no `delivery_days`) is
   not guessed: it lands in `notes` as "the order doesn't say".
+- An item that renews and charges again (a subscription, a free trial that
+  turns paid) carries `"recurring": {"every": "month", "price": 12.99}`;
+  `price` is the renewal price and defaults to the item's price. Such an item
+  is asked about unless the person asked for a subscription or agreed to one,
+  and an amount limit counts it at the higher of today's and the renewal
+  price: a $0 trial at $10.99 a month is over a $10 limit.
 - Colours match by word, in English or Russian ("Triple Black", "Чёрный").
   The first colour of a multi-colour item is its main one: "Black/White" is
   black, "White/Black" is not. Sizes ignore the size system unless both
@@ -217,11 +223,20 @@ the cryptographic path.
 models and reports the fields where they disagree.
 
 `scripts/run_reply_test.py` checks the other side: what the person answers
-when the guard asks. Each of the 38 answers in `stress_replies.py` follows the
+when the guard asks. Each of the 48 answers in `stress_replies.py` follows the
 guard's question on a v3 task, and the expected decisions were written before
-the first run. On 0.1.9, 37 of 38 went as expected; no refusal let a payment
-through, and one conditional yes ("ok, but only if the bag is black") was
-asked again. The log is `data/runs/replies-v3-0.1.9.jsonl.gz`.
+the first run. On 0.1.9, 37 of the first 38 went as expected
+(`data/runs/replies-v3-0.1.9.jsonl.gz`). Ten conditional answers were added
+since ("ok, but only if the bag is black"). Once the person has answered, two
+models that read the answer differently no longer turn a stop into a warning:
+in an earlier run three refusals got through that way. With that rule, 42 of
+48 went as expected and no refusal let a payment through; the other 6 asked
+again where the person had agreed, mostly to an added bag
+(`data/runs/replies-v3-strict.jsonl.gz`).
+
+`scripts/run_subscription_test.py` runs the 16 hidden-subscription cases of
+`stress_subscription.py`: 16 of 16 went as expected
+(`data/runs/subscription.jsonl.gz`).
 
 ---
 
@@ -264,7 +279,7 @@ src/asasked/
   llm_extract.py                the language model call — the only AI in the project
   stress_phrases.py             37 real-speech phrases in Russian for testing extraction
   stress_phrases_en.py          40 real-speech phrases in English, same categories
-  stress_replies.py             38 free-form answers to the guard's question, with expected decisions
+  stress_replies.py             48 free-form answers to the guard's question, with expected decisions
 scripts/
   run_stress_test.py            runs them, auto-checking where an answer is unambiguous
   run_reply_test.py             runs the answers through the guard on v3 tasks
@@ -642,8 +657,14 @@ Read the numbers with these in mind:
   unaffected, and it is the half that belongs in a dispute.
 - **Soft-field detection depends on the model** noticing that a person hedged.
 - **The answers to the guard's question were written by a model**, not by
-  real customers: 38 of them, in three languages, run once. A conditional
-  yes ("only if…") is not understood yet and gets the question again.
+  real customers: 48 of them, in three languages. A yes that adds an item
+  ("take the bag too") is still often asked again: the two models read the
+  answer differently, and after an answer the guard does not let that pass.
+- **A subscription is seen only when the cart says so.** An item without
+  `recurring` counts as a one-time purchase; a shop that does not mark its
+  subscriptions in the cart data cannot be caught. The subscription cases
+  (`stress_subscription.py`) are a separate set of 16, not part of the v3
+  tasks, so the published v3 tasks stay as they are.
 - **The agent benchmark is small and was run once.** Each agent did each task
   once with the guard and once without, so a difference of one or two tasks
   is noise. Labels have a single reviewer, the person answering questions is

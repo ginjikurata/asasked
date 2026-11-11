@@ -42,7 +42,8 @@ TWO_DECIMAL = frozenset({"USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "SEK",
                          "ZAR", "RUB", "TRY", "ILS", "AED"})
 
 # Item attributes the guard knows (see guard._cart_item); details() may give these.
-DETAILS = ("brand", "color", "size", "level", "category", "returnable", "delivery_days", "units")
+DETAILS = ("brand", "color", "size", "level", "category", "returnable", "delivery_days", "units",
+           "recurring")
 
 
 class CheckoutError(ValueError):

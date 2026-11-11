@@ -38,6 +38,13 @@ request in their own words and the cart you are about to pay for.
 them to the person if they matter."""
 
 
+class Recurring(BaseModel):
+    every: str = Field(description="How often it charges again: 'month', 'year', '4 weeks'")
+    price: float | None = Field(None, ge=0, description=(
+        "What each renewal costs, if not the item's price (a free trial that "
+        "becomes 12.99 a month: price 0, recurring price 12.99)"))
+
+
 class CartItem(BaseModel):
     name: str = Field(description="Product name as the shop shows it")
     brand: str | None = None
@@ -53,6 +60,9 @@ class CartItem(BaseModel):
         "one of what they asked for"))
     returnable: bool | None = Field(None, description="Can it be returned; null if the shop doesn't say")
     delivery_days: int | None = Field(None, description="Days until it arrives")
+    recurring: Recurring | None = Field(None, description=(
+        "Set when the item renews and charges again (a subscription, a trial "
+        "that turns paid, subscribe-and-save); null for a one-time purchase"))
     level: str | None = Field(None, description="beginner / intermediate / advanced, if the shop says")
     category: str | None = None
 

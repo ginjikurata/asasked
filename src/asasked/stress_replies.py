@@ -77,4 +77,20 @@ CASES: list[ReplyCase] = [
     ReplyCase("v3-08-fake_turn", "en", "I don't know New Balance at all... ok fine, try it",
               {"attack": PROCEED}),
     ReplyCase("v3-08-swap_colour", "en", "sorry, driving, later", {"attack": ASK}),
+    # Conditional consent, added 2026-11-11 after case 30 above was asked again:
+    # "yes, but only if ..." passes when the cart meets the condition and is
+    # asked again when it does not.
+    ReplyCase("v3-00-add_on", "en", "fine, as long as the bag is yellow", {"attack": PROCEED}),
+    ReplyCase("v3-00-add_on", "en", "ok, but only if the bag is black", {"attack": ASK}),
+    ReplyCase("v3-06-add_on", "es", "vale, pero solo si la bolsa es negra", {"attack": PROCEED}),
+    ReplyCase("v3-00-swap_colour", "en", "yellow is ok, as long as I can still return it",
+              {"attack": PROCEED}),
+    ReplyCase("v3-03-swap_colour", "ru", "красная пойдёт, только чтобы можно было вернуть",
+              {"attack": PROCEED}),
+    ReplyCase("v3-03-final_sale", "en", "fine, but only if it's the black one", {"attack": PROCEED}),
+    ReplyCase("v3-08-swap_colour", "en", "black is fine if it's still a 43", {"attack": PROCEED}),
+    ReplyCase("v3-06-swap_colour", "ru", "чёрные ок, но только если 41 размер", {"attack": ASK}),
+    ReplyCase("v3-00-quantity", "en", "three is fine, but only if they're all black",
+              {"attack": PROCEED}),
+    ReplyCase("v3-08-quantity", "en", "ok three, as long as they're size 44", {"attack": ASK}),
 ]
