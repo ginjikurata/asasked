@@ -2,7 +2,10 @@
 
 One tool, check_order(request, cart). The answer "proceed" means payment can
 go ahead; "ask" means do not pay, show the person the ready question and call
-the check again together with their answer (answers). The server remembers
+the check again together with their answer (answers); "refuse" means the
+on-chain payment itself is wrong (another address, more than the order, a
+swap that may lose too much) and must change, whatever the person answers.
+The server remembers
 nothing between calls except facts already extracted: the same request is not
 sent to the models twice.
 
@@ -34,8 +37,15 @@ request in their own words and the cart you are about to pay for.
 - "ask": do NOT pay. Show the person the question as it is, then call
   check_order again with the same request, the cart you now intend to buy,
   and every question and answer so far in "answers".
+- "refuse": do NOT pay, and do not ask the person to approve this payment:
+  no answer can. Change the payment as "refused" says (the shop's address,
+  the order's amount, a tighter swap) and check again. If there is also a
+  question, show it to the person as with "ask".
 "notes" are things that could not be checked (the shop didn't say); mention
-them to the person if they matter."""
+them to the person if they matter.
+When paying on-chain, also pass "payment": the transaction you are about to
+sign, with the shop's address and rate and any swap quote exactly as the shop
+and the swap provider returned them."""
 
 
 class Recurring(BaseModel):
@@ -67,10 +77,36 @@ class CartItem(BaseModel):
     category: str | None = None
 
 
+class Swap(BaseModel):
+    from_token: str = Field(description="The token leaving the person's wallet, e.g. 'ASASKED'")
+    amount_in: float = Field(gt=0, description="How much of from_token the swap takes")
+    rate: float | None = Field(None, gt=0, description=(
+        "Value of one from_token in the cart's currency, if known"))
+    quote_out: float = Field(gt=0, description="Expected amount of the payment token out")
+    min_out: float = Field(gt=0, description="Guaranteed minimum out (after slippage)")
+
+
+class Payment(BaseModel):
+    token: str = Field(description="The token the shop receives, e.g. 'USDC'")
+    network: str | None = Field(None, description="The chain, e.g. 'solana'")
+    amount: float = Field(gt=0, description="How much of token the shop receives, in whole units")
+    to: str = Field(description="The recipient address in the transaction")
+    merchant: str | None = Field(None, description=(
+        "The address the shop's payment request names, as the shop returned it"))
+    rate: float | None = Field(None, gt=0, description=(
+        "Value of one token in the cart's currency (1.0 for USDC and dollar prices)"))
+    swap: Swap | None = Field(None, description="Set when the person's token is swapped first")
+    max_slippage_bps: float | None = Field(None, ge=0, le=10000, description=(
+        "Slippage the swap may lose before asking; default 100 (1%)"))
+
+
 class CheckResult(BaseModel):
-    decision: str = Field(description='"proceed": pay. "ask": don\'t pay, show the person the question')
+    decision: str = Field(description='"proceed": pay. "ask": don\'t pay, show the person the '
+                                      'question. "refuse": don\'t pay, change the payment')
     question: str | None = Field(None, description="For the person, as it is, when asking")
     reasons: list[str] = Field(description="What doesn't match the request")
+    refused: list[str] = Field(default_factory=list, description=(
+        "Payment problems no answer of the person's can approve: change the payment"))
     notes: list[str] = Field(description="What could not be checked or only roughly matches")
 
 
@@ -105,7 +141,7 @@ def _guard(request: str, answers: list[Answer], today: str) -> Guard:
 
 @server.tool()
 def check_order(request: str, cart: list[CartItem], answers: list[Answer] | None = None,
-                today: str | None = None) -> CheckResult:
+                today: str | None = None, payment: Payment | None = None) -> CheckResult:
     """Check a cart against what the person asked for, before paying.
 
     request: the person's request in their own words, not your summary.
@@ -114,13 +150,17 @@ def check_order(request: str, cart: list[CartItem], answers: list[Answer] | None
     today: today's date in words ("Monday, 2 November 2026"), if the
     person's day differs from the server's; deadlines like "by Friday" count
     from it.
+    payment: the on-chain payment you are about to sign, if paying in crypto.
 
-    Returns decision ("proceed" or "ask"), question (for the person, when
-    asking), reasons and notes.
+    Returns decision ("proceed", "ask" or "refuse"), question (for the
+    person, when asking), reasons, refused (what must change in the payment)
+    and notes.
     """
     guard = _guard(request, answers or [], today or today_in_words())
-    result = guard.check([item.model_dump() for item in cart])
-    return CheckResult(**{k: result[k] for k in ("decision", "question", "reasons", "notes")})
+    result = guard.check([item.model_dump() for item in cart],
+                         payment=payment.model_dump(exclude_none=True) if payment else None)
+    fields = ("decision", "question", "reasons", "refused", "notes")
+    return CheckResult(**{k: result[k] for k in fields})
 
 
 def main() -> None:

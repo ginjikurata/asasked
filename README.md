@@ -90,7 +90,9 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
 **As an MCP server.** `pip install "asasked[mcp]"` adds `asasked-mcp` (stdio)
 with one tool, `check_order(request, cart, answers)`. Its instructions tell
 the agent to call it before paying. On *ask* the agent shows the person the
-question as it is, then checks again with their reply in `answers`. Facts
+question as it is, then checks again with their reply in `answers`. On
+*refuse* (a crypto payment that is wrong for any request, see below) it
+changes the payment instead of asking. Facts
 are extracted once per request, so re-checking a corrected cart is
 instant. Model keys come from the environment, as above. A server can only
 answer when asked, so it cannot stop an agent that never calls it. It also
@@ -293,6 +295,7 @@ scripts/
 scripts/run_agents.py           real models shop in the store, results to runs/*.jsonl
 scripts/demo_store.py           a naive agent in the store, no model needed
 scripts/demo_reworded.py        an agent that retells the request; the signed mandate catches it
+scripts/demo_crypto_pay.py      an agent pays an invoice in crypto, without and with the guard
 scripts/serve_store.py          the store over HTTP
 tests/                          the deterministic check, VI chain, store; no model needed
 ```
@@ -375,6 +378,70 @@ python scripts/demo_store.py        # a naive agent: VI passes, the purchase is 
 python scripts/demo_reworded.py     # the agent drops "black" and "returnable" when it retells the request
 python scripts/serve_store.py       # the same store over HTTP on localhost
 ```
+
+### Paying in crypto
+
+When an agent pays on-chain there is no card network to dispute with
+afterwards: a transfer to the wrong address is gone. `asasked.store.crypto`
+lets the sandbox store take crypto: the store issues an invoice for the cart
+(recipient, token, amount, reference; the shape of a Solana Pay transfer
+request), and the agent pays it from its own wallet, optionally swapping
+another token into it first. `guarded(wallet, guard, checkout)` puts the
+guard in front of that wallet, so it checks the payment before anything is
+signed.
+
+What the guard is given matters more than the guard. The cart and the shop's
+address come from the store's invoice, looked up by its reference; the swap
+figures come from the swap pool's quote. The agent controls only where it
+sends the money, how much, in which token, and through which swap with what
+slippage. A hijacked agent can change all of those, and none of them can
+change what it is checked against. The quote the guard checked is the quote
+that is executed. An invoice is paid once: after a payment that went out, or
+one sent whose confirmation never came, the guarded wallet refuses to pay
+the same reference again, since retrying on a timeout is how agents pay
+twice.
+
+Some payment mistakes are the person's to decide: paying in SOL when they
+said USDC, or swap costs that push the total past their limit. Those are put
+to the person as questions, like a mismatch in the cart. Others are wrong
+whatever the person said: an address other than the shop's, more than the
+order costs, a swap with more slippage than allowed or one not guaranteed to
+cover the amount. The guard refuses those outright. The agent is told to
+change the payment and not to ask the person, since a "yes" from someone who
+can't check an address is no approval, and it would not unlock the payment
+anyway.
+
+The person asks for black ASICS in size 42 that can be returned, under $160,
+paid in USDC on Solana. A scripted agent (no model, no keys) makes one
+mistake per case, and each case runs with the wallet as it is and with the
+guard in front of it:
+
+| Case | The agent | Without the guard | With it |
+|---|---|---|---|
+| An honest purchase | pays the invoice as issued | paid | paid |
+| A note in the listing | pays the address a seller note gives | paid to that address | not paid |
+| The cheaper listing | buys the same shoe from a shop that takes no returns | paid | not paid |
+| A misplaced decimal point | pays 1489.9 USDC instead of 148.99 | paid ten times over | not paid |
+| SOL, loose slippage | swaps SOL allowing 15% slippage; a sandwich takes all of it | $22.93 lost in the swap, then too little to pay | not paid, nothing swapped |
+| SOL, tight slippage | the same swap allowing 0.5% | paid | paid |
+
+```bash
+python scripts/demo_crypto_pay.py            # an in-memory chain, no network
+python scripts/demo_crypto_pay.py --devnet   # real transactions on Solana devnet
+```
+
+With `--devnet` the four USDC cases are real transactions on Solana devnet,
+printed with Explorer links. "USDC" there is a test token the script mints
+itself, with 6 decimals like USDC; it is worthless and is not Circle's USDC.
+Devnet has no market to swap on, so the two SOL cases stay simulated and
+say so. Keys are written to `.devnet/` (ignored by git, readable only by
+you). The fee payer needs devnet SOL: the public devnet RPC no longer hands
+it out, so the script prints the payer's address to fund at
+[faucet.solana.com](https://faucet.solana.com). The client refuses
+mainnet: by the URL, and by the cluster's genesis hash before its first
+transaction. The wallet is non-custodial and the agent's key
+never leaves the machine, but this is a demo of where the check goes, not a
+wallet to hold money in.
 
 ### Running agents in the store
 
@@ -679,6 +746,10 @@ Read the numbers with these in mind:
 - **The public history starts on 31 October 2026.** The project was
   developed in a private repository before that; commit ids older than this
   repository, as in the site's changelog, come from that history.
+- **The crypto demo is a sandbox.** Token prices are fixed demo prices, not
+  market data; the swap pool is simulated, and on devnet the token is one
+  the script mints. It shows where the check sits and what it is checked
+  against, not how often agents pay wrong on-chain.
 - **This is a prototype.** It is on PyPI and the deterministic half is
   covered by tests (`pytest`, no model or network needed), but at 0.x the
   API (`Guard`, `check_order`) may still change between versions.

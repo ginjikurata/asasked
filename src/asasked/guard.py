@@ -25,6 +25,15 @@ For an agent developer it is one call, with the cart as plain dicts:
     # "recurring": {"every": "month", "price": 12.99}
     result["decision"]   # "proceed" or "ask"; result["question"] is the question for the person
 
+An on-chain payment can be checked too, before the agent signs it:
+guard.check(cart, payment={"token": "USDC", "amount": 129.99, "to": ...,
+"merchant": ..., "rate": 1.0}) also compares the token, network, recipient,
+amount and swap slippage with the request and the cart (see asasked.payment).
+A payment to an address that is not the shop's, for more than the order, or
+through a swap that may lose too much gets a third decision, "refuse": no
+answer of the person's approves it (result["refused"]), the payment itself has
+to change. A cart question, if there is one, still comes with it.
+
 A Verifiable Intent mandate is optional. A feature the cart does not have is
 not checked but goes into notes ("could not be checked"). With the person's
 signed L2 mandate, Guard.from_mandate(l2, user_jwk) takes the request from it
@@ -52,21 +61,36 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .coherence import (ASK, PROCEED, Decision, IntentFacts, check_agreed_renewals,
+from .coherence import (ASK, BLOCK, PROCEED, Decision, IntentFacts, check_agreed_renewals,
                         decide_before_purchase, renewal_terms,
                         extract_intent_agreed, retelling_differences)
 from .llm_extract import ExtractionError
 from .mandate import request_from_mandate
+from .payment import check_payment, parse_payment, refused
 
 
 # Without a VI mandate there are no amount limits: only what the person said is checked.
 NO_BAND = (0, 10**15)
+
+# The third decision, for a payment no answer of the person's can approve.
+REFUSE = "refuse"
 
 # What the agent sees instead of payment. Like needs_confirmation in the
 # sandbox: the agent must neither pay again nor answer for the person.
 NOT_PAID = ("NOT PAID. The order doesn't match what the person asked for. "
             "Show the person this question as it is and wait for their reply; "
             "do not try to pay again before they answer.\n\n{question}")
+
+# A refused payment: asking the person would not help, and a "yes" would not
+# change the answer, so the agent is told to change the payment instead.
+REFUSED = ("NOT PAID. This payment can't be made as it is, and no answer from the person "
+           "can approve it:\n{reasons}\nChange the payment itself: pay the address on the "
+           "shop's invoice, the amount of the order, with any swap kept within the allowed "
+           "slippage and guaranteed to cover the amount. Do not ask the person to approve "
+           "this payment.")
+# Said after REFUSED when the cart needs the person's answer as well.
+ALSO_ASK = ("\n\nThe order also doesn't match what the person asked for. Show the person "
+            "this question as it is and wait for their reply before paying:\n\n{question}")
 
 
 def _cart_item(i: int, item: dict) -> tuple[str, dict, int]:
@@ -256,26 +280,34 @@ class Guard:
         # terms seen stop a different subscription slipping in after a "yes".
         self._agreed = {**self._agreed, **self._offered}
 
-    def check(self, purchase, mandate=None, find=None) -> dict:
+    def check(self, purchase, mandate=None, find=None, payment=None) -> dict:
         """purchase is the cart as dicts (see the top of this file) or, together
-        with find, a list of catalog (sku, quantity). mandate is a VI mandate or None."""
+        with find, a list of catalog (sku, quantity). mandate is a VI mandate or None.
+        payment is the on-chain payment the agent is about to sign (see
+        asasked.payment), or None when it pays some other way."""
         if find is None:
             items = [_cart_item(i, item) for i, item in enumerate(purchase)]
             products = {sku: product for sku, product, _ in items}
             purchase, find = [(sku, qty) for sku, _, qty in items], products.__getitem__
+        payment = parse_payment(payment)
+        total = sum(find(sku)["price_cents"] * qty for sku, qty in purchase)
         changed = check_agreed_renewals(self._agreed, purchase, find)
         self._offered = renewal_terms(purchase, find)
         facts = self.facts()
         if facts is None:
+            # Recipient, amount and slippage need no facts: they are refused
+            # all the same (with no facts, every payment block is a refusal).
+            refusals = [f for f in check_payment(IntentFacts(), payment, total) if refused(f)]
             # The question must name the order: the person cannot meaningfully
             # confirm or reject "may I?" with no subject.
             items = "\n".join(f"  - {find(sku)['name']} ×{qty}, "
                                f"${find(sku)['price_cents'] / 100:.2f} each{_renews(find(sku))}"
                                for sku, qty in purchase)
             result = {
-                "decision": ASK,
+                "decision": REFUSE if refusals else ASK,
                 "reasons": ["The request could not be checked automatically."]
-                           + [f.text for f in changed],
+                           + [f.text for f in changed + refusals],
+                "refused": [f.text for f in refusals],
                 "question": "I couldn't automatically check this order against your request:\n"
                             f"{items}\nShould I go ahead with it?",
                 "notes": [],
@@ -295,13 +327,25 @@ class Guard:
                                 and any(f.text.endswith(t) for t in tails))]
                 decision = Decision(action=ASK, reasons=kept + changed,
                                     notes=decision.notes)
+            over = any(f.code == "explicit-max" for f in decision.reasons + decision.notes)
+            paying = check_payment(facts, payment, total, over_limit=over)
+            refusals = [f for f in paying if refused(f)]
+            if paying:
+                # The person is asked only what their answer can settle.
+                reasons = decision.reasons + [f for f in paying
+                                              if f.severity == BLOCK and not refused(f)]
+                decision = Decision(action=ASK if reasons else PROCEED, reasons=reasons,
+                                    notes=decision.notes + [f for f in paying
+                                                            if f.severity != BLOCK])
             result = {
-                "decision": decision.action,
-                "reasons": [f.text for f in decision.reasons],
+                "decision": REFUSE if refusals else decision.action,
+                "reasons": [f.text for f in decision.reasons + refusals],
+                "refused": [f.text for f in refusals],
                 "question": decision.question,
                 "notes": [f.text for f in decision.notes] + self.retold(),
             }
-        self.checks.append({"purchase": list(purchase), **result})
+        self.checks.append({"purchase": list(purchase), **result,
+                            **({"payment": payment} if payment else {})})
         return result
 
     def answer(self, text: str) -> None:
@@ -313,36 +357,47 @@ class Guard:
             self.hear(self._asked, text)
             self._asked = None
 
-    def gate(self, cart: list[dict]) -> str | None:
+    def gate(self, cart: list[dict], payment: dict | None = None) -> str | None:
         """None: payment can go ahead; otherwise the text for the agent instead of payment."""
-        result = self.check(cart)
+        result = self.check(cart, payment=payment)
         if result["decision"] == PROCEED:
             return None
         self._asked = result["question"]
+        if result["decision"] == REFUSE:
+            reasons = "\n".join(f"  - {text}" for text in result["refused"])
+            told = REFUSED.format(reasons=reasons)
+            return told + ALSO_ASK.format(question=self._asked) if self._asked else told
         return NOT_PAID.format(question=result["question"])
 
-    async def agate(self, cart: list[dict]) -> str | None:
+    async def agate(self, cart: list[dict], payment: dict | None = None) -> str | None:
         """gate for async agents: models are called outside the event loop."""
-        return await asyncio.to_thread(self.gate, cart)
+        return await asyncio.to_thread(self.gate, cart, payment)
 
-    def protect(self, pay: Callable, cart: Callable[..., list[dict]]) -> Callable:
+    def protect(self, pay: Callable, cart: Callable[..., list[dict]],
+                payment: Callable[..., dict | None] | None = None) -> Callable:
         """Payment that asks the guard first.
 
         cart gets the same arguments as pay and returns the cart as dicts. If
         the cart differs from the request, pay is not called and the text for
-        the agent is returned instead (see NOT_PAID).
+        the agent is returned instead (see NOT_PAID, and REFUSED for a payment
+        no answer can approve). payment, if given, gets
+        the same arguments too and returns the on-chain payment about to be
+        signed (see asasked.payment), checked together with the cart.
         """
+        def paying(*args, **kwargs):
+            return payment(*args, **kwargs) if payment else None
+
         if inspect.iscoroutinefunction(pay):
             @functools.wraps(pay)
             async def guarded(*args, **kwargs):
-                blocked = await self.agate(cart(*args, **kwargs))
+                blocked = await self.agate(cart(*args, **kwargs), paying(*args, **kwargs))
                 return blocked if blocked else await pay(*args, **kwargs)
         else:
             @functools.wraps(pay)
             def guarded(*args, **kwargs):
-                blocked = self.gate(cart(*args, **kwargs))
+                blocked = self.gate(cart(*args, **kwargs), paying(*args, **kwargs))
                 return blocked if blocked else pay(*args, **kwargs)
         return guarded
 
 
-__all__ = ["ASK", "NOT_PAID", "PROCEED", "Guard"]
+__all__ = ["ASK", "NOT_PAID", "PROCEED", "REFUSE", "REFUSED", "Guard"]

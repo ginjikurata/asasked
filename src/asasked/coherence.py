@@ -59,6 +59,11 @@ class IntentFacts:
     # subscription counts at what it charges over that period: $10 every week
     # is $50 in some month, not $10.
     max_every: str | None = None
+    # How the person wants to pay, when they say: a token ticker in upper case
+    # without "$" ("USDC", "SOL", "ASASKED") and a chain ("solana"). Checked
+    # against the payment the agent is about to sign (payment.py), not the cart.
+    pay_with: str | None = None
+    pay_network: str | None = None
     raw: str = ""
     # Names of the fields above that the person marked as optional or
     # approximate ("not a big deal", "give or take"). A mismatch on such a
@@ -271,6 +276,8 @@ def extract_intent(request: str, deadline_days: int | None = None,
         wants_recurring=bool(data.get("wants_recurring", False)),
         recurring_every=_interval_name(_as_str(data.get("recurring_every"), "recurring_every")),
         max_every=_interval_name(_as_str(data.get("max_every"), "max_every")),
+        pay_with=_ticker(_as_str(data.get("pay_with"), "pay_with")),
+        pay_network=_lower(_as_str(data.get("pay_network"), "pay_network")),
         soft=_as_soft_set(data.get("soft_fields")),
         lines=_as_lines(data.get("lines"), today),
         other=other,
@@ -342,6 +349,17 @@ def _charges_in(every: str, period: str | None) -> int:
     return max(1, math.ceil(span / days - 1e-9))
 
 
+def _ticker(value: str | None) -> str | None:
+    """"$asasked " -> "ASASKED": one spelling for a token, whoever wrote it."""
+    value = (value or "").strip().lstrip("$").strip().upper()
+    return value or None
+
+
+def _lower(value: str | None) -> str | None:
+    value = (value or "").strip().lower()
+    return value or None
+
+
 def canonical(facts: IntentFacts) -> IntentFacts:
     """One form for one meaning, so that two models' answers can be compared.
 
@@ -373,7 +391,7 @@ def canonical(facts: IntentFacts) -> IntentFacts:
 _COMPARED_FIELDS = (
     "brand", "brand_not", "model", "color", "size_label", "level", "price_preference",
     "explicit_max_cents", "quantity", "needs_refundable", "deadline_days", "wants_recurring",
-    "recurring_every", "max_every",
+    "recurring_every", "max_every", "pay_with", "pay_network",
 )
 
 
@@ -1002,6 +1020,7 @@ _FACT_NAMES = {
     "needs_refundable": "returns", "deadline_days": "delivery deadline",
     "wants_recurring": "subscription",
     "recurring_every": "subscription interval", "max_every": "limit period",
+    "pay_with": "payment token", "pay_network": "payment network",
 }
 
 

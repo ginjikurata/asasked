@@ -118,6 +118,7 @@ WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", 
 SOFTENABLE_FIELDS = [
     "brand", "brand_not", "model", "color", "size_label", "level", "price_preference",
     "explicit_max_cents", "quantity", "needs_refundable", "deadline_days",
+    "pay_with", "pay_network",
 ]
 
 SYSTEM_PROMPT = """You extract purchase facts from a person's request to a shopping agent.
@@ -195,6 +196,15 @@ keys (use null when the attribute is not stated):
   "раз в неделю", "cada mes", "yes, monthly is fine"): "day", "week",
   "month" or "year" (or "<n> <unit>", e.g. "2 week"). Otherwise null; an
   interval named only in the agent's question is not the person's.
+- "pay_with": the crypto token or coin the person wants to pay with, if
+  they name one ("pay in USDC", "with my SOL", "use my $ASASKED", "оплати в
+  USDT", "paga con USDC"): its ticker in upper case without "$" ("USDC",
+  "SOL", "ASASKED"). Otherwise null, also for a card, cash, a bank transfer
+  or the currency prices are in ("in euros").
+- "pay_network": the blockchain the person names for the payment ("on
+  Solana", "via Base", "в сети Ethereum"): its name in lower-case English
+  ("solana", "base", "ethereum"). Otherwise null; never guessed from the
+  token.
 - "deadline_days": integer number of days if the person states a deadline
   ("by Saturday", "urgently", "within two days", "к субботе", "до субботы");
   estimate a reasonable number of days; otherwise null. "By <day>" and
@@ -295,6 +305,8 @@ RESPONSE_SCHEMA = {
         "wants_recurring": {"type": "boolean"},
         "recurring_every": {"type": ["string", "null"]},
         "max_every": {"type": ["string", "null"]},
+        "pay_with": {"type": ["string", "null"]},
+        "pay_network": {"type": ["string", "null"]},
         "deadline_days": {"type": ["integer", "null"]},
         "deadline_weekday": {"anyOf": [{"type": "string", "enum": WEEKDAYS}, {"type": "null"}]},
         "lines": {"type": "array", "items": {
@@ -326,7 +338,7 @@ RESPONSE_SCHEMA = {
         "brand", "brand_not", "model", "color", "size_label", "level", "price_preference",
         "explicit_max_cents",
         "quantity", "needs_refundable", "wants_recurring", "recurring_every", "max_every",
-        "deadline_days", "deadline_weekday", "lines",
+        "deadline_days", "deadline_weekday", "pay_with", "pay_network", "lines",
         "soft_fields", "other_conditions",
     ],
     "additionalProperties": False,

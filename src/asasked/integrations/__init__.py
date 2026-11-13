@@ -7,6 +7,7 @@ payment tool, and the agent cannot go around it.
 
 The same everywhere: cart(tool arguments) -> the cart as dicts (as in
 Guard.check). On a mismatch payment is not called and the agent gets a
-question for the person (guard.NOT_PAID). The person's answer is passed on by
-your code: guard.answer(...).
+question for the person (guard.NOT_PAID), or, for a payment no answer can
+approve, what to change in it (guard.REFUSED). The person's answer is passed
+on by your code: guard.answer(...).
 """

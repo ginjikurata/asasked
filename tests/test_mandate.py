@@ -190,7 +190,7 @@ def test_the_same_request_in_other_spacing_is_not_a_retelling(key):
     guard = Guard.from_mandate(_l2(key, {}, [_checkout(REQUEST)]), _jwk(key),
                                claimed="  " + REQUEST.replace(" ", "  "), extract=_facts)
     assert guard.check([{**SHOE, "returnable": True}]) == {
-        "decision": "proceed", "reasons": [], "question": None, "notes": []}
+        "decision": "proceed", "reasons": [], "refused": [], "question": None, "notes": []}
 
 
 def test_a_retelling_with_the_same_facts_is_not_flagged(key):

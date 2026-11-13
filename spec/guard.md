@@ -14,6 +14,11 @@ returns one of two decisions:
 - `ask`: at least one blocking mismatch; the agent must consult the person
   before paying, and the guard supplies the reasons and a ready question.
 
+When the payment itself is passed too (§5), a third decision exists:
+`refuse`, for a payment that is wrong whatever the person says, such as one
+to another address than the shop's. The agent must change the payment, not
+ask the person to approve it.
+
 The guard works alongside authorization schemes such as Verifiable Intent and
 does not replace them. Those prove the purchase stays within the limits the person
 signed (allowed items, amount, merchants). The guard checks the part those
@@ -52,6 +57,8 @@ person did not state is `null` (or `false` for `needs_refundable`).
 | `quantity` | integer | How many, **in the units the person counts** (cans of balls, not packs). |
 | `needs_refundable` | boolean | The person wants to be able to return or exchange. |
 | `deadline_days` | integer | Days until a stated deadline, relative to a given *today*. |
+| `pay_with` | string | The token or coin the person wants to pay with ("pay in USDC", "with my SOL"), as an upper-case ticker without `$`. Not a card, cash or the currency prices are in. |
+| `pay_network` | string | The blockchain the person named for the payment ("on Solana"), lower-case English. |
 | `lines` | list | Several variants in one order ("size 40 for my wife and 43 for me"): one entry per variant with its own `model`, `color`, `size_label`, `quantity`; everything else is shared. Empty otherwise. |
 | `other` | list of strings | Requirements no field above holds ("gluten-free", "fits an iPhone 15"), in the person's words, that the person made a must. |
 | `other_optional` | list of strings | The same, marked by the person as nice to have. |
@@ -92,8 +99,9 @@ person did not state is `null` (or `false` for `needs_refundable`).
    differently is not a disagreement worth stopping a purchase over.
 4. Extraction output MUST be validated against the schema. Malformed output is
    an extraction failure, never silently coerced to `null`.
-5. **Fail closed:** if facts cannot be extracted, the decision is `ask`, with a
-   reason saying the request could not be checked.
+5. **Fail closed:** if facts cannot be extracted, the decision is `ask` (or
+   `refuse` for a refused payment, §5), with a reason saying the request could
+   not be checked.
 
 ## 5. Checks
 
@@ -148,6 +156,47 @@ a `lines` finding (`block`): the order goes to the person.
 **Severity.** A finding is `warn` if its field is in `soft` or in `disputed`,
 otherwise `block`.
 
+**Payment.** When the agent pays on-chain, the caller may pass the payment it
+is about to sign next to the cart. Payment checks need no model: amounts,
+addresses and rates come from the caller (the shop's payment request and the
+swap quote), and the comparison is plain code.
+
+| Payment field | Meaning |
+|---|---|
+| `token` | What reaches the shop ("USDC"). Required. |
+| `network` | The chain the transaction goes out on ("solana"). |
+| `amount` | How much of `token` the shop receives, in whole token units (12.5). Required. |
+| `to` | The recipient address in the transaction. Required. |
+| `merchant` | The address the shop's payment request names. |
+| `rate` | Value of one `token` in the cart's currency (1.0 for USDC against dollar prices). |
+| `swap` | When the person's token is swapped first: `from_token`, `amount_in` (what leaves the person's wallet), `rate` (value of one `from_token`), `quote_out` and `min_out` (expected and guaranteed amount of `token`). |
+| `max_slippage_bps` | Optional caller-set cap on the swap's slippage; default 100 (1%). |
+
+| Code | Finding when |
+|---|---|
+| `pay-recipient` | `to` ≠ `merchant` (`0x` addresses compare case-insensitively, others exactly). Always `block`, and refused: no fact of the person's can make paying a stranger right. Without `merchant`, `unchecked` (`warn`). |
+| `pay-token` | the token the person gives (`swap.from_token`, else `token`) ≠ `pay_with` |
+| `pay-network` | `network` ≠ `pay_network`; without `network`, `unchecked` |
+| `pay-amount` | `amount × rate` exceeds the cart total by more than max(1 cent, 0.5%): `block`, refused; is below it by as much: `warn` (the shop may reject it, the person loses nothing) |
+| `pay-max` | what the person gives (`swap.amount_in × swap.rate`, else `amount × rate`) exceeds `explicit_max_cents` while the cart total does not: swap costs and slippage count toward the limit. Not checked while `pay-amount` refuses: the corrected payment is checked again |
+| `pay-slippage` | `(quote_out − min_out) / quote_out` exceeds `max_slippage_bps` (`block`, refused) |
+| `pay-swap-short` | `min_out` < `amount`: the swap may not yield enough to pay (`block`, refused) |
+| `pay-unchecked` | `pay_with` or `pay_network` stated and no payment passed: `block` like `other`, as the guard cannot see how the order is paid |
+
+`pay-token` and `pay-network` take their severity from the fact, like every
+other check; `pay-max` from `explicit_max_cents`. Without `rate` (or
+`swap.rate`), `pay-amount` and `pay-max` return `unchecked` (`warn`). Payment
+findings join the cart's in the decision (§6).
+
+**Refused findings.** `pay-recipient`, `pay-amount` when overpaying,
+`pay-slippage` and `pay-swap-short` (all at `block`) do not depend on what the
+person said: the shop's address, the order's amount and a safe swap are right
+for every request. No answer from the person can approve them, so they are
+not put to the person; the agent has to change the payment. `pay-token`,
+`pay-network` and `pay-max` stay questions: the token, the chain and the limit
+are the person's to choose. If the facts could not be extracted, the refused
+findings still run (they need no facts); the others cannot be checked.
+
 ## 6. Decision
 
 - `proceed` if there is no `block` finding. `warn` findings are returned as
@@ -159,23 +208,35 @@ otherwise `block`.
   > – Asked to be able to return it, the item is final sale: …
   > Should I still go ahead?
 
-The guard does not forbid. It requires the person to be consulted. A person
-who knowingly accepts a final-sale item has made a decision; the guard's job
-is to make sure they were asked.
+- `refuse` if any finding is refused (§5), whatever else is found. `reasons`
+  lists every `block` finding, `refused` lists the refused ones, and
+  `question` covers only the rest: it is empty when nothing else is wrong, and
+  otherwise is asked alongside the refusal, so a corrected payment does not
+  stop again on the cart.
+
+The guard does not forbid what the person can decide. It requires them to be
+consulted. A person who knowingly accepts a final-sale item has made a
+decision; the guard's job is to make sure they were asked. A refused payment
+is the one exception: it is wrong for every request, so there is nothing to
+ask.
 
 ## 7. Where it runs
 
 - **Agent side, advisory:** the agent calls the guard before checkout and
   decides what to do with the answer.
 - **Store or checkout side, enforced:** checkout runs the guard itself. On
-  `ask`, the order is held until the agent has consulted the person; a changed
-  cart is checked again.
+  `ask`, the order is held until the agent has consulted the person; on
+  `refuse`, until the payment is changed. A changed cart or payment is
+  checked again.
 - **As an MCP tool:** `asasked-mcp` serves one tool, `check_order(request,
-  cart, answers, today)`, that returns the decision, reasons and question; the
-  agent passes back the person's answers on the next call.
+  cart, answers, today, payment)`, that returns the decision, reasons,
+  refused findings and question; the agent passes back the person's answers
+  on the next call.
 - **Wrapped around a payment function:** `Guard.protect(pay, cart)` returns a
   payment function that checks the cart first and, on `ask`, does not pay and
-  returns the question to the agent instead. Hooks built on it exist for the
+  returns the question to the agent instead; on `refuse`, it does not pay and
+  tells the agent what to change in the payment, with the question for the
+  person only when the cart needs one too. Hooks built on it exist for the
   Claude Agent SDK, the OpenAI Agents SDK and LangChain.
 - **With Verifiable Intent:** the guard runs before the agent creates the
   final L3 mandates. The request and, optionally, the extracted facts can
@@ -201,6 +262,11 @@ verified by a human without trusting a model.
   every other stated fact, with a fixed 15% threshold.
 - **Extraction quality bounds the guard.** Two extractors reduce silent errors
   but do not remove them; disputed facts only warn.
+- **Payment data is the caller's.** The guard compares what it is given: the
+  shop's address, the rates and the swap quote. It does not read the chain,
+  fetch prices or sign anything, and a caller that passes a forged quote or
+  merchant address defeats `pay-*` checks. Pass what the shop's payment
+  request and the swap provider returned, not what the agent says.
 - **Free-text requirements are not checked.** An `other` requirement is
   always put to the person, even when the item plainly meets it.
 - **Measured in a sandbox.** The numbers below come from our own catalog and
