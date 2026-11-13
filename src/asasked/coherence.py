@@ -49,6 +49,16 @@ class IntentFacts:
     # "yes, the subscription is fine"). Without it any item that renews and
     # charges again is asked about: nobody says "and not a subscription".
     wants_recurring: bool = False
+    # How often the subscription the person asked for or agreed to renews, in
+    # their words or answer ("monthly", "yes, every month is fine"): "month",
+    # "week", "2 week", "year", "day". An item that renews at another interval
+    # is asked about. None: they named no interval.
+    recurring_every: str | None = None
+    # The period a spending limit is for ("up to $10 a month" -> "month"), in
+    # the same form. None: the limit is for the order. With a period, a
+    # subscription counts at what it charges over that period: $10 every week
+    # is $50 in some month, not $10.
+    max_every: str | None = None
     raw: str = ""
     # Names of the fields above that the person marked as optional or
     # approximate ("not a big deal", "give or take"). A mismatch on such a
@@ -259,11 +269,77 @@ def extract_intent(request: str, deadline_days: int | None = None,
         quantity=_as_int(data.get("quantity"), "quantity"),
         needs_refundable=bool(data.get("needs_refundable", False)),
         wants_recurring=bool(data.get("wants_recurring", False)),
+        recurring_every=_interval_name(_as_str(data.get("recurring_every"), "recurring_every")),
+        max_every=_interval_name(_as_str(data.get("max_every"), "max_every")),
         soft=_as_soft_set(data.get("soft_fields")),
         lines=_as_lines(data.get("lines"), today),
         other=other,
         other_optional=other_optional,
     ))
+
+
+# How long each interval is, in days. A month is 365.25 / 12 days, so twelve
+# of them make exactly a year.
+_INTERVAL_DAYS = {"day": 1.0, "week": 7.0, "fortnight": 14.0, "month": 365.25 / 12,
+                  "quarter": 365.25 / 4, "year": 365.25}
+_INTERVAL_WORDS = {"daily": "day", "weekly": "week", "biweekly": "2 week",
+                   "monthly": "month", "quarterly": "quarter", "yearly": "year",
+                   "annually": "year", "annual": "year", "annum": "year", "mo": "month",
+                   "wk": "week", "yr": "year"}
+_INTERVAL = re.compile(r"^(?:every\s+|per\s+|a\s+|an\s+|each\s+)?(?:(\d+)\s*)?([a-z]+?)s?$")
+
+
+def interval_days(text: str | None) -> float | None:
+    """ "month", "2 weeks", "monthly", "every 3 months" -> days; None if not understood."""
+    text = " ".join((text or "").lower().replace("-", " ").split())
+    text = _INTERVAL_WORDS.get(text, text)
+    match = _INTERVAL.match(text)
+    if not match:
+        return None
+    count, unit = match.groups()
+    unit = _INTERVAL_WORDS.get(unit, unit)
+    if " " in unit:  # "biweekly" -> "2 week"
+        return interval_days(unit)
+    if unit not in _INTERVAL_DAYS:
+        return None
+    return int(count or 1) * _INTERVAL_DAYS[unit]
+
+
+def _interval_name(value: str | None) -> str | None:
+    """One spelling for an interval, so two models' answers compare: "Monthly" -> "month"."""
+    value = " ".join((value or "").lower().split())
+    if not value:
+        return None
+    days = interval_days(value)
+    if days is None:
+        return value
+    for unit in ("year", "quarter", "month", "fortnight", "week", "day"):
+        count = days / _INTERVAL_DAYS[unit]
+        if abs(count - round(count)) < 1e-9 and round(count) >= 1:
+            count = round(count)
+            if unit == "fortnight":
+                return "2 week"
+            if unit == "quarter":
+                return "3 month"
+            return unit if count == 1 else f"{count} {unit}"
+    return value
+
+
+def same_interval(a: str | None, b: str | None) -> bool:
+    days_a, days_b = interval_days(a), interval_days(b)
+    if days_a is None or days_b is None:
+        return _interval_name(a) == _interval_name(b)
+    return abs(days_a - days_b) < 1e-9
+
+
+def _charges_in(every: str, period: str | None) -> int:
+    """How many times a subscription renewing every `every` charges in the
+    worst `period`: weekly in a month is 5. At least once; once if the period
+    or the interval is not understood (a limit for the whole order: one charge)."""
+    days, span = interval_days(every), interval_days(period)
+    if not days or not span:
+        return 1
+    return max(1, math.ceil(span / days - 1e-9))
 
 
 def canonical(facts: IntentFacts) -> IntentFacts:
@@ -297,6 +373,7 @@ def canonical(facts: IntentFacts) -> IntentFacts:
 _COMPARED_FIELDS = (
     "brand", "brand_not", "model", "color", "size_label", "level", "price_preference",
     "explicit_max_cents", "quantity", "needs_refundable", "deadline_days", "wants_recurring",
+    "recurring_every", "max_every",
 )
 
 
@@ -383,6 +460,18 @@ def merge_facts(results: list[IntentFacts], strict: bool = False) -> IntentFacts
             continue
         if name == "wants_recurring":
             values[name] = False
+            continue
+        # The interval agreed to: if the models heard different ones, an item
+        # must match all of them, so none does and the person is asked.
+        if name == "recurring_every":
+            heard = sorted({v for v in found if v is not None})
+            values[name] = heard[0] if len(heard) == 1 else " | ".join(heard)
+            continue
+        # The period of a limit: the longest heard is the strictest (a
+        # subscription costs more over a month than over a week).
+        if name == "max_every":
+            heard = [v for v in found if v is not None]
+            values[name] = max(heard, key=lambda v: interval_days(v) or 0)
             continue
         if not strict:
             disputed.add(name)
@@ -622,6 +711,14 @@ def _item_findings(product: dict, facts: IntentFacts, sev) -> list[Finding]:
             f"Not a one-time purchase: a subscription that charges "
             f"${_renewal_cents(product) / 100:.2f} every {recurring['every']}: {name}.",
         ))
+    elif recurring and facts.recurring_every and not all(
+            same_interval(recurring["every"], every)
+            for every in facts.recurring_every.split(" | ")):
+        out.append(Finding(
+            "recurring-interval", BLOCK,
+            f"Agreed to a subscription every {facts.recurring_every}, this one charges "
+            f"${_renewal_cents(product) / 100:.2f} every {recurring['every']}: {name}.",
+        ))
 
     if (facts.deadline_days is not None
             and not unknown("ships_in_days", f"delivery within {facts.deadline_days} days")
@@ -639,6 +736,47 @@ def _renewal_cents(product: dict) -> int:
     recurring = product.get("recurring") or {}
     cents = recurring.get("price_cents")
     return product["price_cents"] if cents is None else cents
+
+
+def renewal_terms(purchase, find) -> dict:
+    """The subscriptions in an order: sku -> (every, cents per renewal)."""
+    out = {}
+    for sku, _ in purchase:
+        product = find(sku)
+        if product.get("recurring"):
+            out[sku] = (product["recurring"]["every"], _renewal_cents(product))
+    return out
+
+
+def check_agreed_renewals(agreed: dict, purchase, find) -> list[Finding]:
+    """A subscription the person agreed to holds its interval and renewal price.
+
+    agreed is renewal_terms of the orders the person was asked about and
+    answered (see Guard.hear). A later order whose subscription renews more
+    often, or charges more each time, is a new subscription and is asked
+    about again, even if its first charge is the same. An item the person
+    saw is held to its own terms; any other subscription to the terms of one
+    they saw at the same interval. Nothing is agreed: nothing to check here.
+    """
+    if not agreed:
+        return []
+    out = []
+    for sku, (every, cents) in renewal_terms(purchase, find).items():
+        name = find(sku)["name"]
+        seen = [agreed[sku]] if sku in agreed else list(agreed.values())
+        same = [c for e, c in seen if same_interval(e, every)]
+        if not same:
+            was = " or ".join(sorted({e for e, _ in seen}))
+            out.append(Finding(
+                "recurring-changed", BLOCK,
+                f"You agreed to a subscription every {was}; this one charges "
+                f"${cents / 100:.2f} every {every}: {name}."))
+        elif cents > max(same):
+            out.append(Finding(
+                "recurring-changed", BLOCK,
+                f"You agreed to ${max(same) / 100:.2f} every {every}; this subscription "
+                f"renews at ${cents / 100:.2f}: {name}."))
+    return out
 
 
 def _describe(line: dict) -> str:
@@ -769,14 +907,22 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
 
     # A subscription counts at what it charges each time, whichever is more:
     # a free trial is not free, and "no more than $10" is broken by $10.99 a
-    # month whatever today's price.
-    limited = sum(max(p["price_cents"], _renewal_cents(p) if p.get("recurring") else 0) * q
-                  for p, q in items)
+    # month whatever today's price. A limit for a period ("$10 a month")
+    # counts every charge in that period: $10 every week is $50 in some month.
+    def charged(p):
+        if not p.get("recurring"):
+            return 0
+        return _renewal_cents(p) * _charges_in(p["recurring"]["every"], facts.max_every)
+    limited = sum(max(p["price_cents"], charged(p)) * q for p, q in items)
     if facts.explicit_max_cents and limited > facts.explicit_max_cents:
-        renewing = " at the subscription price" if limited != total else ""
+        per = f" a {facts.max_every}" if facts.max_every else ""
+        renewing = ""
+        if limited != total:
+            renewing = (f" in renewals over a {facts.max_every}" if facts.max_every
+                        else " at the subscription price")
         findings.append(Finding(
             "explicit-max", sev("explicit_max_cents"),
-            f"Set a limit of ${facts.explicit_max_cents/100:.2f}, "
+            f"Set a limit of ${facts.explicit_max_cents/100:.2f}{per}, "
             f"the order costs ${limited/100:.2f}{renewing}.",
         ))
 
@@ -855,6 +1001,7 @@ _FACT_NAMES = {
     "explicit_max_cents": "price limit", "quantity": "quantity",
     "needs_refundable": "returns", "deadline_days": "delivery deadline",
     "wants_recurring": "subscription",
+    "recurring_every": "subscription interval", "max_every": "limit period",
 }
 
 

@@ -167,7 +167,14 @@ keys (use null when the attribute is not stated):
   units of whatever currency is named, with no conversion (amount x 100:
   "$150" or "150 euros" -> 15000, "15k" or "до 15 000" -> 1500000,
   "1万5千円" -> 1500000, "800元" -> 80000). Hyperbole ("not a million") is not a
-  limit. Otherwise null.
+  limit. A price the agent named in its question is not a limit, even when
+  the person agrees to it ("yes, a monthly subscription is fine" after "it
+  charges $5.39 every month" sets no limit). Otherwise null.
+- "max_every": the period the spending limit is for, if the person names
+  one ("up to $10 a month", "no more than 500 a week", "не больше 1000 в
+  месяц", "10 dólares al mes"): "day", "week", "month" or "year" (or "<n>
+  <unit>", e.g. "3 month"). Otherwise null, also when there is no limit
+  (a subscription's renewal interval is recurring_every, not this).
 - "quantity": integer number of items if stated explicitly, including in
   words or with counters ("a couple", "пару", "un par", "两罐", "二缶" = 2;
   "half a dozen", "une demi-douzaine" = 6; "三罐", "3缶" = 3). A single item
@@ -183,6 +190,11 @@ keys (use null when the attribute is not stated):
   "подписка", "каждый месяц", "cada mes", "毎月"), or agrees to one the agent
   asked about; otherwise false. Buying something they use up ("balls",
   "coffee") is not a wish for a subscription.
+- "recurring_every": how often the subscription the person asks for or
+  agrees to renews, if they say it themselves ("every month", "weekly",
+  "раз в неделю", "cada mes", "yes, monthly is fine"): "day", "week",
+  "month" or "year" (or "<n> <unit>", e.g. "2 week"). Otherwise null; an
+  interval named only in the agent's question is not the person's.
 - "deadline_days": integer number of days if the person states a deadline
   ("by Saturday", "urgently", "within two days", "к субботе", "до субботы");
   estimate a reasonable number of days; otherwise null. "By <day>" and
@@ -281,6 +293,8 @@ RESPONSE_SCHEMA = {
         "quantity": {"type": ["integer", "null"]},
         "needs_refundable": {"type": "boolean"},
         "wants_recurring": {"type": "boolean"},
+        "recurring_every": {"type": ["string", "null"]},
+        "max_every": {"type": ["string", "null"]},
         "deadline_days": {"type": ["integer", "null"]},
         "deadline_weekday": {"anyOf": [{"type": "string", "enum": WEEKDAYS}, {"type": "null"}]},
         "lines": {"type": "array", "items": {
@@ -311,8 +325,8 @@ RESPONSE_SCHEMA = {
     "required": [
         "brand", "brand_not", "model", "color", "size_label", "level", "price_preference",
         "explicit_max_cents",
-        "quantity", "needs_refundable", "wants_recurring", "deadline_days", "deadline_weekday",
-        "lines",
+        "quantity", "needs_refundable", "wants_recurring", "recurring_every", "max_every",
+        "deadline_days", "deadline_weekday", "lines",
         "soft_fields", "other_conditions",
     ],
     "additionalProperties": False,

@@ -93,10 +93,133 @@ def test_retelling_names_a_subscription_the_person_did_not_sign():
 
 
 def test_the_case_set_is_well_formed():
-    assert len(CASES) == 16
+    assert len(CASES) == 20
     for case in CASES:
         assert case.cart in CARTS and case.expect in (ASK, PROCEED)
         assert (case.reply is None) == (case.after is None)
+        assert case.then is None or (case.reply is not None and case.then in CARTS)
         if case.reply is not None:
             assert case.expect == ASK   # a reply only follows a question
+
+
+
+# ---------------------------------------------------------------------------
+# An agreed subscription holds its interval and renewal price
+# ---------------------------------------------------------------------------
+
+def _agreeing_guard(after_answer: IntentFacts) -> Guard:
+    """Before the answer: facts with no subscription; after it, after_answer."""
+    def extract(text):
+        return after_answer if "The person answered" in text else BALLS
+    return Guard("x", today="Wednesday, 11 November 2026", extract=extract)
+
+
+def test_monthly_agreed_then_weekly_at_the_same_first_charge_asks_again():
+    from dataclasses import replace
+    guard = _agreeing_guard(replace(BALLS, wants_recurring=True))
+    first = guard.check(CARTS["balls_sub"])
+    assert first["decision"] == ASK
+    guard.hear(first["question"], "yes, a monthly subscription is fine")
+    assert guard.check(CARTS["balls_sub"])["decision"] == PROCEED
+    weekly = guard.check(CARTS["balls_sub_weekly"])
+    assert weekly["decision"] == ASK
+    assert weekly["reasons"] == ["You agreed to a subscription every month; this one charges "
+                                 "$5.39 every week: Wilson US Open Extra Duty tennis balls, "
+                                 "can of 3 (Subscribe & Save, weekly)."]
+
+
+def test_an_interval_change_heard_and_approved_is_said_once():
+    from dataclasses import replace
+    guard = _agreeing_guard(replace(BALLS, wants_recurring=True, recurring_every="month"))
+    guard.hear(guard.check(CARTS["balls_sub"])["question"], "yes, a monthly subscription is fine")
+    weekly = guard.check(CARTS["balls_sub_weekly"])
+    assert weekly["decision"] == ASK
+    assert weekly["reasons"] == ["You agreed to a subscription every month; this one charges "
+                                 "$5.39 every week: Wilson US Open Extra Duty tennis balls, "
+                                 "can of 3 (Subscribe & Save, weekly)."]
+
+
+def test_a_dearer_renewal_after_agreeing_asks_again():
+    from dataclasses import replace
+    guard = _agreeing_guard(replace(BALLS, wants_recurring=True))
+    guard.hear(guard.check(CARTS["balls_sub"])["question"], "ok")
+    got = guard.check(CARTS["balls_sub_dearer"])
+    assert got["decision"] == ASK
+    assert got["reasons"] == ["You agreed to $5.39 every month; this subscription renews at "
+                              "$6.49: Wilson US Open Extra Duty tennis balls, can of 3 "
+                              "(Subscribe & Save)."]
+    # cheaper renewals at the same interval are no new question
+    cheaper = [{**CARTS["balls_sub"][0], "recurring": {"every": "month", "price": 4.99}}]
+    assert guard.check(cheaper)["decision"] == PROCEED
+
+
+def test_the_agreed_terms_are_asked_again_once_and_then_hold():
+    from dataclasses import replace
+    guard = _agreeing_guard(replace(BALLS, wants_recurring=True))
+    guard.hear(guard.check(CARTS["balls_sub"])["question"], "ok")
+    weekly = guard.check(CARTS["balls_sub_weekly"])
+    guard.hear(weekly["question"], "weekly is fine too")
+    assert guard.check(CARTS["balls_sub_weekly"])["decision"] == PROCEED
+
+
+def test_the_interval_the_person_named_is_held():
+    from dataclasses import replace
+    monthly = replace(BALLS, wants_recurring=True, recurring_every="month")
+    assert check(monthly, CARTS["balls_sub"])["decision"] == PROCEED
+    got = check(monthly, CARTS["balls_sub_weekly"])
+    assert got["decision"] == ASK
+    assert got["reasons"] == ["Agreed to a subscription every month, this one charges $5.39 "
+                              "every week: Wilson US Open Extra Duty tennis balls, can of 3 "
+                              "(Subscribe & Save, weekly)."]
+    assert check(replace(monthly, recurring_every="monthly"),
+                 CARTS["balls_sub"])["decision"] == PROCEED
+
+
+def test_a_limit_a_month_counts_every_charge_in_a_month():
+    weekly = IntentFacts(raw="x", explicit_max_cents=1000, max_every="month",
+                         wants_recurring=True)
+    got = check(weekly, CARTS["tv_weekly"])
+    assert got["decision"] == ASK
+    assert got["reasons"] == ["Set a limit of $10.00 a month, the order costs $24.95 in "
+                              "renewals over a month."]
+    # the same $10 a month passes a monthly $9.99, and a weekly limit counts one charge
+    monthly = [{**CARTS["tv"][0], "recurring": {"every": "month", "price": 9.99}}]
+    assert check(weekly, monthly)["decision"] == PROCEED
+    from dataclasses import replace
+    assert check(replace(weekly, max_every="week"), CARTS["tv_weekly"])["decision"] == PROCEED
+    # a yearly renewal is one charge in a month, and it is over $10
+    yearly = [{**CARTS["tv"][0], "recurring": {"every": "year", "price": 99}}]
+    assert check(weekly, yearly)["decision"] == ASK
+
+
+@pytest.mark.parametrize("text,days", [("month", 365.25 / 12), ("monthly", 365.25 / 12),
+                                       ("2 weeks", 14), ("every 3 months", 365.25 / 4),
+                                       ("week", 7), ("Yearly", 365.25), ("fortnight", 14),
+                                       ("whenever", None), ("", None)])
+def test_intervals_are_read_in_days(text, days):
+    got = coherence.interval_days(text)
+    assert got == pytest.approx(days) if days else got is None
+
+
+def test_charges_in_the_worst_period():
+    assert coherence._charges_in("week", "month") == 5
+    assert coherence._charges_in("month", "year") == 12
+    assert coherence._charges_in("month", "month") == 1
+    assert coherence._charges_in("year", "month") == 1
+    assert coherence._charges_in("week", None) == 1
+
+
+def test_models_disagreeing_on_the_interval_ask():
+    a = IntentFacts(raw="x", wants_recurring=True, recurring_every="month")
+    b = IntentFacts(raw="x", wants_recurring=True, recurring_every="week")
+    merged = merge_facts([a, b])
+    assert check(merged, CARTS["balls_sub"])["decision"] == ASK
+    assert merge_facts([a, IntentFacts(raw="x", wants_recurring=True)]).recurring_every == "month"
+
+
+def test_the_longest_limit_period_wins():
+    a = IntentFacts(raw="x", explicit_max_cents=1000, max_every="week")
+    b = IntentFacts(raw="x", explicit_max_cents=1000, max_every="month")
+    assert merge_facts([a, b]).max_every == "month"
+    assert merge_facts([a, IntentFacts(raw="x", explicit_max_cents=1000)]).max_every == "week"
 

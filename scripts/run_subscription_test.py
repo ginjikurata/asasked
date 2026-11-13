@@ -33,7 +33,8 @@ def main() -> int:
     passed = 0
     for n, case in enumerate(CASES, 1):
         rec = {"n": n, "request": case.request, "lang": case.lang, "cart": case.cart,
-               "expect": case.expect, "reply": case.reply, "after": case.after}
+               "expect": case.expect, "reply": case.reply, "after": case.after,
+               "then": case.then}
         started = time.monotonic()
         try:
             guard = Guard(case.request, today=TODAY, extract=extract)
@@ -48,7 +49,7 @@ def main() -> int:
                     ok = False
                 else:
                     guard.hear(first["question"], case.reply)
-                    second = guard.check(CARTS[case.cart])
+                    second = guard.check(CARTS[case.then or case.cart])
                     rec["got_after"], rec["reasons_after"] = second["decision"], second["reasons"]
                     ok = ok and second["decision"] == case.after
             facts = guard.facts()

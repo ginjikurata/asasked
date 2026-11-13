@@ -52,8 +52,9 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .coherence import (ASK, PROCEED, IntentFacts, decide_before_purchase, extract_intent_agreed,
-                        retelling_differences)
+from .coherence import (ASK, PROCEED, Decision, IntentFacts, check_agreed_renewals,
+                        decide_before_purchase, renewal_terms,
+                        extract_intent_agreed, retelling_differences)
 from .llm_extract import ExtractionError
 from .mandate import request_from_mandate
 
@@ -172,6 +173,11 @@ class Guard:
     _error: str = ""
     # The question the guard asked that the person has not answered yet.
     _asked: str | None = None
+    # Subscriptions in the last order checked, and those in orders the person
+    # was asked about and answered: sku -> (every, cents per renewal). An
+    # answer agrees to the subscription as it was shown, not to any other.
+    _offered: dict = field(default_factory=dict)
+    _agreed: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.today is None:
@@ -246,6 +252,9 @@ class Guard:
         self.request = (f"{self.request}\n\n(The agent asked: {_quoted(question)}\n"
                         f"The person answered: {answer})")
         self._facts, self._error = None, ""
+        # Only ever stricter: a "no" leaves wants_recurring false, and the
+        # terms seen stop a different subscription slipping in after a "yes".
+        self._agreed = {**self._agreed, **self._offered}
 
     def check(self, purchase, mandate=None, find=None) -> dict:
         """purchase is the cart as dicts (see the top of this file) or, together
@@ -254,6 +263,8 @@ class Guard:
             items = [_cart_item(i, item) for i, item in enumerate(purchase)]
             products = {sku: product for sku, product, _ in items}
             purchase, find = [(sku, qty) for sku, _, qty in items], products.__getitem__
+        changed = check_agreed_renewals(self._agreed, purchase, find)
+        self._offered = renewal_terms(purchase, find)
         facts = self.facts()
         if facts is None:
             # The question must name the order: the person cannot meaningfully
@@ -263,7 +274,8 @@ class Guard:
                                for sku, qty in purchase)
             result = {
                 "decision": ASK,
-                "reasons": ["The request could not be checked automatically."],
+                "reasons": ["The request could not be checked automatically."]
+                           + [f.text for f in changed],
                 "question": "I couldn't automatically check this order against your request:\n"
                             f"{items}\nShould I go ahead with it?",
                 "notes": [],
@@ -273,6 +285,16 @@ class Guard:
             band = (mandate.amount_min_cents, mandate.amount_max_cents) if mandate else NO_BAND
             decision = decide_before_purchase(facts, purchase, band,
                                               mandate.allowlist if mandate else (), find=find)
+            if changed:
+                # The same interval change can come from the person's words and from
+                # the cart they approved; say it once, in the "you agreed" form.
+                tails = [c.text.split("this one ", 1)[1] for c in changed
+                         if "this one " in c.text]
+                kept = [f for f in decision.reasons
+                        if not (f.code == "recurring-interval"
+                                and any(f.text.endswith(t) for t in tails))]
+                decision = Decision(action=ASK, reasons=kept + changed,
+                                    notes=decision.notes)
             result = {
                 "decision": decision.action,
                 "reasons": [f.text for f in decision.reasons],
