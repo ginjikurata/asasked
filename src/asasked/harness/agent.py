@@ -57,7 +57,7 @@ class AgentResult:
 # Agents for the first run: what is available with an AnyModel key. Gemini
 # through AnyModel does not work yet: the proxy loses its tool calls.
 AGENTS = {
-    "claude-sonnet-5": AgentSpec("claude-sonnet-5", "anthropic", "claude-sonnet-5"),
+    "claude-sonnet-5": AgentSpec("claude-sonnet-5", "anthropic", "cc/claude-sonnet-5"),
     "gemini-3-flash": AgentSpec("gemini-3-flash", "openai_compat", "ag/gemini-3-flash"),
     "gpt-6-sol": AgentSpec("gpt-6-sol", "openai_compat", "cx/gpt-6-sol"),
     "deepseek-v4-pro": AgentSpec("deepseek-v4-pro", "openai_compat", "ds/deepseek-v4-pro"),
@@ -228,25 +228,67 @@ def _loop_anthropic(spec, session, request, max_steps, result, system=SYSTEM_PRO
     result.stop = "max_steps"
 
 
-def _create_with_proxy_retries(anthropic, client, attempts: int = 3, **kwargs):
-    """messages.create that survives proxy errors inside a 200 response.
+# Narrow on purpose: every phrase names a tool or the connection, so "that grip
+# isn't available" or a guard's refusal never reads as a proxy failure.
+PROXY_TOOL_FAILURE = re.compile(
+    r"\btools?\b[^.\n]{0,40}\b(isn.t|is not|wasn.t|was not|not) (available|found|responding)"
+    r"|`?\b[a-z]+_[a-z_]+`? (tool )?(isn.t|is not|wasn.t) (available|found|responding)"
+    r"|tool call (failed|didn.t go through)|came back as .?not found"
+    r"|(tool )?connection (dropped|failed)|calls? (are|is)n.t going through"
+    r"|(don.t|do not) (actually )?have (working )?access to (any |the |a )?[\w/ ]{0,25}tools?\b"
+    r"|\btools?\b[^.\n]{0,40}\b(aren.t|are not|have stopped|stopped) (actually )?"
+    r"(available|found|responding|wired up|registering|connected)"
+    r"|(hitting|getting|got) a tool error|tools are erroring|isn.t being reached"
+    r"|isn.t actually available as a tool|tool call is failing"
+    r"|(don.t|do not) (actually )?have the [\w/ ]{0,25}tools|tools don.t actually exist",
+    re.IGNORECASE)
 
-    AnyModel sometimes answers 200 with {"error": ...} from the upstream
-    provider in the body. The SDK does not treat that as an error and returns
-    empty content.
+
+def _proxy_ate_tool_call(response) -> bool:
+    """The proxy ran the model's tool call itself and answered "not found".
+
+    Seen on AnyModel's cc/ route (2026-11-14): the model calls a listed tool,
+    the call never reaches us, and the reply ends with text such as "the
+    get_product tool isn't available". Not the model's behaviour, so the step
+    is retried rather than scored.
+    """
+    if any(b.type == "tool_use" for b in response.content):
+        return False
+    text = "".join(b.text for b in response.content if b.type == "text")
+    return bool(PROXY_TOOL_FAILURE.search(text))
+
+
+def _create_with_proxy_retries(anthropic, client, attempts: int = 4, **kwargs):
+    """messages.create that survives AnyModel's failures.
+
+    - Streaming: without it the cc/ route often drops tool-call arguments
+      (tool_use with input {}); streamed, they arrive (checked 2026-11-14).
+    - AnyModel sometimes answers 200 with {"error": ...} in the body, which the
+      SDK returns as empty content, or 400 "The selected model is unavailable"
+      for a model that answers a second later.
+    - The proxy sometimes swallows a tool call (see _proxy_ate_tool_call).
     """
     last = ""
     for attempt in range(attempts):
         try:
-            response = client.messages.create(**kwargs)
+            with client.messages.stream(**kwargs) as stream:
+                response = stream.get_final_message()
         except anthropic.APIStatusError as e:
+            if e.status_code == 400 and "unavailable" in str(e.message) \
+                    and attempt < attempts - 1:
+                last = str(e.message)
+                time.sleep(3 * (attempt + 1))
+                continue
             raise AgentError(f"HTTP {e.status_code} from Claude: {e.message}") from e
         except anthropic.APIConnectionError as e:
             raise AgentError(f"Network unavailable: {e}") from e
-        if response.content is not None:
+        if response.content is None:
+            error = (getattr(response, "model_extra", None) or {}).get("error") or {}
+            last = error.get("message") if isinstance(error, dict) else str(error)
+        elif _proxy_ate_tool_call(response):
+            last = "the proxy swallowed a tool call"
+        else:
             return response
-        error = (getattr(response, "model_extra", None) or {}).get("error") or {}
-        last = error.get("message") if isinstance(error, dict) else str(error)
         time.sleep(2 * (attempt + 1))
     raise AgentError(f"The proxy returned an error instead of a reply: {last}")
 

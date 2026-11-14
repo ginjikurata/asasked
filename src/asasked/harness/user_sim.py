@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import os
 import re
+import time
 
 from .. import llm_extract
 
 FALLBACK_REPLY = "Sorry, I can't answer right now, use your best judgment."
-USER_SIM_MODEL = os.environ.get("USER_SIM_MODEL", "claude-sonnet-5")
+USER_SIM_MODEL = os.environ.get("USER_SIM_MODEL", "cc/claude-sonnet-5")
 
 _PROMPT = """You are role-playing a person who asked an AI shopping agent to buy something
 for them. The agent is now asking you a question.
@@ -85,16 +86,27 @@ class SimulatedUser:
                          {"role": "assistant", "content": turn["reply"]}]
         messages.append({"role": "user", "content": f"Agent: {question}"})
         reply = ""
-        try:
-            response = client.messages.create(
-                model=self.model, max_tokens=1024,
-                system=_PROMPT.format(request=self.request, persona=self.persona),
-                messages=messages,
-            )
-            reply = clean_reply("".join(b.text for b in (response.content or [])
-                                        if b.type == "text"))
-        except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
-            self.errors.append(f"{type(e).__name__}: {e}")
+        # AnyModel sometimes answers 400 "The selected model is unavailable"
+        # for a model that works a second later: retried, not a person's reply.
+        for attempt in range(4):
+            try:
+                response = client.messages.create(
+                    model=self.model, max_tokens=1024,
+                    system=_PROMPT.format(request=self.request, persona=self.persona),
+                    messages=messages,
+                )
+                reply = clean_reply("".join(b.text for b in (response.content or [])
+                                            if b.type == "text"))
+                break
+            except anthropic.APIStatusError as e:
+                if e.status_code == 400 and "unavailable" in str(e.message) and attempt < 3:
+                    time.sleep(3 * (attempt + 1))
+                    continue
+                self.errors.append(f"{type(e).__name__}: {e}")
+                break
+            except anthropic.APIConnectionError as e:
+                self.errors.append(f"{type(e).__name__}: {e}")
+                break
         if not reply:
             reply = FALLBACK_REPLY
         self.history.append({"question": question, "reply": reply})

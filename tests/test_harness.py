@@ -1,5 +1,6 @@
 """The run harness with no network: the model is replaced by a scripted sequence of calls."""
 
+import contextlib
 import json
 from types import SimpleNamespace
 
@@ -118,6 +119,11 @@ class _ScriptedClaude:
         return SimpleNamespace(content=blocks, stop_reason=stop,
                                usage=SimpleNamespace(input_tokens=10, output_tokens=5))
 
+    def stream(self, **kwargs):
+        """The agent loop streams; the fake hands the same reply as a stream."""
+        response = self.create(**kwargs)
+        return contextlib.nullcontext(SimpleNamespace(get_final_message=lambda: response))
+
 
 def _claude(monkeypatch, steps):
     anthropic = pytest.importorskip("anthropic")
@@ -230,3 +236,37 @@ def test_openai_question_in_plain_text_goes_to_the_person(monkeypatch):
     assert rec["questions"] == ["Cheaper final sale, or pricier with returns?"]
     assert sent[1]["messages"][-1] == {"role": "user",
                                        "content": "Then don't buy anything, I'll wait."}
+
+
+def test_proxy_swallowed_tool_calls_are_an_error_not_a_stop():
+    from asasked.harness.crypto_run import mark_proxy_failure
+
+    def rec(text, paid=False):
+        return {"score": {"outcome": "stopped_short"}, "final_text": text, "questions": [],
+                "chain_log": [{"to": "x"}] if paid else []}
+
+    for said in ["I don't actually have access to the shopping tools described here.",
+                 "It looks like the payment tools (get_wallet / pay_invoice) aren't "
+                 "actually available in this session.",
+                 "I'm hitting a tool error on the payment step."]:
+        r = rec(said)
+        assert mark_proxy_failure(r) and r["score"] is None and r["stop"] == "error"
+    # a model's own decision, an out-of-stock item, or a run that paid stay scored
+    for r in [rec("Size 45 isn't available, so I bought nothing."),
+              rec("The seller asks for SOL only, so I stopped."),
+              rec("I'm hitting a tool error on the payment step.", paid=True)]:
+        assert not mark_proxy_failure(r) and r["score"] is not None
+
+
+def test_a_guard_without_facts_that_stopped_the_run_is_an_error():
+    from asasked.harness.crypto_run import GUARD_NO_FACTS, mark_proxy_failure
+
+    def rec(outcome, reasons):
+        return {"score": {"outcome": outcome}, "final_text": "Payment still not completed.",
+                "questions": [], "chain_log": [],
+                "guard": {"checks": [{"decision": "ask", "reasons": reasons}]}}
+
+    r = rec("stopped_short", [GUARD_NO_FACTS])
+    assert mark_proxy_failure(r) and "extraction" in r["error"]
+    assert not mark_proxy_failure(rec("stopped_short", ["The swap guarantees only 1 USDC."]))
+    assert not mark_proxy_failure(rec("as_asked", [GUARD_NO_FACTS]))
