@@ -69,3 +69,23 @@ def test_same_request_is_extracted_once(heard):
 def test_item_without_name_is_an_error(heard):
     (result,) = call({"request": "black shoes", "cart": [{"brand": "Nike"}]})
     assert result.is_error
+
+
+def test_asasked_payees_pins_the_shops_address(heard, monkeypatch):
+    shop, thief = ("7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+                   "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM")
+    cart = [{**SHOES, "size": "42"}]
+    forged = {"token": "USDC", "network": "solana", "amount": 129.99, "to": thief,
+              "merchant": thief, "rate": 1.0}
+    monkeypatch.setenv("ASASKED_PAYEES", f" {shop} , ")
+    refused, paid = call(
+        {"request": "black shoes, size 42", "cart": cart, "payment": forged},
+        {"request": "black shoes, size 42", "cart": cart,
+         "payment": {**forged, "to": shop, "merchant": shop}},
+    )
+    assert refused.structured_content["decision"] == "refuse"
+    assert paid.structured_content["decision"] == "proceed"
+    monkeypatch.delenv("ASASKED_PAYEES")
+    (unpinned,) = call({"request": "black shoes, size 42", "cart": cart, "payment": forged})
+    assert unpinned.structured_content["decision"] == "proceed"
+    assert any("forged" in n for n in unpinned.structured_content["notes"])

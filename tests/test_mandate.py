@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
 from asasked.coherence import IntentFacts
 from asasked.guard import Guard
-from asasked.mandate import MandateError, request_from_mandate
+from asasked.mandate import MandateError, payees_from_mandate, request_from_mandate
 
 REQUEST = "Black ASICS in size 42, I need to be able to return them."
 SHOE = {"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black",
@@ -220,3 +220,61 @@ def test_the_reworded_demo_is_caught_only_from_the_mandate():
                   for name, g in demo.guards(task).items()}
         control = task is demo.TASKS[-1]
         assert placed == {"on the agent's words": True, "from the signed mandate": control}
+
+
+SOL = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+THIEF = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
+SOL_ID = f"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:{SOL}"
+
+
+def _payment(*allowed, payee=None) -> str:
+    mandate = {"vct": "mandate.payment.open.1",
+               "constraints": [{"type": "mandate.payment.allowed_payees",
+                                "allowed": list(allowed)}]}
+    if payee is not None:
+        mandate = {"vct": "mandate.payment.1", "payee": payee}
+    return _disclosure(mandate)
+
+
+def test_reads_the_approved_address_from_a_payee_disclosure(key):
+    # As the VI SDK writes it: the payee is its own disclosure, referenced by digest.
+    shop = _enc(["salt-p", {"id": SOL_ID, "name": "Shop", "website": "https://shop.example"}])
+    l2 = _l2(key, {}, [shop, _payment({"...": _digest(shop)}), _checkout(REQUEST)])
+    assert payees_from_mandate(l2, _jwk(key)) == (SOL,)
+
+
+def test_reads_inline_and_immediate_mode_payees(key):
+    evm = "0x52908400098527886E0F7030069857D2E4169EE7"
+    inline = _payment({"id": f"eip155:1:{evm}", "name": "Shop", "website": "https://s.example"})
+    assert payees_from_mandate(_l2(key, {}, [inline]), _jwk(key)) == (evm,)
+    immediate = _payment(payee={"id": SOL_ID, "name": "Shop", "website": "https://s.example"})
+    assert payees_from_mandate(_l2(key, {}, [immediate]), _jwk(key)) == (SOL,)
+
+
+def test_payees_without_an_address_pin_nothing(key):
+    # A merchant id that is not CAIP-10, an undisclosed payee, a checkout mandate
+    plain = _payment({"id": "merchant-42", "name": "Shop", "website": "https://s.example"},
+                     {"...": "undisclosed-digest"})
+    assert payees_from_mandate(_l2(key, {}, [plain, _checkout(REQUEST)]), _jwk(key)) == ()
+
+
+def test_a_payee_the_signature_does_not_reach_is_ignored(key):
+    shop = _enc(["salt-p", {"id": SOL_ID, "name": "Shop", "website": "https://s.example"}])
+    payment = _payment({"...": _digest(shop)})
+    l2 = _l2(key, {}, [payment])            # signed without the payee disclosure
+    added = l2 + _enc(["salt-x", {"id": f"solana:x:{THIEF}", "name": "T", "website": "t"}]) + "~"
+    assert payees_from_mandate(added, _jwk(key)) == ()
+
+
+def test_from_mandate_pins_the_signed_address(key):
+    shop = _enc(["salt-p", {"id": SOL_ID, "name": "Shop", "website": "https://s.example"}])
+    l2 = _l2(key, {}, [shop, _payment({"...": _digest(shop)}), _checkout(REQUEST)])
+    facts = IntentFacts(brand="ASICS", color="black", size_label="42")
+    guard = Guard.from_mandate(l2, _jwk(key), extract=lambda _r: facts)
+    assert guard.payees == (SOL,)
+    forged = {"token": "USDC", "amount": 159.0, "to": THIEF, "merchant": THIEF, "rate": 1.0}
+    shoe = {**SHOE, "returnable": True}
+    assert guard.check([shoe], payment=forged)["decision"] == "refuse"
+    assert guard.check([shoe], payment={**forged, "to": SOL})["decision"] == "proceed"
+    # payees= passed by the caller wins over the mandate's
+    assert Guard.from_mandate(l2, _jwk(key), payees=[THIEF]).payees == (THIEF,)

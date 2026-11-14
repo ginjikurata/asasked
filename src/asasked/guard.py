@@ -32,7 +32,10 @@ amount and swap slippage with the request and the cart (see asasked.payment).
 A payment to an address that is not the shop's, for more than the order, or
 through a swap that may lose too much gets a third decision, "refuse": no
 answer of the person's approves it (result["refused"]), the payment itself has
-to change. A cart question, if there is one, still comes with it.
+to change. A cart question, if there is one, still comes with it. The shop's
+address is whatever the shop's payment request says, unless it is pinned:
+Guard(request, payees=[...]), or payees in the person's signed mandate. Then
+a payment to any other address is refused, even if the request names it.
 
 A Verifiable Intent mandate is optional. A feature the cart does not have is
 not checked but goes into notes ("could not be checked"). With the person's
@@ -65,7 +68,7 @@ from .coherence import (ASK, BLOCK, PROCEED, Decision, IntentFacts, check_agreed
                         decide_before_purchase, renewal_terms,
                         extract_intent_agreed, retelling_differences)
 from .llm_extract import ExtractionError
-from .mandate import request_from_mandate
+from .mandate import payees_from_mandate, request_from_mandate
 from .payment import check_payment, parse_payment, refused
 
 
@@ -207,6 +210,10 @@ class Guard:
     # The agent's own account of the request, when the request itself comes
     # from the signed mandate (from_mandate): the two are compared once.
     claimed: str | None = None
+    # Payment addresses the person approved (or their signed mandate names):
+    # an on-chain payment may go only there, whatever the shop's payment
+    # request says. Empty: the shop's address is taken from that request.
+    payees: tuple[str, ...] = ()
     _signed: str = ""
     _retold: list | None = None
     _facts: IntentFacts | None = None
@@ -226,6 +233,9 @@ class Guard:
     def __post_init__(self) -> None:
         if self.today is None:
             self.today = today_in_words()
+        if isinstance(self.payees, str):
+            self.payees = (self.payees,)
+        self.payees = tuple(p.strip() for p in self.payees if isinstance(p, str) and p.strip())
 
     @classmethod
     def from_mandate(cls, l2: str, user_jwk: dict, claimed: str | None = None,
@@ -241,8 +251,12 @@ class Guard:
         checked against the signed request either way; where the agent's
         version says something else (another colour, no returns), the check
         adds a note: the agent is shopping for something the person did not sign.
+
+        Payees in the mandate with a CAIP-10 id ("solana:<chain>:<address>")
+        become the guard's payees, unless payees= is passed.
         """
         request = request_from_mandate(l2, user_jwk)
+        kwargs.setdefault("payees", payees_from_mandate(l2, user_jwk))
         guard = cls(request or "", claimed=claimed, **kwargs)
         guard._signed = request or ""
         if request is None:
@@ -317,7 +331,8 @@ class Guard:
         if facts is None:
             # Recipient, amount and slippage need no facts: they are refused
             # all the same (with no facts, every payment block is a refusal).
-            refusals = [f for f in check_payment(IntentFacts(), payment, total) if refused(f)]
+            refusals = [f for f in check_payment(IntentFacts(), payment, total,
+                                                 payees=self.payees) if refused(f)]
             # The question must name the order: the person cannot meaningfully
             # confirm or reject "may I?" with no subject.
             items = "\n".join(f"  - {find(sku)['name']} ×{qty}, "
@@ -360,7 +375,8 @@ class Guard:
                 decision = Decision(action=ASK, reasons=kept + changed,
                                     notes=decision.notes)
             over = any(f.code == "explicit-max" for f in decision.reasons + decision.notes)
-            paying = check_payment(facts, payment, total, over_limit=over)
+            paying = check_payment(facts, payment, total, over_limit=over,
+                                   payees=self.payees)
             refusals = [f for f in paying if refused(f)]
             if paying:
                 # The person is asked only what their answer can settle.

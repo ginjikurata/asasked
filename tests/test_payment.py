@@ -8,6 +8,7 @@ import pytest
 from asasked import coherence
 from asasked.coherence import BLOCK, WARN, IntentFacts, merge_facts, retelling_differences
 from asasked.guard import REFUSE, Guard, plain_yes
+from asasked.llm_extract import ExtractionError
 from asasked.payment import check_payment, parse_payment, refused
 
 SHOP = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
@@ -26,9 +27,11 @@ def guard(facts=FACTS):
     return Guard("x", today="Thursday, 12 November 2026", extract=lambda request: facts)
 
 
-def codes(facts, payment, total=12999, over_limit=False):
+def codes(facts, payment, total=12999, over_limit=False, payees=()):
+    # Without payees every payment gets the pay-unpinned note; tested on its own.
     return {(f.code, f.severity)
-            for f in check_payment(facts, parse_payment(payment), total, over_limit)}
+            for f in check_payment(facts, parse_payment(payment), total, over_limit, payees)
+            if f.code != "pay-unpinned"}
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +88,8 @@ def test_paying_more_than_the_cart_asks_less_only_warns():
     # rounding within half a percent is not a finding
     assert codes(FACTS, {**USDC, "amount": 130.5}) == set()
     # only paying more is refused; paying less the person loses nothing
-    over, under = (check_payment(FACTS, parse_payment({**USDC, "amount": a}), 12999)
+    over, under = (check_payment(FACTS, parse_payment({**USDC, "amount": a}), 12999,
+                                 payees=(SHOP,))
                    for a in (139.99, 119.99))
     assert refused(over[0]) and not refused(under[0])
     # no rate: the amount cannot be compared, the person is told
@@ -295,3 +299,59 @@ def test_mcp_takes_a_payment(monkeypatch):
     assert good["decision"] == "proceed"
     assert bad["decision"] == "refuse" and THIEF in bad["refused"][0]
     assert bad["question"] is None
+
+
+# ---------------------------------------------------------------------------
+# The shop's address pinned to what the person approved
+# ---------------------------------------------------------------------------
+
+
+def pinned(facts=FACTS, payees=(SHOP,)):
+    return Guard("x", today="Thursday, 12 November 2026", extract=lambda request: facts,
+                 payees=payees)
+
+
+def test_without_payees_the_shops_address_is_only_the_requests():
+    found = check_payment(FACTS, parse_payment(USDC), 12999)
+    assert [(f.code, f.severity) for f in found] == [("pay-unpinned", WARN)]
+    assert "forged" in found[0].text
+    assert check_payment(FACTS, parse_payment(USDC), 12999, payees=(SHOP,)) == []
+
+
+def test_a_forged_payment_request_is_refused_when_the_address_is_pinned():
+    # The shop's request itself is forged: "to" and "merchant" agree, both the thief.
+    forged = {**USDC, "to": THIEF, "merchant": THIEF}
+    assert guard().check([SHOES], payment=forged)["decision"] == "proceed"
+    result = pinned().check([SHOES], payment=forged)
+    assert result["decision"] == REFUSE and result["question"] is None
+    assert THIEF in result["refused"][0] and SHOP in result["refused"][0]
+
+
+def test_a_forged_request_is_refused_with_the_models_down_too():
+    def down(request):
+        raise ExtractionError("no model")
+    g = Guard("x", today="Thursday, 12 November 2026", extract=down, payees=[SHOP])
+    result = g.check([SHOES], payment={**USDC, "to": THIEF, "merchant": THIEF})
+    assert result["decision"] == REFUSE
+
+
+def test_paying_the_approved_address_passes_whatever_the_request_names():
+    result = pinned().check([SHOES], payment={**USDC, "merchant": THIEF})
+    assert result["decision"] == "proceed"
+    assert any("may not see this payment" in n for n in result["notes"])
+    assert codes(FACTS, {**USDC, "merchant": None}, payees=(SHOP,)) == set()
+
+
+def test_any_of_several_approved_addresses_will_do():
+    evm = "0x52908400098527886E0F7030069857D2E4169EE7"
+    assert pinned(payees=(evm, SHOP)).check([SHOES], payment=USDC)["decision"] == "proceed"
+    lower = {**USDC, "to": evm.lower(), "merchant": None}
+    assert pinned(payees=(evm,)).check([SHOES], payment=lower)["decision"] == "proceed"
+    # base58 is case-sensitive: another case is another address
+    assert pinned(payees=(SHOP.lower(),)).check([SHOES], payment=USDC)["decision"] == REFUSE
+
+
+def test_payees_may_be_one_string_and_blanks_are_dropped():
+    assert pinned(payees=SHOP).payees == (SHOP,)
+    assert pinned(payees=[" ", SHOP + " "]).payees == (SHOP,)
+    assert pinned(payees=()).payees == ()

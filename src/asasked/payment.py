@@ -12,6 +12,11 @@ and the swap quote. The guard does not read the chain, fetch prices or sign;
 a forged quote or merchant address passed in defeats these checks, so pass
 what the shop and the swap provider returned, not what the agent says.
 
+The shop's address can be pinned: Guard(payees=[...]) or payees in the
+person's signed mandate (asasked.mandate.payees_from_mandate). Then the
+payment may go only to an approved address, and a forged payment request
+naming another one is refused.
+
 The payment, next to the cart in Guard.check(cart, payment=...):
 
     {"token": "USDC", "network": "solana", "amount": 129.99,
@@ -116,12 +121,15 @@ def _money(cents: float) -> str:
 
 
 def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
-                  over_limit: bool = False) -> list[Finding]:
+                  over_limit: bool = False, payees: tuple[str, ...] = ()) -> list[Finding]:
     """Findings on the payment, in the same form as the cart's.
 
     payment is parse_payment's result or None. total_cents is the cart total
     (today's prices). over_limit says the cart check already found the cart
-    over the person's limit: the payment then does not repeat it.
+    over the person's limit: the payment then does not repeat it. payees are
+    the addresses the person approved (Guard(payees=...), or their signed
+    mandate): when given, the money may go only there, whatever the shop's
+    payment request says.
     """
     def sev(field_name: str) -> str:
         return WARN if field_name in facts.soft or field_name in facts.disputed else BLOCK
@@ -140,7 +148,20 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
     swap = payment["swap"]
 
     # The recipient: no fact of the person's makes paying a stranger right.
-    if payment["merchant"] is None:
+    if payees:
+        # The shop's payment request can be forged; the person's approval can't.
+        if not any(_same_address(payment["to"], p) for p in payees):
+            found.append(Finding(
+                "pay-recipient", BLOCK,
+                f"The payment goes to {payment['to']}, which is not an address the person "
+                f"approved ({', '.join(payees)})."))
+        elif payment["merchant"] is not None and not _same_address(payment["to"],
+                                                                  payment["merchant"]):
+            found.append(Finding(
+                "unchecked", WARN,
+                f"The shop's payment request names {payment['merchant']}, not the approved "
+                f"address {payment['to']}; the shop may not see this payment."))
+    elif payment["merchant"] is None:
         found.append(Finding(
             "unchecked", WARN,
             "The shop's payment address wasn't given, so I couldn't check who receives the money."))
@@ -149,6 +170,11 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
             "pay-recipient", BLOCK,
             f"The payment goes to {payment['to']}, not to the shop's address "
             f"{payment['merchant']}."))
+    else:
+        found.append(Finding(
+            "pay-unpinned", WARN,
+            "The shop's address comes from its payment request, not from an address the "
+            "person approved, so a forged request would not be caught."))
 
     given = swap["from_token"] if swap else payment["token"]
     if facts.pay_with and given != facts.pay_with:

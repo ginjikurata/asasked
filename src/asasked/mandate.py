@@ -26,6 +26,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -112,6 +113,11 @@ def _committed(payload: dict, disclosures: list[str]) -> list[list]:
     One the signed payload does not commit to was added by someone else and is
     dropped, not trusted.
     """
+    return list(_committed_by_digest(payload, disclosures).values())
+
+
+def _committed_by_digest(payload: dict, disclosures: list[str]) -> dict[str, list]:
+    """The same as _committed, keyed by digest, to resolve {"...": digest} refs."""
     decoded = {}
     for d in disclosures:
         value = _json(d)
@@ -123,7 +129,7 @@ def _committed(payload: dict, disclosures: list[str]) -> list[list]:
         new = {h for h in frontier if h in decoded} - reached
         reached |= new
         frontier = set().union(*(_digests(decoded[h][-1]) for h in new)) if new else set()
-    return [decoded[h] for h in reached]
+    return {h: decoded[h] for h in reached}
 
 
 def request_from_mandate(l2: str, user_jwk: dict) -> str | None:
@@ -153,4 +159,47 @@ def request_from_mandate(l2: str, user_jwk: dict) -> str | None:
     return next(iter(found.values()), None)
 
 
-__all__ = ["MandateError", "request_from_mandate"]
+# A CAIP-10 account id: <namespace>:<chain reference>:<address>, e.g.
+# "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:<address>" or "eip155:1:0x...".
+_CAIP10 = re.compile(r"^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}:([-.%a-zA-Z0-9]{1,128})$")
+
+
+def payees_from_mandate(l2: str, user_jwk: dict) -> tuple[str, ...]:
+    """Payment addresses the person approved in their signed L2 mandate.
+
+    VI's mandate.payment.allowed_payees lists payees by id, name and website;
+    it has no field for an on-chain address. A payee whose id is a CAIP-10
+    account id ("solana:<chain>:<address>") names one, and that address is
+    returned. Payees with other ids, and undisclosed payees, give none: an
+    empty tuple means the mandate pins no address, not that none is allowed.
+    Raises MandateError if the mandate is malformed or the signature fails.
+    """
+    if not isinstance(l2, str) or not l2:
+        raise MandateError("the mandate must be a serialized SD-JWT")
+    jwt, *rest = l2.split("~")
+    disclosures = [d for d in rest if d and "." not in d]
+    payload = _verify(jwt, _public_key(user_jwk))
+    committed = _committed_by_digest(payload, disclosures)
+
+    mandates = [v[-1] for v in committed.values() if isinstance(v[-1], dict)]
+    mandates += [m for m in payload.get("delegate_payload") or [] if isinstance(m, dict)]
+    found: list[str] = []
+    for m in mandates:
+        if not str(m.get("vct", "")).startswith("mandate.payment"):
+            continue
+        # Immediate mode names the one payee; autonomous mode lists allowed ones.
+        entries = [m["payee"]] if isinstance(m.get("payee"), dict) else []
+        for c in m.get("constraints") or []:
+            if isinstance(c, dict) and c.get("type") == "mandate.payment.allowed_payees":
+                entries += c.get("allowed") or []
+        for entry in entries:
+            if isinstance(entry, dict) and isinstance(entry.get("..."), str):
+                entry = committed.get(entry["..."], [None])[-1]
+            payee_id = entry.get("id") if isinstance(entry, dict) else None
+            match = _CAIP10.match(payee_id) if isinstance(payee_id, str) else None
+            if match and match.group(1) not in found:
+                found.append(match.group(1))
+    return tuple(found)
+
+
+__all__ = ["MandateError", "payees_from_mandate", "request_from_mandate"]

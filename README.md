@@ -97,7 +97,10 @@ question as it is, then checks again with their reply in `answers`. On
 *refuse* (a crypto payment that is wrong for any request, see below) it
 changes the payment instead of asking. Facts
 are extracted once per request, so re-checking a corrected cart is
-instant. Model keys come from the environment, as above. A server can only
+instant. Model keys come from the environment, as above. Set
+`ASASKED_PAYEES` to the shop addresses the person approved (comma-separated)
+and a payment to any other address is refused, even when the shop's payment
+request names it; `Guard(payees=...)` does the same in code. A server can only
 answer when asked, so it cannot stop an agent that never calls it. It also
 has to take the agent's word for everything it is sent: the request and the
 person's replies in `answers` both come from the agent, so an agent could

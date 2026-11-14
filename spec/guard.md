@@ -174,7 +174,8 @@ swap quote), and the comparison is plain code.
 
 | Code | Finding when |
 |---|---|
-| `pay-recipient` | `to` ≠ `merchant` (`0x` addresses compare case-insensitively, others exactly). Always `block`, and refused: no fact of the person's can make paying a stranger right. Without `merchant`, `unchecked` (`warn`). |
+| `pay-recipient` | With approved addresses (`Guard(payees=...)`, or the CAIP-10 payees of a signed mandate via `Guard.from_mandate`): `to` is none of them. Without: `to` ≠ `merchant`. `0x` addresses compare case-insensitively, others exactly. Always `block`, and refused: no fact of the person's can make paying a stranger right. Without approved addresses and without `merchant`, `unchecked` (`warn`); when `to` is approved but `merchant` names another address, `unchecked` (`warn`: the shop may not see the payment). |
+| `pay-unpinned` | No approved addresses, `to` = `merchant`: `warn`, as the shop's address comes only from its payment request and a forged request would pass. |
 | `pay-token` | the token the person gives (`swap.from_token`, else `token`) ≠ `pay_with` |
 | `pay-network` | `network` ≠ `pay_network`; without `network`, `unchecked` |
 | `pay-amount` | `amount × rate` exceeds the cart total by more than max(1 cent, 0.5%): `block`, refused; is below it by as much: `warn` (the shop may reject it, the person loses nothing) |
@@ -264,9 +265,11 @@ verified by a human without trusting a model.
   but do not remove them; disputed facts only warn.
 - **Payment data is the caller's.** The guard compares what it is given: the
   shop's address, the rates and the swap quote. It does not read the chain,
-  fetch prices or sign anything, and a caller that passes a forged quote or
-  merchant address defeats `pay-*` checks. Pass what the shop's payment
-  request and the swap provider returned, not what the agent says.
+  fetch prices or sign anything, and a caller that passes a forged quote
+  defeats `pay-*` checks. A forged merchant address does too, unless the
+  addresses the person approved are pinned (`payees`, the mandate's CAIP-10
+  payees, or `ASASKED_PAYEES` for the MCP server). Pass what the shop's
+  payment request and the swap provider returned, not what the agent says.
 - **Free-text requirements are not checked.** An `other` requirement is
   always put to the person, even when the item plainly meets it.
 - **Measured in a sandbox.** The numbers below come from our own catalog and

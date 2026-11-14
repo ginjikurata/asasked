@@ -18,10 +18,15 @@ safer to call Guard right there (see guard.py): there the person's answer
 comes from your code (guard.answer), not from the agent.
 
 Run: asasked-mcp (stdio). Model keys come from the environment, as for Guard.
+ASASKED_PAYEES, comma-separated, pins the payment addresses the person
+approved: an on-chain payment to any other address is refused, whatever the
+agent passes as the shop's address. It is set where the server is started,
+so the agent cannot change it.
 """
 
 from __future__ import annotations
 
+import os
 from collections import OrderedDict
 
 from pydantic import BaseModel, Field
@@ -125,12 +130,17 @@ _KEEP = 64
 EXTRACT = None
 
 
+def _payees() -> tuple[str, ...]:
+    return tuple(p.strip() for p in os.environ.get("ASASKED_PAYEES", "").split(",")
+                 if p.strip())
+
+
 def _guard(request: str, answers: list[Answer], today: str) -> Guard:
-    key = (request, tuple((a.question, a.answer) for a in answers), today)
+    key = (request, tuple((a.question, a.answer) for a in answers), today, _payees())
     if key in _guards:
         _guards.move_to_end(key)
         return _guards[key]
-    guard = Guard(request, today=today, extract=EXTRACT)
+    guard = Guard(request, today=today, extract=EXTRACT, payees=_payees())
     for a in answers:
         guard.hear(a.question, a.answer)
     _guards[key] = guard
