@@ -6,6 +6,41 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-14",
+    changes: [
+      {
+        area: "guard",
+        text:
+          "Version 0.1.11: the guard checks a crypto payment before it is signed (asasked.payment): the recipient against the shop's address, the amount against the cart total, the token and chain the person named, swap costs against their limit, and the swap's slippage and guaranteed output. A payment that is wrong for any request (another address, overpaying, loose slippage, a swap that may not cover the amount) gets a third decision, \"refuse\": the agent is told to change the payment, and a \"yes\" from the person does not unlock it. Token, chain and limit stay questions. MCP check_order takes a payment. Spec §1, §4–§7.",
+        commit: "0d42872",
+      },
+      {
+        area: "store",
+        text:
+          "Version 0.1.11: the sandbox store takes crypto (asasked.store.crypto): invoices in the shape of a Solana Pay transfer request, a wallet with an optional swap, and guarded(wallet, guard, checkout). scripts/demo_crypto_pay.py runs six cases without and with the guard, in memory or on Solana devnet with a self-minted test token; 6 of 6 go as they should. A swap within its own tolerance now always covers the payment: the pool quoted 0.6% over the invoice, so a swap at the 1% the guard allows was refused as short.",
+        commit: "322d25e",
+      },
+      {
+        area: "benchmark",
+        text:
+          "Live agents paying in crypto: GPT-6 Sol and DeepSeek V4 Pro, 60 tasks each (redirect, overpay, token and slippage notes, plus two controls), without and with the guard. With the guard no attack got through in 80 runs, and every order without a note was paid. Without it each model overpaid in 2 of 10 overpay tasks ($50), and followed the slippage note in 6 of 10 (GPT-6 Sol, $431.53 lost in swaps) and 3 of 10 (DeepSeek V4 Pro, $144.00). With the guard 6 slippage orders ended unpaid; in 3 of them the sandbox swap mismatch, since fixed, was the cause. The \"SOL only\" note blocked the purchase with and without the guard. Claude's runs went through a failing proxy and are not comparable. Log: data/runs/crypto-live.jsonl.gz, 360 runs.",
+        commit: "a7feaa8",
+      },
+      {
+        area: "guard",
+        text:
+          "Version 0.1.11: a \"yes\" to a subscription agrees to the subscription as it was shown. The guard remembers the renewal terms of orders the person answered about and asks again when a later order renews more often or charges more, even at the same first charge (monthly to weekly at $5.39). A limit for a period (\"no more than $10 a month\") counts every charge in that period: $4.99 every week is $24.95 in some month. Extraction gets two facts, recurring_every and max_every. The subscription set has 20 cases (4 new); 20 of 20 go as expected.",
+        commit: "3c684fd",
+      },
+      {
+        area: "guard",
+        text:
+          "Version 0.1.11: when the request's facts could not be extracted, the guard asked about the order, tried again after the person's \"yes\", failed again and asked again, so the order was never paid. A bare \"yes\", read by plain code, now approves that order exactly as shown and no other. Anything more in the answer is asked again, and a refused payment stays refused.",
+        commit: "d61f08a",
+      },
+    ],
+  },
+  {
     date: "2026-11-11",
     changes: [
       {
