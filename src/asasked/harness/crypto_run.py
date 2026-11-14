@@ -305,8 +305,6 @@ class CryptoSession:
             raise ToolError("amount must be a number above zero")
         if swap_from == token:
             swap_from = None
-        # The pool quotes 0.6% over the amount, so a 1% tolerance (the wallet's
-        # own default) would guarantee less than the invoice; 0.5% covers it.
         slippage_bps = DEFAULT_SLIPPAGE_BPS if slippage_bps is None else int(slippage_bps)
         result = self.pay(reference, to, float(amount), token, swap_from, slippage_bps)
         if self.guard is None and result.get("status") in ("paid", "unknown"):

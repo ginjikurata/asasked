@@ -40,9 +40,6 @@ TOKEN_DECIMALS = {"USDC": 6, "SOL": 9}
 # Fixed prices for the demo, in dollars: the guard's arithmetic needs a rate,
 # and a demo must give the same result every time it runs.
 DEMO_PRICES_USD = {"USDC": 1.0, "SOL": 150.0}
-# A swap quote aims a little above what the payment needs, so that a small,
-# allowed slippage still covers it.
-SWAP_CUSHION = 0.006
 SWAP_FEE_BPS = 30
 
 
@@ -255,14 +252,26 @@ class SimulatedPool:
 
     def quote(self, from_token: str, to_token: str, want_out: float,
               slippage_bps: int) -> dict:
-        """What to put in to get want_out (with a cushion), and the least it may give."""
+        """What to put in to get want_out, and the least it may give.
+
+        The quote aims high enough that its minimum is still want_out: a swap
+        within its own tolerance always covers the payment. The tolerance is
+        then paid for up front, in what goes in (as an exact-out swap does).
+        """
         for token in (from_token, to_token):
             if token not in DEMO_PRICES_USD:
                 raise PaymentFailed(f"no market for {token}")
-        quote_out = round(want_out * (1 + SWAP_CUSHION), TOKEN_DECIMALS[to_token])
+        if not 0 <= slippage_bps < 10000:
+            raise PaymentFailed("slippage must be from 0 to under 100%")
+        keep = 10000 - int(slippage_bps)
+        want_units = to_units(want_out, to_token)
+        # Both rounded up: the minimum stays at or above want_out, and the
+        # quote loses no more than the tolerance down to it.
+        quote_units = -(-want_units * 10000 // keep)
+        min_units = -(-quote_units * keep // 10000)
+        quote_out, min_out = from_units(quote_units, to_token), from_units(min_units, to_token)
         amount_in = round(quote_out * DEMO_PRICES_USD[to_token] / DEMO_PRICES_USD[from_token]
                           / (1 - self.fee_bps / 10000), TOKEN_DECIMALS[from_token])
-        min_out = round(quote_out * (1 - slippage_bps / 10000), TOKEN_DECIMALS[to_token])
         return {"from_token": from_token, "amount_in": amount_in,
                 "rate": DEMO_PRICES_USD[from_token], "quote_out": quote_out, "min_out": min_out}
 

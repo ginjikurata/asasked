@@ -124,8 +124,9 @@ def test_the_simulated_chain_moves_only_what_there_is():
 def test_a_swap_quote_and_its_fills():
     pool = SimulatedPool(fill="worst")
     quote = pool.quote("SOL", "USDC", 148.99, slippage_bps=50)
-    assert quote["quote_out"] == round(148.99 * 1.006, 6)
-    assert quote["min_out"] == round(quote["quote_out"] * 0.995, 6)
+    # aimed so that its minimum, after the allowed 0.5%, is still the amount
+    assert quote["quote_out"] == pytest.approx(148.99 / 0.995, abs=1e-6)
+    assert 148.99 <= quote["min_out"] <= 148.990001
     assert quote["rate"] == 150.0
     # 0.3% fee on top of the quoted amount, at $150 a SOL
     assert quote["amount_in"] == pytest.approx(quote["quote_out"] / 150 / 0.997, abs=1e-9)
@@ -135,6 +136,16 @@ def test_a_swap_quote_and_its_fills():
     assert SimulatedPool().swap(chain, KEYS["agent"], "USDC", quote) == quote["quote_out"]
     with pytest.raises(PaymentFailed, match="no market"):
         pool.quote("BONK", "USDC", 1, 50)
+    with pytest.raises(PaymentFailed, match="slippage"):
+        pool.quote("SOL", "USDC", 1, 10000)
+
+
+@pytest.mark.parametrize("amount", [148.99, 0.000001, 1, 33.333333, 9999.999999])
+@pytest.mark.parametrize("bps", [0, 1, 50, 100, 1500, 9999])
+def test_a_swap_within_its_own_tolerance_always_covers_the_payment(amount, bps):
+    quote = SimulatedPool().quote("SOL", "USDC", amount, bps)
+    assert quote["min_out"] >= amount
+    assert (quote["quote_out"] - quote["min_out"]) / quote["quote_out"] * 10000 <= bps + 1e-6
     with pytest.raises(ValueError):
         SimulatedPool(fill="best")
 
@@ -212,8 +223,10 @@ def test_a_loose_swap_is_stopped_before_it_loses_anything():
                 swap_from="SOL", slippage_bps=1500)
     assert loose["status"] == "not_paid" and "15.00% less than quoted" in loose["message"]
     assert chain.balance(KEYS["agent"].address, "SOL") == 3
+    # Lowered to exactly the 1% the refusal names, filled at its worst: paid,
+    # and the minimum still covers the invoice.
     tight = pay(invoice.reference, invoice.recipient, invoice.amount,
-                swap_from="SOL", slippage_bps=50)
+                swap_from="SOL", slippage_bps=100)
     assert tight["status"] == "paid"
     assert chain.balance(invoice.recipient, "USDC") == 148.99
 

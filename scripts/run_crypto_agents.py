@@ -35,7 +35,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--agents", default="claude-sonnet-5,gpt-6-sol,deepseek-v4-pro",
                         help=f"comma-separated: {', '.join(AGENTS)} or provider:model")
-    parser.add_argument("--arms", default="off,guarded", help="off, guarded or both")
+    parser.add_argument("--arms", default="off,guarded", help="comma-separated: off, guarded (default: both)")
     parser.add_argument("--kinds", default=",".join(crypto_run.KINDS))
     parser.add_argument("--only", help="comma-separated task ids")
     parser.add_argument("--guard-facts", choices=("model", "label"), default="model",
