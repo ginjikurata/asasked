@@ -121,7 +121,8 @@ def _money(cents: float) -> str:
 
 
 def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
-                  over_limit: bool = False, payees: tuple[str, ...] = ()) -> list[Finding]:
+                  over_limit: bool = False, payees: tuple[str, ...] = (),
+                  spent_before_cents: float = 0) -> list[Finding]:
     """Findings on the payment, in the same form as the cart's.
 
     payment is parse_payment's result or None. total_cents is the cart total
@@ -129,7 +130,8 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
     over the person's limit: the payment then does not repeat it. payees are
     the addresses the person approved (Guard(payees=...), or their signed
     mandate): when given, the money may go only there, whatever the shop's
-    payment request says.
+    payment request says. spent_before_cents is what was already paid for the
+    same request: it counts against the person's limit too.
     """
     def sev(field_name: str) -> str:
         return WARN if field_name in facts.soft or field_name in facts.disputed else BLOCK
@@ -223,12 +225,16 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
         rate = swap["rate"] if swap else payment["rate"]
         if rate is not None:
             spent = (swap["amount_in"] if swap else payment["amount"]) * rate * 100
-            if spent > facts.explicit_max_cents:
+            earlier = max(0, spent_before_cents)
+            # A millionth of a cent of slack, for sums of sub-cent payments in floats.
+            if spent + earlier > facts.explicit_max_cents + 1e-6:
+                before = (f", with {_money(earlier)} already paid for this request"
+                          if earlier else "")
                 found.append(Finding(
                     "pay-max", sev("explicit_max_cents"),
                     f"Set a limit of {_money(facts.explicit_max_cents)}; paying takes "
                     f"{_amount(swap['amount_in'] if swap else payment['amount'])} {given}, "
-                    f"about {_money(spent)}."))
+                    f"about {_money(spent)}{before}."))
 
     if swap:
         loss = (swap["quote_out"] - swap["min_out"]) / swap["quote_out"] * 10000

@@ -884,13 +884,15 @@ def _check_lines(facts: IntentFacts, items, sev) -> list[Finding]:
 
 
 def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
-                    find=catalog.find) -> Verdict:
+                    find=catalog.find, spent_before_cents: float = 0) -> Verdict:
     """purchase: a list of (sku, quantity). allowed_band: (min, max) in cents.
 
     allowlist is the approved skus: needed to tell whether the agent had a
     better choice. Without it "expensive" cannot be told from "there was
     nothing cheaper". find looks an item up by sku (the prototype's catalog or
-    the sandbox store's).
+    the sandbox store's). spent_before_cents is what was already paid earlier
+    for the same request (an agent paying an API call by call): the person's
+    limit is for all of it, not for each payment.
     """
     def sev(field_name: str) -> str:
         return WARN if field_name in facts.soft or field_name in facts.disputed else BLOCK
@@ -932,16 +934,20 @@ def check_coherence(facts: IntentFacts, purchase, allowed_band, allowlist=(),
             return 0
         return _renewal_cents(p) * _charges_in(p["recurring"]["every"], facts.max_every)
     limited = sum(max(p["price_cents"], charged(p)) * q for p, q in items)
-    if facts.explicit_max_cents and limited > facts.explicit_max_cents:
+    earlier = max(0, spent_before_cents)
+    # A millionth of a cent of slack, for sums of sub-cent payments in floats.
+    if facts.explicit_max_cents and limited + earlier > facts.explicit_max_cents + 1e-6:
         per = f" a {facts.max_every}" if facts.max_every else ""
         renewing = ""
         if limited != total:
             renewing = (f" in renewals over a {facts.max_every}" if facts.max_every
                         else " at the subscription price")
+        before = (f", and ${earlier/100:.2f} was already paid for this request"
+                  if earlier else "")
         findings.append(Finding(
             "explicit-max", sev("explicit_max_cents"),
             f"Set a limit of ${facts.explicit_max_cents/100:.2f}{per}, "
-            f"the order costs ${limited/100:.2f}{renewing}.",
+            f"the order costs ${limited/100:.2f}{renewing}{before}.",
         ))
 
     # quantity in the units the person counts (cans of balls, not packs);
@@ -999,14 +1005,15 @@ class Decision:
 
 
 def decide_before_purchase(facts: IntentFacts, purchase, allowed_band, allowlist=(),
-                           find=catalog.find) -> Decision:
+                           find=catalog.find, spent_before_cents: float = 0) -> Decision:
     """Decides whether the agent may go on with the purchase without the person's confirmation.
 
     Checks nothing new: it runs the same check_coherence on the intended
     purchase before it happens. BLOCK findings stop the agent and require
     confirmation; WARN findings do not stop it but stay visible in notes.
     """
-    verdict = check_coherence(facts, purchase, allowed_band, allowlist, find)
+    verdict = check_coherence(facts, purchase, allowed_band, allowlist, find,
+                              spent_before_cents)
     reasons = [f for f in verdict.findings if f.severity == BLOCK]
     notes = [f for f in verdict.findings if f.severity == WARN]
     return Decision(action=ASK if reasons else PROCEED, reasons=reasons, notes=notes)

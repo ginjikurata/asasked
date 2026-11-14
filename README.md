@@ -134,6 +134,30 @@ Hooks for popular agent frameworks are thin layers over the same gate:
 | Claude Agent SDK | `asasked[claude-agent]` | `hooks={"PreToolUse": [checkout_hook(guard, cart, tool="mcp__shop__checkout")]}` from `asasked.integrations.claude_agent` |
 | OpenAI Agents SDK | `asasked[openai-agents]` | `@function_tool(tool_input_guardrails=[checkout_guardrail(guard, cart)])` from `asasked.integrations.openai_agents` |
 | LangChain 1.x | `asasked[langchain]` | `create_agent(..., middleware=[CheckoutGuard(guard, cart)])` from `asasked.integrations.langchain` |
+| x402 clients | `asasked[x402]` | `X402Guard(guard).install(client)` from `asasked.integrations.x402` |
+
+**x402.** With [x402](https://www.x402.org/) an agent pays APIs on its own:
+the server answers 402 with a token, an amount and an address, and the
+client signs a payment. `X402Guard` hooks into `x402Client` or
+`x402ClientSync` and checks each payment before it is signed: token,
+network, amount and address against the person's words. The person's limit
+counts all the payments of their request, so a thousand calls at $0.001
+break "no more than $1" just as one call at $1.01 does. Amounts are read
+with the decimals from x402's own table of known tokens, never from the
+server's 402. With `Guard(payees=[...])` a 402 that names any other
+address, such as a forged one, is refused outright. When a payment is
+stopped, nothing is signed; `refusal(error)` gets the guard's text out of
+the client's `PaymentError`. Then your code passes the person's reply to
+`guard.answer(...)`.
+
+```python
+from asasked.integrations.x402 import X402Guard, refusal
+
+client = x402Client()                    # pip install "asasked[x402]" "x402[httpx,svm]"
+register_exact_svm_client(client, signer)
+X402Guard(Guard("Lisbon weather for the week, USDC on Solana, no more than $1 in total",
+                payees=[api_address])).install(client)
+```
 
 The benchmark runs the same agent with and without the guard and reports
 what the guard **caught**, what it **missed**, and how often it **stopped a

@@ -355,3 +355,33 @@ def test_payees_may_be_one_string_and_blanks_are_dropped():
     assert pinned(payees=SHOP).payees == (SHOP,)
     assert pinned(payees=[" ", SHOP + " "]).payees == (SHOP,)
     assert pinned(payees=()).payees == ()
+
+
+# ---------------------------------------------------------------------------
+# Paid earlier for the same request: the limit is for all of it
+# ---------------------------------------------------------------------------
+
+LIMITED = IntentFacts(raw="x", explicit_max_cents=100, pay_with="USDC", pay_network="solana")
+CALL = {"name": "Weather API call", "price": 0.30}
+CALL_PAYMENT = {**USDC, "amount": 0.30}
+
+
+def test_earlier_spending_counts_against_the_limit():
+    g = guard(LIMITED)
+    assert g.check([CALL], payment=CALL_PAYMENT, spent_before=0.70)["decision"] == "proceed"
+    result = g.check([CALL], payment=CALL_PAYMENT, spent_before=0.71)
+    assert result["decision"] == "ask"
+    assert any("$0.71 was already paid for this request" in r for r in result["reasons"])
+
+
+def test_payment_limit_counts_earlier_spending_too():
+    found = check_payment(LIMITED, parse_payment(CALL_PAYMENT), 30, spent_before_cents=71)
+    assert ("pay-max", BLOCK) in {(f.code, f.severity) for f in found}
+    assert not [f for f in check_payment(LIMITED, parse_payment(CALL_PAYMENT), 30,
+                                         spent_before_cents=70) if f.code == "pay-max"]
+
+
+def test_spent_before_must_be_a_sum():
+    for bad in (-1, "0.5", True, float("nan")):
+        with pytest.raises(ValueError):
+            guard(LIMITED).check([CALL], spent_before=bad)

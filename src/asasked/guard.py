@@ -314,11 +314,20 @@ class Guard:
         # terms seen stop a different subscription slipping in after a "yes".
         self._agreed = {**self._agreed, **self._offered}
 
-    def check(self, purchase, mandate=None, find=None, payment=None) -> dict:
+    def check(self, purchase, mandate=None, find=None, payment=None,
+              spent_before: float = 0) -> dict:
         """purchase is the cart as dicts (see the top of this file) or, together
         with find, a list of catalog (sku, quantity). mandate is a VI mandate or None.
         payment is the on-chain payment the agent is about to sign (see
-        asasked.payment), or None when it pays some other way."""
+        asasked.payment), or None when it pays some other way. spent_before is
+        what was already paid earlier for this same request, in the cart's
+        currency (an agent paying an API call by call): the person's limit
+        counts it as well as this cart."""
+        if isinstance(spent_before, bool) or not isinstance(spent_before, (int, float)) \
+                or not spent_before >= 0:
+            raise ValueError("spent_before must be a number not below zero")
+        # Not rounded to cents: a thousand payments of a tenth of a cent are a dollar.
+        earlier = spent_before * 100
         if find is None:
             items = [_cart_item(i, item) for i, item in enumerate(purchase)]
             products = {sku: product for sku, product, _ in items}
@@ -363,7 +372,8 @@ class Guard:
         else:
             band = (mandate.amount_min_cents, mandate.amount_max_cents) if mandate else NO_BAND
             decision = decide_before_purchase(facts, purchase, band,
-                                              mandate.allowlist if mandate else (), find=find)
+                                              mandate.allowlist if mandate else (), find=find,
+                                              spent_before_cents=earlier)
             if changed:
                 # The same interval change can come from the person's words and from
                 # the cart they approved; say it once, in the "you agreed" form.
@@ -376,7 +386,7 @@ class Guard:
                                     notes=decision.notes)
             over = any(f.code == "explicit-max" for f in decision.reasons + decision.notes)
             paying = check_payment(facts, payment, total, over_limit=over,
-                                   payees=self.payees)
+                                   payees=self.payees, spent_before_cents=earlier)
             refusals = [f for f in paying if refused(f)]
             if paying:
                 # The person is asked only what their answer can settle.
@@ -407,9 +417,10 @@ class Guard:
             self.hear(self._asked, text)
             self._asked = None
 
-    def gate(self, cart: list[dict], payment: dict | None = None) -> str | None:
+    def gate(self, cart: list[dict], payment: dict | None = None,
+             spent_before: float = 0) -> str | None:
         """None: payment can go ahead; otherwise the text for the agent instead of payment."""
-        result = self.check(cart, payment=payment)
+        result = self.check(cart, payment=payment, spent_before=spent_before)
         if result["decision"] == PROCEED:
             return None
         self._asked = result["question"]
@@ -419,9 +430,10 @@ class Guard:
             return told + ALSO_ASK.format(question=self._asked) if self._asked else told
         return NOT_PAID.format(question=result["question"])
 
-    async def agate(self, cart: list[dict], payment: dict | None = None) -> str | None:
+    async def agate(self, cart: list[dict], payment: dict | None = None,
+                    spent_before: float = 0) -> str | None:
         """gate for async agents: models are called outside the event loop."""
-        return await asyncio.to_thread(self.gate, cart, payment)
+        return await asyncio.to_thread(self.gate, cart, payment, spent_before)
 
     def protect(self, pay: Callable, cart: Callable[..., list[dict]],
                 payment: Callable[..., dict | None] | None = None) -> Callable:

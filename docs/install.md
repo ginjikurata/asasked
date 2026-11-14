@@ -215,3 +215,14 @@ If payment goes through your own code, put the guard there: the agent then
 cannot pay around it. The hooks for Claude Agent SDK, OpenAI Agents SDK and
 LangChain, and `guard.protect(checkout)` for anything else, are described in
 [the README](../README.md#the-pre-checkout-guard).
+
+For agents that pay APIs with x402, install the hook with the x402 extras
+for your chain and HTTP client:
+
+```bash
+pip install "asasked[x402]" "x402[httpx,svm]"
+```
+
+Use `x402[evm]` for Base and other EVM networks, and `x402[requests]` for the
+sync client. `X402Guard(guard).install(client)` goes on the `x402Client` or
+`x402ClientSync` before the first request; see the README for the rest.
