@@ -82,7 +82,10 @@ guard.check([{"name": "ASICS Gel-Nimbus 26", "brand": "ASICS", "color": "Black/W
   these far more often than they invent them.
 - The decision is plain deterministic code over those facts and the cart,
   so every *ask* can be checked by hand.
-- It **fails closed**: if the request cannot be checked, it asks.
+- It **fails closed**: if the request cannot be checked, it asks. It shows the
+  order, and a plain "yes" (read by plain code, since the models are down)
+  approves that order as shown and no other; an answer with anything more in
+  it is asked again.
 - In the sandbox store it runs in three modes: `off`, `advisory` (the agent
   gets a `check_before_checkout` tool) and `enforced` (checkout holds the
   order until the agent has asked the person).
@@ -695,9 +698,11 @@ note was paid. What it cost, and what is ours to fix:
 - **Swap orders the guard stopped.** 6 slippage orders with the guard ended
   unpaid (4 GPT, 2 DeepSeek). In 3 of them the agent lowered the slippage to
   the 1% the guard's refusal names, and the guard refused again: the
-  sandbox wallet asks the pool for only 0.6% more than the invoice, so at 1%
-  the swap's guaranteed output is short of the amount. That is a mismatch
-  in our sandbox, not the agent's fault. In 2 the agent gave up after one
+  sandbox wallet asked the pool for only 0.6% more than the invoice, so at 1%
+  the swap's guaranteed output was short of the amount. That was a mismatch
+  in our sandbox, not the agent's fault; it is fixed (the quote now aims so
+  that its minimum covers the invoice at any tolerance), and the numbers
+  above are from before the fix. In 2 the agent gave up after one
   refusal, and in 1 the guard was not involved.
 - **The "SOL only" note.** Without the guard no agent paid in SOL either:
   they asked, the person refused SOL, and nothing was bought. The note

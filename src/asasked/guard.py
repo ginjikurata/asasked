@@ -89,6 +89,7 @@ REFUSED = ("NOT PAID. This payment can't be made as it is, and no answer from th
            "slippage and guaranteed to cover the amount. Do not ask the person to approve "
            "this payment.")
 # Said after REFUSED when the cart needs the person's answer as well.
+UNCHECKED = "I couldn't automatically check this order against your request:"
 ALSO_ASK = ("\n\nThe order also doesn't match what the person asked for. Show the person "
             "this question as it is and wait for their reply before paying:\n\n{question}")
 
@@ -166,6 +167,21 @@ def _quoted(agent_text: str) -> str:
 
 _MARKS = re.compile(r"the\s+(person|agent)\s+(answered|added|asked)\s*:", re.IGNORECASE)
 
+# A bare "yes" read by plain code, for when the models that read answers are
+# down. Only an answer made of these words and nothing else: "yes, but in
+# black" or "no" is not one, and the person is asked again.
+_YES = {"yes", "yeah", "yep", "sure", "ok", "okay", "confirm", "confirmed", "approve",
+        "approved", "да", "ага", "ок", "окей", "хорошо", "конечно", "давай",
+        "подтверждаю", "согласен", "согласна"}
+_FILLER = {"go", "ahead", "please", "fine", "buy", "pay", "it", "that", "is", "do",
+           "покупай", "оплачивай", "плати", "бери", "можно", "пожалуйста", "оформляй"}
+
+
+def plain_yes(answer: str) -> bool:
+    words = re.findall(r"[^\W\d_]+", answer.lower())
+    return (bool(words) and len(words) <= 6 and any(w in _YES for w in words)
+            and all(w in _YES or w in _FILLER for w in words))
+
 
 def today_in_words() -> str:
     """Today's date in words ("Saturday, 31 October 2026"): deadlines such
@@ -197,6 +213,10 @@ class Guard:
     _error: str = ""
     # The question the guard asked that the person has not answered yet.
     _asked: str | None = None
+    # With no facts, the order as last put to the person, and the order they
+    # said a plain yes to: that order, and only that one, may then be paid.
+    _unchecked_shown: str | None = None
+    _unchecked_approved: str | None = None
     # Subscriptions in the last order checked, and those in orders the person
     # was asked about and answered: sku -> (every, cents per renewal). An
     # answer agrees to the subscription as it was shown, not to any other.
@@ -303,13 +323,25 @@ class Guard:
             items = "\n".join(f"  - {find(sku)['name']} ×{qty}, "
                                f"${find(sku)['price_cents'] / 100:.2f} each{_renews(find(sku))}"
                                for sku, qty in purchase)
+            self._unchecked_shown = items
+            if items == self._unchecked_approved and not refusals and not changed:
+                # Otherwise a "yes" is asked about again for as long as the
+                # models are down, and the order is never paid.
+                result = {
+                    "decision": PROCEED, "reasons": [], "refused": [], "question": None,
+                    "notes": ["Not checked against the request automatically: the person "
+                              "approved this order as it was shown to them."],
+                    "error": self._error,
+                }
+                self.checks.append({"purchase": list(purchase), **result,
+                                    **({"payment": payment} if payment else {})})
+                return result
             result = {
                 "decision": REFUSE if refusals else ASK,
                 "reasons": ["The request could not be checked automatically."]
                            + [f.text for f in changed + refusals],
                 "refused": [f.text for f in refusals],
-                "question": "I couldn't automatically check this order against your request:\n"
-                            f"{items}\nShould I go ahead with it?",
+                "question": f"{UNCHECKED}\n{items}\nShould I go ahead with it?",
                 "notes": [],
                 "error": self._error,
             }
@@ -354,6 +386,8 @@ class Guard:
             self.request = f"{self.request}\n\n(The person added: {text})"
             self._facts, self._error = None, ""
         else:
+            if self._asked.startswith(UNCHECKED) and plain_yes(text):
+                self._unchecked_approved = self._unchecked_shown
             self.hear(self._asked, text)
             self._asked = None
 

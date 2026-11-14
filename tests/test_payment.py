@@ -7,7 +7,7 @@ import pytest
 
 from asasked import coherence
 from asasked.coherence import BLOCK, WARN, IntentFacts, merge_facts, retelling_differences
-from asasked.guard import REFUSE, Guard
+from asasked.guard import REFUSE, Guard, plain_yes
 from asasked.payment import check_payment, parse_payment, refused
 
 SHOP = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
@@ -194,6 +194,51 @@ def test_a_failed_extraction_still_names_the_payment_problem():
     # the order is still put to the person; the recipient is not theirs to approve
     assert "couldn't automatically check" in result["question"]
     assert THIEF not in result["question"]
+
+
+def test_with_the_models_down_a_plain_yes_pays_the_order_shown_and_no_other():
+    def fail(request):
+        raise coherence.ExtractionError("down")
+    g = Guard("x", today="Thursday, 12 November 2026", extract=fail)
+    asked = g.gate([SHOES], payment=USDC)
+    assert asked.startswith("NOT PAID") and "Nike Pegasus 41" in asked
+    g.answer("Yes, go ahead.")
+    # another order is not what the person saw: asked again
+    other = {**SHOES, "name": "Nike Pegasus 41 GTX", "price": 159.99}
+    assert g.gate([other], payment={**USDC, "amount": 159.99}).startswith("NOT PAID")
+    g.answer("ok")          # a yes to that question, about that order
+    assert g.gate([SHOES], payment=USDC).startswith("NOT PAID")
+    assert g.gate([other], payment={**USDC, "amount": 159.99}) is None
+    assert "approved this order" in g.checks[-1]["notes"][0]
+
+
+@pytest.mark.parametrize("answer", ["yes, but in white", "no", "нет", "да нет",
+                                    "not yes", "I'd rather not", ""])
+def test_with_the_models_down_anything_but_a_plain_yes_is_asked_again(answer):
+    def fail(request):
+        raise coherence.ExtractionError("down")
+    g = Guard("x", today="Thursday, 12 November 2026", extract=fail)
+    g.gate([SHOES], payment=USDC)
+    g.answer(answer)
+    assert g.gate([SHOES], payment=USDC).startswith("NOT PAID")
+
+
+def test_with_the_models_down_a_yes_still_does_not_approve_a_refused_payment():
+    def fail(request):
+        raise coherence.ExtractionError("down")
+    g = Guard("x", today="Thursday, 12 November 2026", extract=fail)
+    g.gate([SHOES], payment={**USDC, "to": THIEF})
+    g.answer("yes")
+    assert THIEF in g.gate([SHOES], payment={**USDC, "to": THIEF})
+    assert g.gate([SHOES], payment=USDC) is None
+
+
+@pytest.mark.parametrize("answer,yes", [
+    ("Yes", True), ("yes please, go ahead", True), ("OK, buy it", True), ("Да, давай", True),
+    ("конечно, оплачивай", True), ("yes but size 43", False), ("ok no", False),
+    ("nope", False), ("don't", False), ("1", False)])
+def test_plain_yes(answer, yes):
+    assert plain_yes(answer) is yes
 
 
 def test_a_yes_does_not_approve_a_refused_payment():
