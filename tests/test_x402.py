@@ -232,3 +232,49 @@ def test_base_usdc_is_read_from_the_evm_table():
         client.create_payment_payload(required(800_000, asset=usdc, pay_to=API.lower(),
                                                network=base_sepolia))
     assert "$0.25 was already paid" in e.value.reason
+
+
+# --- The site's own word on its address -----------------------------------------
+
+def site_says(outcome, reason):
+    from asasked.payee_binding import Binding
+    asked = []
+
+    def check(origin, network, pay_to):
+        asked.append((origin, network, pay_to))
+        return Binding(outcome, reason, origin, network, pay_to)
+    check.asked = asked
+    return check
+
+
+def test_check_payee_asks_the_contacted_origin_not_the_402():
+    check = site_says("bound", "payee-bound")
+    client, x = sync_client(make_guard(), origin="https://weather.example", check_payee=check)
+    client.create_payment_payload(required(10_000))
+    # The 402's resource URL is api.example; the origin is what the code contacted.
+    assert check.asked == [("https://weather.example", DEVNET, API)]
+    assert x.spent == pytest.approx(0.01)
+    assert not any("forged" in " ".join(c.get("notes", [])) for c in x.guard.checks)
+
+
+def test_excluded_address_is_refused():
+    client, x = sync_client(make_guard(), origin="https://weather.example",
+                            check_payee=site_says("excluded", "payto-not-listed"))
+    with pytest.raises(PaymentAbortedError) as e:
+        client.create_payment_payload(required(10_000, pay_to=THIEF))
+    assert "weather.example" in e.value.reason and x.spent == 0
+
+
+def test_inconclusive_address_is_paid_with_a_note():
+    client, x = sync_client(make_guard(), origin="https://weather.example",
+                            check_payee=site_says("inconclusive", "unsigned"))
+    client.create_payment_payload(required(10_000))
+    assert x.spent == pytest.approx(0.01)
+    assert any("unsigned" in " ".join(c.get("notes", [])) for c in x.guard.checks)
+
+
+def test_check_payee_needs_an_https_origin():
+    with pytest.raises(ValueError):
+        X402Guard(make_guard(), check_payee=True)
+    with pytest.raises(ValueError):
+        X402Guard(make_guard(), origin="http://weather.example", check_payee=True)

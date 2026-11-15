@@ -145,7 +145,16 @@ counts all the payments of their request, so a thousand calls at $0.001
 break "no more than $1" just as one call at $1.01 does. Amounts are read
 with the decimals from x402's own table of known tokens, never from the
 server's 402. With `Guard(payees=[...])` a 402 that names any other
-address, such as a forged one, is refused outright. When a payment is
+address, such as a forged one, is refused outright. An agent that finds
+APIs itself can't list addresses in advance; then
+`X402Guard(guard, origin="https://api.example.com", check_payee=True)` asks
+the site it contacted which addresses are its own, through a manifest signed
+with a key in the site's DNS (the x402 identity group's
+[signed manifest](https://github.com/x402-foundation/wg-identity/issues/16)
+and [three outcomes](https://github.com/x402-foundation/wg-identity/issues/42)).
+`bound` passes, `excluded` is refused, and `inconclusive`, which is what almost
+every site gives today, is a warning. `bound` means the address is the site's,
+not that the seller is honest. When a payment is
 stopped, nothing is signed; `refusal(error)` gets the guard's text out of
 the client's `PaymentError`. Then your code passes the person's reply to
 `guard.answer(...)`.

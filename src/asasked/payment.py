@@ -17,6 +17,16 @@ person's signed mandate (asasked.mandate.payees_from_mandate). Then the
 payment may go only to an approved address, and a forged payment request
 naming another one is refused.
 
+An agent that finds sellers itself has no such list. Then the site can say
+which addresses are its own, signed with a key apart from the 402
+(asasked.payee_binding, the x402 identity group's outcomes). That check
+fetches over the network, so it runs outside the guard and its answer comes
+in as payment["binding"]: {"outcome": "bound" | "excluded" | "inconclusive",
+"reason": ...}. excluded is refused; inconclusive, which is what almost every
+site gives today, is a warning; bound stands in for an approved address. An
+approved address still wins: bound never lets a payment past payees.
+Take the binding from your own check, never from the agent.
+
 The payment, next to the cart in Guard.check(cart, payment=...):
 
     {"token": "USDC", "network": "solana", "amount": 129.99,
@@ -37,7 +47,9 @@ AMOUNT_TOLERANCE = 0.005
 MAX_SLIPPAGE_BPS = 100
 # Blocking findings the person's answer cannot approve: the payment must change.
 # A pay-amount warning (paying less than the order) is not one.
-REFUSED_CODES = frozenset({"pay-recipient", "pay-amount", "pay-slippage", "pay-swap-short"})
+REFUSED_CODES = frozenset({"pay-recipient", "pay-excluded", "pay-amount", "pay-slippage",
+                           "pay-swap-short"})
+BINDING_OUTCOMES = ("bound", "excluded", "inconclusive")
 
 
 def refused(finding: Finding) -> bool:
@@ -61,6 +73,21 @@ def _text(value, where: str, required: bool = False) -> str | None:
     return value.strip()
 
 
+def _binding(value) -> dict | None:
+    if value is None:
+        return None
+    if hasattr(value, "as_dict"):
+        value = value.as_dict()
+    if not isinstance(value, dict) or value.get("outcome") not in BINDING_OUTCOMES:
+        raise ValueError("payment: binding must be a dict with outcome "
+                         + ", ".join(BINDING_OUTCOMES))
+    reason = value.get("reason")
+    return {"outcome": value["outcome"],
+            "reason": reason.strip() if isinstance(reason, str) and reason.strip() else None,
+            "origin": value.get("origin") if isinstance(value.get("origin"), str) else None,
+            "detail": value.get("detail") if isinstance(value.get("detail"), str) else None}
+
+
 def parse_payment(value) -> dict | None:
     """A caller's payment dict -> the same, checked and in one spelling.
 
@@ -81,6 +108,7 @@ def parse_payment(value) -> dict | None:
         "rate": _number(value.get("rate"), "rate"),
         "swap": None,
         "max_slippage_bps": MAX_SLIPPAGE_BPS,
+        "binding": _binding(value.get("binding")),
     }
     bps = value.get("max_slippage_bps")
     if bps is not None:
@@ -148,8 +176,18 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
         return found
 
     swap = payment["swap"]
+    binding = payment.get("binding")
+    outcome = binding["outcome"] if binding else None
+    site = (binding.get("origin") or "the site") if binding else ""
+    why = f" ({binding['reason']})" if binding and binding.get("reason") else ""
 
     # The recipient: no fact of the person's makes paying a stranger right.
+    if outcome == "excluded":
+        # The site's own signed, complete list leaves this address out.
+        found.append(Finding(
+            "pay-excluded", BLOCK,
+            f"The signed list of payment addresses that {site} publishes leaves out "
+            f"{payment['to']}{why}."))
     if payees:
         # The shop's payment request can be forged; the person's approval can't.
         if not any(_same_address(payment["to"], p) for p in payees):
@@ -172,7 +210,14 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
             "pay-recipient", BLOCK,
             f"The payment goes to {payment['to']}, not to the shop's address "
             f"{payment['merchant']}."))
-    else:
+    elif outcome == "bound":
+        pass                    # the site's key, apart from the 402, names this address
+    elif outcome == "inconclusive":
+        found.append(Finding(
+            "pay-unbound", WARN,
+            f"Couldn't confirm that {payment['to']} belongs to {site}{why}; the address "
+            "comes only from the payment request, so a forged request would not be caught."))
+    elif outcome is None:
         found.append(Finding(
             "pay-unpinned", WARN,
             "The shop's address comes from its payment request, not from an address the "
@@ -252,5 +297,5 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
     return found
 
 
-__all__ = ["AMOUNT_TOLERANCE", "MAX_SLIPPAGE_BPS", "REFUSED_CODES", "check_payment",
+__all__ = ["AMOUNT_TOLERANCE", "BINDING_OUTCOMES", "MAX_SLIPPAGE_BPS", "REFUSED_CODES", "check_payment",
            "parse_payment", "refused"]

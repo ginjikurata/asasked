@@ -55,6 +55,19 @@ man in the middle) names someone else's. Pass payees= to the Guard, the
 addresses the person approved, and a payment anywhere else is refused, not
 asked about. Without payees the guard notes that the address is unchecked.
 
+An agent that finds APIs itself can't have payees in advance. Then
+check_payee=True with origin="https://api.example.com", the site your code
+contacted, asks that site which addresses are its own (asasked.payee_binding:
+a manifest signed with a key in the site's DNS, x402 identity group's
+outcomes). bound lets the address through without the note; excluded, the
+site's signed complete list leaving it out, is refused; inconclusive, what
+almost every site gives today, is a warning with the reason. origin must come
+from your code, not from the 402: the resource URL in it is written by the
+same server as the address. The check fetches two files and one DNS record,
+off the event loop, and keeps answers for five minutes per origin, network
+and address. check_payee=callable(origin, network, pay_to) -> Binding puts
+your own check there.
+
 Each payment is one cart line, the resource's description at its price.
 cart=callable(payment_required, requirements) -> list of cart dicts replaces
 it when your agent knows more (what the call returns, whether it renews).
@@ -155,12 +168,24 @@ class X402Guard:
     missing from the x402 library's table: {address: {"token", "decimals",
     "rate"}}. cart(payment_required, requirements) builds the cart for a
     payment instead of the one line by default. spent is what was already
-    paid for this request before this X402Guard (in dollars).
+    paid for this request before this X402Guard (in dollars). origin and
+    check_payee check the address with the site itself (see the module).
     """
 
     def __init__(self, guard: Guard, *, assets: dict | None = None,
-                 cart: Callable | None = None, spent: float = 0) -> None:
+                 cart: Callable | None = None, spent: float = 0,
+                 origin: str | None = None, check_payee: bool | Callable = False) -> None:
         self.guard = guard
+        if check_payee and not origin:
+            raise ValueError("check_payee needs origin=, the site your code contacted")
+        if check_payee is True:
+            from ..payee_binding import PayeeChecker
+            check_payee = PayeeChecker()
+        if check_payee:
+            from ..payee_binding import _origin_host
+            _origin_host(origin)        # an origin that can't be checked fails here, not later
+        self.origin = origin
+        self.check_payee = check_payee or None
         self.assets = {str(k).lower(): v for k, v in (assets or {}).items()}
         self.cart = cart
         self._spent = Decimal(str(spent))
@@ -223,6 +248,10 @@ class X402Guard:
         if isinstance(payment, str):
             self.blocked.append(payment)
             return AbortResult(reason=payment)
+        if self.check_payee is not None:
+            # Already off the event loop: the fetches block only this thread.
+            payment["binding"] = self.check_payee(self.origin, str(requirements.network),
+                                                  str(requirements.pay_to))
         usd = Decimal(str(payment["amount"])) * Decimal(str(payment["rate"]))
         cart = self._cart(ctx.payment_required, requirements, usd)
         with self._lock:

@@ -92,6 +92,9 @@ class Swap(BaseModel):
 
 
 class Payment(BaseModel):
+    # No binding field (asasked.payee_binding): that is the caller's own check
+    # of the site, and an agent saying "bound" proves nothing. Pydantic drops
+    # fields it doesn't know, so a binding the agent sends never reaches the guard.
     token: str = Field(description="The token the shop receives, e.g. 'USDC'")
     network: str | None = Field(None, description="The chain, e.g. 'solana'")
     amount: float = Field(gt=0, description="How much of token the shop receives, in whole units")

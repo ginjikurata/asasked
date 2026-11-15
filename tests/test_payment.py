@@ -385,3 +385,59 @@ def test_spent_before_must_be_a_sum():
     for bad in (-1, "0.5", True, float("nan")):
         with pytest.raises(ValueError):
             guard(LIMITED).check([CALL], spent_before=bad)
+
+
+# ---------------------------------------------------------------------------
+# The site's own word on its address (asasked.payee_binding)
+# ---------------------------------------------------------------------------
+
+SITE = "https://api.shop.example"
+
+
+def recipient_findings(binding, payees=(), payment=USDC):
+    found = check_payment(FACTS, parse_payment({**payment, "binding": binding}), 12999,
+                          payees=payees)
+    return [(f.code, f.severity) for f in found]
+
+
+def test_bound_address_needs_no_approval_note():
+    assert recipient_findings({"outcome": "bound", "reason": "payee-bound", "origin": SITE}) == []
+
+
+def test_inconclusive_is_a_warning_with_its_reason():
+    binding = {"outcome": "inconclusive", "reason": "unsigned", "origin": SITE}
+    found = check_payment(FACTS, parse_payment({**USDC, "binding": binding}), 12999)
+    assert [(f.code, f.severity) for f in found] == [("pay-unbound", WARN)]
+    assert "unsigned" in found[0].text and SITE in found[0].text
+    result = guard().check([SHOES], payment={**USDC, "binding": binding})
+    assert result["decision"] == "proceed" and any("unsigned" in n for n in result["notes"])
+
+
+def test_excluded_is_refused_even_for_an_approved_address():
+    binding = {"outcome": "excluded", "reason": "payto-not-listed", "origin": SITE}
+    assert ("pay-excluded", BLOCK) in recipient_findings(binding, payees=(SHOP,))
+    result = Guard("x", today="Thursday, 12 November 2026", extract=lambda r: FACTS,
+                   payees=[SHOP]).check([SHOES], payment={**USDC, "binding": binding})
+    assert result["decision"] == REFUSE and SITE in result["refused"][0]
+
+
+def test_bound_does_not_get_past_approved_addresses():
+    binding = {"outcome": "bound", "reason": "payee-bound", "origin": SITE}
+    assert ("pay-recipient", BLOCK) in recipient_findings(binding, payees=(THIEF,))
+
+
+def test_bound_does_not_excuse_a_recipient_other_than_the_shops():
+    binding = {"outcome": "bound", "reason": "payee-bound", "origin": SITE}
+    assert ("pay-recipient", BLOCK) in recipient_findings(binding, payment={**USDC, "to": THIEF})
+
+
+def test_binding_object_is_accepted():
+    from asasked.payee_binding import Binding
+    binding = Binding("bound", "payee-bound", SITE, "solana:x", SHOP)
+    assert recipient_findings(binding) == []
+
+
+@pytest.mark.parametrize("binding", ["bound", {"outcome": "maybe"}, {"reason": "x"}])
+def test_malformed_binding_is_rejected(binding):
+    with pytest.raises(ValueError):
+        parse_payment({**USDC, "binding": binding})

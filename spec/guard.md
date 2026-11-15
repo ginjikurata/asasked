@@ -171,11 +171,14 @@ swap quote), and the comparison is plain code.
 | `rate` | Value of one `token` in the cart's currency (1.0 for USDC against dollar prices). |
 | `swap` | When the person's token is swapped first: `from_token`, `amount_in` (what leaves the person's wallet), `rate` (value of one `from_token`), `quote_out` and `min_out` (expected and guaranteed amount of `token`). |
 | `max_slippage_bps` | Optional caller-set cap on the swap's slippage; default 100 (1%). |
+| `binding` | The caller's check that the site the agent contacted names `to` as its own (`asasked.payee_binding`): `outcome` `bound`, `excluded` or `inconclusive` (the x402 identity working group's three outcomes, wg-identity#42), `reason`, `origin`. From the caller's own check, never from the agent; the MCP tool drops it. |
 
 | Code | Finding when |
 |---|---|
 | `pay-recipient` | With approved addresses (`Guard(payees=...)`, or the CAIP-10 payees of a signed mandate via `Guard.from_mandate`): `to` is none of them. Without: `to` ≠ `merchant`. `0x` addresses compare case-insensitively, others exactly. Always `block`, and refused: no fact of the person's can make paying a stranger right. Without approved addresses and without `merchant`, `unchecked` (`warn`); when `to` is approved but `merchant` names another address, `unchecked` (`warn`: the shop may not see the payment). |
-| `pay-unpinned` | No approved addresses, `to` = `merchant`: `warn`, as the shop's address comes only from its payment request and a forged request would pass. |
+| `pay-unpinned` | No approved addresses, no `binding`, `to` = `merchant`: `warn`, as the shop's address comes only from its payment request and a forged request would pass. With `binding` `bound` there is no finding: a key apart from the payment request names the address. |
+| `pay-unbound` | No approved addresses, `to` = `merchant`, `binding` `inconclusive`: `warn` with the binding's reason. Nothing checkable was published, or it didn't verify, or the lookup didn't finish; today almost every site gives this. |
+| `pay-excluded` | `binding` `excluded`: the site's signed, current and complete list of addresses leaves `to` out. Always `block`, and refused, approved address or not. A lookup that failed is never `excluded`. |
 | `pay-token` | the token the person gives (`swap.from_token`, else `token`) ≠ `pay_with` |
 | `pay-network` | `network` ≠ `pay_network`; without `network`, `unchecked` |
 | `pay-amount` | `amount × rate` exceeds the cart total by more than max(1 cent, 0.5%): `block`, refused; is below it by as much: `warn` (the shop may reject it, the person loses nothing) |
@@ -189,7 +192,7 @@ other check; `pay-max` from `explicit_max_cents`. Without `rate` (or
 `swap.rate`), `pay-amount` and `pay-max` return `unchecked` (`warn`). Payment
 findings join the cart's in the decision (§6).
 
-**Refused findings.** `pay-recipient`, `pay-amount` when overpaying,
+**Refused findings.** `pay-recipient`, `pay-excluded`, `pay-amount` when overpaying,
 `pay-slippage` and `pay-swap-short` (all at `block`) do not depend on what the
 person said: the shop's address, the order's amount and a safe swap are right
 for every request. No answer from the person can approve them, so they are
@@ -270,6 +273,11 @@ verified by a human without trusting a model.
   addresses the person approved are pinned (`payees`, the mandate's CAIP-10
   payees, or `ASASKED_PAYEES` for the MCP server). Pass what the shop's
   payment request and the swap provider returned, not what the agent says.
+- **`bound` is about the address, not the seller.** It says the key holder
+  of the contacted site named this address; not that the seller is honest or
+  will deliver. Whoever controls the site's DNS can sign for it. The signed
+  manifest (wg-identity#16) does not declare its list complete, so through it
+  an unlisted address is `inconclusive`, never `excluded`.
 - **Free-text requirements are not checked.** An `other` requirement is
   always put to the person, even when the item plainly meets it.
 - **Measured in a sandbox.** The numbers below come from our own catalog and
