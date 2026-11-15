@@ -277,7 +277,13 @@ verified by a human without trusting a model.
   of the contacted site named this address; not that the seller is honest or
   will deliver. Whoever controls the site's DNS can sign for it. The signed
   manifest (wg-identity#16) does not declare its list complete, so through it
-  an unlisted address is `inconclusive`, never `excluded`.
+  an unlisted address is `inconclusive`, never `excluded`. An ENS name the
+  402 declares (wg-identity#36, `asasked.payee_name`) can exclude: its owner
+  lists the origins and the payees per network, so an origin it lists and a
+  `payTo` it leaves out is `excluded`. Its `bound` is weaker, since the 402
+  picks the name and a name may list any origin; the binding's detail names
+  it. Only plain lowercase `.eth` names are read; CCIP-Read is not followed
+  (`inconclusive`).
 - **Free-text requirements are not checked.** An `other` requirement is
   always put to the person, even when the item plainly meets it.
 - **Measured in a sandbox.** The numbers below come from our own catalog and

@@ -65,8 +65,12 @@ almost every site gives today, is a warning with the reason. origin must come
 from your code, not from the 402: the resource URL in it is written by the
 same server as the address. The check fetches two files and one DNS record,
 off the event loop, and keeps answers for five minutes per origin, network
-and address. check_payee=callable(origin, network, pay_to) -> Binding puts
-your own check there.
+and address. When the 402 declares an ENS name (extensions["payee-name"]),
+the name's records on Ethereum are checked first (asasked.payee_name): the
+one mechanism today that can exclude an address. Those answers are kept no
+longer than the 402's maxTimeoutSeconds. check_payee=callable(origin,
+network, pay_to, name=None, max_age=None) -> Binding puts your own check
+there; name and max_age are passed only when the 402 declares a name.
 
 Each payment is one cart line, the resource's description at its price.
 cart=callable(payment_required, requirements) -> list of cart dicts replaces
@@ -243,6 +247,8 @@ class X402Guard:
                  "quantity": 1}]
 
     def _before(self, ctx):
+        from ..payee_name import declared_name
+
         requirements = ctx.selected_requirements
         payment = self.payment(ctx.payment_required, requirements)
         if isinstance(payment, str):
@@ -250,8 +256,14 @@ class X402Guard:
             return AbortResult(reason=payment)
         if self.check_payee is not None:
             # Already off the event loop: the fetches block only this thread.
+            extra = {}
+            name = declared_name(ctx.payment_required)
+            if name:
+                # The ENS answer is kept no longer than the 402 is good for.
+                extra = {"name": name,
+                         "max_age": getattr(requirements, "max_timeout_seconds", None)}
             payment["binding"] = self.check_payee(self.origin, str(requirements.network),
-                                                  str(requirements.pay_to))
+                                                  str(requirements.pay_to), **extra)
         usd = Decimal(str(payment["amount"])) * Decimal(str(payment["rate"]))
         cart = self._cart(ctx.payment_required, requirements, usd)
         with self._lock:

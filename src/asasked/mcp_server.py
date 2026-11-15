@@ -22,6 +22,18 @@ ASASKED_PAYEES, comma-separated, pins the payment addresses the person
 approved: an on-chain payment to any other address is refused, whatever the
 agent passes as the shop's address. It is set where the server is started,
 so the agent cannot change it.
+
+An agent that finds sellers itself has no such list. It can pass the
+payment's origin (the site it contacted) and chain (CAIP-2); the server then
+asks that site which addresses are its own (asasked.payee_binding) and the
+guard reads the answer: excluded is refused, inconclusive is a note, bound
+drops the "address unchecked" note. The server fetches the site's files and
+a DNS record itself, so the agent can't claim "bound"; but the origin is the
+agent's word, so bound only says that site lists the address. Approved
+addresses still win. With payee_name, the ENS name the 402 declares, the
+server also reads that name's records on Ethereum (asasked.payee_name): the
+one check today that can say an address is not the site's.
+ASASKED_PAYEE_CHECK=off turns the lookups off (origin is then ignored).
 """
 
 from __future__ import annotations
@@ -50,7 +62,9 @@ request in their own words and the cart you are about to pay for.
 them to the person if they matter.
 When paying on-chain, also pass "payment": the transaction you are about to
 sign, with the shop's address and rate and any swap quote exactly as the shop
-and the swap provider returned them."""
+and the swap provider returned them. Add "origin" (the https site you
+contacted, not one the payment request names) and "chain" (CAIP-2, e.g.
+"eip155:8453") so the server can ask that site whether the address is its own."""
 
 
 class Recurring(BaseModel):
@@ -92,9 +106,9 @@ class Swap(BaseModel):
 
 
 class Payment(BaseModel):
-    # No binding field (asasked.payee_binding): that is the caller's own check
-    # of the site, and an agent saying "bound" proves nothing. Pydantic drops
-    # fields it doesn't know, so a binding the agent sends never reaches the guard.
+    # No binding field: an agent saying "bound" proves nothing. Pydantic drops
+    # fields it doesn't know, so a binding the agent sends never reaches the
+    # guard; the server makes its own from origin and chain.
     token: str = Field(description="The token the shop receives, e.g. 'USDC'")
     network: str | None = Field(None, description="The chain, e.g. 'solana'")
     amount: float = Field(gt=0, description="How much of token the shop receives, in whole units")
@@ -106,6 +120,18 @@ class Payment(BaseModel):
     swap: Swap | None = Field(None, description="Set when the person's token is swapped first")
     max_slippage_bps: float | None = Field(None, ge=0, le=10000, description=(
         "Slippage the swap may lose before asking; default 100 (1%)"))
+    origin: str | None = Field(None, description=(
+        "The site you are paying, as your HTTP client contacted it: 'https://' and "
+        "the host, e.g. 'https://api.example.com'. Not the URL the shop's payment "
+        "request names. With chain, the server asks that site whether the "
+        "address is its own"))
+    chain: str | None = Field(None, description=(
+        "The payment's chain as a CAIP-2 id, as the shop's x402 request names it, "
+        "e.g. 'eip155:8453' or 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'"))
+    payee_name: str | None = Field(None, description=(
+        "The ENS name the shop's x402 request declares in extensions['payee-name']"
+        ".info.name, if any, e.g. 'pay.example.eth'. The server reads its records "
+        "on Ethereum to check the address"))
 
 
 class CheckResult(BaseModel):
@@ -131,11 +157,33 @@ _guards: OrderedDict[tuple, Guard] = OrderedDict()
 _KEEP = 64
 # How to extract facts; None means by models (replaced in tests).
 EXTRACT = None
+# How to ask a site about its addresses; made on first use (replaced in tests).
+CHECK_PAYEE = None
 
 
 def _payees() -> tuple[str, ...]:
     return tuple(p.strip() for p in os.environ.get("ASASKED_PAYEES", "").split(",")
                  if p.strip())
+
+
+def _binding(origin: str, chain: str | None, pay_to: str,
+             name: str | None = None) -> dict | None:
+    """The server's own answer on whether origin lists pay_to, for the guard."""
+    global CHECK_PAYEE
+    if os.environ.get("ASASKED_PAYEE_CHECK", "").strip().lower() in ("off", "0", "no", "false"):
+        return None
+    from .payee_binding import INCONCLUSIVE, Binding, PayeeChecker
+    if not chain or ":" not in chain:
+        return Binding(INCONCLUSIVE, "no-chain", origin, chain or "", pay_to, detail=(
+            "The payment has an origin but no CAIP-2 chain, so the site "
+            "could not be asked.")).as_dict()
+    if CHECK_PAYEE is None:
+        CHECK_PAYEE = PayeeChecker()
+    try:
+        return CHECK_PAYEE(origin, chain, pay_to, name=name).as_dict()
+    except ValueError as e:
+        return Binding(INCONCLUSIVE, "bad-origin", origin, chain, pay_to,
+                       detail=f"The origin can't be checked: {e}").as_dict()
 
 
 def _guard(request: str, answers: list[Answer], today: str) -> Guard:
@@ -163,15 +211,22 @@ def check_order(request: str, cart: list[CartItem], answers: list[Answer] | None
     today: today's date in words ("Monday, 2 November 2026"), if the
     person's day differs from the server's; deadlines like "by Friday" count
     from it.
-    payment: the on-chain payment you are about to sign, if paying in crypto.
+    payment: the on-chain payment you are about to sign, if paying in crypto;
+    with origin and chain, the server checks the address with that site.
 
     Returns decision ("proceed", "ask" or "refuse"), question (for the
     person, when asking), reasons, refused (what must change in the payment)
     and notes.
     """
     guard = _guard(request, answers or [], today or today_in_words())
-    result = guard.check([item.model_dump() for item in cart],
-                         payment=payment.model_dump(exclude_none=True) if payment else None)
+    paid = None
+    if payment:
+        paid = payment.model_dump(exclude_none=True)
+        origin, chain = paid.pop("origin", None), paid.pop("chain", None)
+        name = paid.pop("payee_name", None)
+        if origin:
+            paid["binding"] = _binding(origin, chain, payment.to, name)
+    result = guard.check([item.model_dump() for item in cart], payment=paid)
     fields = ("decision", "question", "reasons", "refused", "notes")
     return CheckResult(**{k: result[k] for k in fields})
 

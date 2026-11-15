@@ -351,6 +351,16 @@ def test_any_of_several_approved_addresses_will_do():
     assert pinned(payees=(SHOP.lower(),)).check([SHOES], payment=USDC)["decision"] == REFUSE
 
 
+def test_approved_address_may_be_a_caip10_account_id():
+    # As the refusal itself writes it, and as a mandate names payees.
+    caip = f"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:{SHOP}"
+    assert pinned(payees=(caip,)).check([SHOES], payment=USDC)["decision"] == "proceed"
+    evm = "0x52908400098527886E0F7030069857D2E4169EE7"
+    lower = {**USDC, "to": evm.lower(), "merchant": None}
+    assert pinned(payees=(f"eip155:8453:{evm}",)).check([SHOES], payment=lower)["decision"] == "proceed"
+    assert pinned(payees=(f"eip155:8453:{evm}",)).check([SHOES], payment=USDC)["decision"] == REFUSE
+
+
 def test_payees_may_be_one_string_and_blanks_are_dropped():
     assert pinned(payees=SHOP).payees == (SHOP,)
     assert pinned(payees=[" ", SHOP + " "]).payees == (SHOP,)
@@ -429,6 +439,16 @@ def test_bound_does_not_get_past_approved_addresses():
 def test_bound_does_not_excuse_a_recipient_other_than_the_shops():
     binding = {"outcome": "bound", "reason": "payee-bound", "origin": SITE}
     assert ("pay-recipient", BLOCK) in recipient_findings(binding, payment={**USDC, "to": THIEF})
+
+
+def test_binding_speaks_for_the_address_when_the_shops_isnt_given():
+    # The site's answer is about this very address; "wasn't given" would be wrong.
+    no_merchant = {**USDC, "merchant": None}
+    bound = {"outcome": "bound", "reason": "payee-bound", "origin": SITE}
+    assert recipient_findings(bound, payment=no_merchant) == []
+    unsigned = {"outcome": "inconclusive", "reason": "unsigned", "origin": SITE}
+    assert recipient_findings(unsigned, payment=no_merchant) == [("pay-unbound", WARN)]
+    assert recipient_findings(None, payment=no_merchant) == [("unchecked", WARN)]
 
 
 def test_binding_object_is_accepted():

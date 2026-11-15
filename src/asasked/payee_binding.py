@@ -356,8 +356,10 @@ def verify_manifest(manifest_body: bytes, signature_body: bytes, host: str,
 
 
 def check_payee(origin: str, network: str, pay_to: str, *,
+                name: str | None = None,
                 txt: Callable[[str], list[str]] | None = None,
                 get: Callable[[str], tuple[int, bytes]] | None = None,
+                reader=None, rpc: str | None = None,
                 timeout: float = TIMEOUT) -> Binding:
     """Checks that pay_to is a payee of origin on network (a CAIP-2 id).
 
@@ -365,7 +367,33 @@ def check_payee(origin: str, network: str, pay_to: str, *,
     resource URL the 402 names: that comes from the same server as payTo.
     txt(name) -> TXT records and get(url) -> (status, body) replace the
     network calls (tests, your own resolver or HTTP client).
+
+    name is the ENS name the 402 declared (extensions["payee-name"], see
+    asasked.payee_name), if any. It is checked first, since only it can
+    exclude an address; when it neither binds nor excludes, the signed
+    manifest may still bind. reader and rpc go to the ENS check.
     """
+    if not name:
+        return _manifest_binding(origin, network, pay_to, txt=txt, get=get, timeout=timeout)
+    from .payee_name import DEFAULT_RPC, check_payee_name
+    by_name = check_payee_name(name, origin, network, pay_to, reader=reader,
+                               rpc=rpc or DEFAULT_RPC, timeout=timeout)
+    if by_name.outcome != INCONCLUSIVE:
+        return by_name
+    by_manifest = _manifest_binding(origin, network, pay_to, txt=txt, get=get, timeout=timeout)
+    if by_manifest.outcome == BOUND:
+        return by_manifest
+    reason = by_name.reason
+    if by_manifest.reason == "resolution-failed":
+        reason = "resolution-failed"     # so a checker tries again next time
+    return Binding(INCONCLUSIVE, reason, by_name.origin, network, pay_to, method=by_name.method,
+                   detail=f"{by_name.detail} Signed manifest: {by_manifest.reason}.")
+
+
+def _manifest_binding(origin: str, network: str, pay_to: str, *,
+                      txt: Callable[[str], list[str]] | None,
+                      get: Callable[[str], tuple[int, bytes]] | None,
+                      timeout: float) -> Binding:
     host = _origin_host(origin)
     txt = txt or (lambda name: dns_txt(name, timeout))
     get = get or (lambda url: _get(url, timeout))
@@ -408,16 +436,20 @@ class PayeeChecker:
     def __init__(self, ttl: float = 300, **kwargs) -> None:
         self.ttl = ttl
         self.kwargs = kwargs
-        self._kept: dict[tuple[str, str, str], tuple[float, Binding]] = {}
+        self._kept: dict[tuple[str, str, str, str], tuple[float, Binding]] = {}
 
-    def __call__(self, origin: str, network: str, pay_to: str) -> Binding:
-        key = (origin, network, pay_to)
+    def __call__(self, origin: str, network: str, pay_to: str, *, name: str | None = None,
+                 max_age: float | None = None) -> Binding:
+        """max_age caps how long this answer is kept: the payee-name spec
+        keeps ENS answers no longer than the 402's maxTimeoutSeconds."""
+        key = (origin, network, pay_to, name or "")
         kept = self._kept.get(key)
-        if kept and time.monotonic() - kept[0] < self.ttl:
+        if kept and time.monotonic() < kept[0]:
             return kept[1]
-        binding = check_payee(origin, network, pay_to, **self.kwargs)
-        if binding.reason != "resolution-failed":
-            self._kept[key] = (time.monotonic(), binding)
+        binding = check_payee(origin, network, pay_to, name=name, **self.kwargs)
+        ttl = self.ttl if max_age is None or not name else min(self.ttl, max_age)
+        if binding.reason != "resolution-failed" and ttl > 0:
+            self._kept[key] = (time.monotonic() + ttl, binding)
         return binding
 
 

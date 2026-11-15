@@ -134,7 +134,9 @@ def parse_payment(value) -> dict | None:
 
 def _same_address(a: str, b: str) -> bool:
     # EVM addresses are hex and their case is only a checksum; Solana and
-    # other base58 addresses are case-sensitive.
+    # other base58 addresses are case-sensitive. An approved address may be
+    # written as a CAIP-10 account id ("eip155:8453:0x…"); its address counts.
+    a, b = a.rsplit(":", 1)[-1], b.rsplit(":", 1)[-1]
     if a.lower().startswith("0x") and b.lower().startswith("0x"):
         return a.lower() == b.lower()
     return a == b
@@ -201,11 +203,12 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
                 "unchecked", WARN,
                 f"The shop's payment request names {payment['merchant']}, not the approved "
                 f"address {payment['to']}; the shop may not see this payment."))
-    elif payment["merchant"] is None:
+    elif payment["merchant"] is None and outcome is None:
         found.append(Finding(
             "unchecked", WARN,
             "The shop's payment address wasn't given, so I couldn't check who receives the money."))
-    elif not _same_address(payment["to"], payment["merchant"]):
+    elif payment["merchant"] is not None and not _same_address(payment["to"],
+                                                              payment["merchant"]):
         found.append(Finding(
             "pay-recipient", BLOCK,
             f"The payment goes to {payment['to']}, not to the shop's address "

@@ -100,7 +100,12 @@ are extracted once per request, so re-checking a corrected cart is
 instant. Model keys come from the environment, as above. Set
 `ASASKED_PAYEES` to the shop addresses the person approved (comma-separated)
 and a payment to any other address is refused, even when the shop's payment
-request names it; `Guard(payees=...)` does the same in code. A server can only
+request names it; `Guard(payees=...)` does the same in code. Addresses may
+be plain or CAIP-10 (`eip155:8453:0x…`). Without a list, pass the payment's
+`origin` (the site the agent contacted), `chain` (CAIP-2) and, if the 402
+declares one, `payee_name` (its ENS name): the server then checks the address
+with the site itself, as `X402Guard` does below, and drops any check result the
+agent sends. `ASASKED_PAYEE_CHECK=off` turns that lookup off. A server can only
 answer when asked, so it cannot stop an agent that never calls it. It also
 has to take the agent's word for everything it is sent: the request and the
 person's replies in `answers` both come from the agent, so an agent could
@@ -152,12 +157,21 @@ the site it contacted which addresses are its own, through a manifest signed
 with a key in the site's DNS (the x402 identity group's
 [signed manifest](https://github.com/x402-foundation/wg-identity/issues/16)
 and [three outcomes](https://github.com/x402-foundation/wg-identity/issues/42)).
+When the 402 declares an ENS name
+([payee-name](https://github.com/x402-foundation/wg-identity/issues/36)), the
+name's records on Ethereum are read first: the origins it allows and the
+addresses it pays to. This is the one mechanism today that can say an address
+is *not* the site's. The records are read through a public Ethereum node,
+which then sees the name; pass your own with `PayeeChecker(rpc=...)`.
 `bound` passes, `excluded` is refused, and `inconclusive`, which is what almost
 every site gives today, is a warning. `bound` means the address is the site's,
 not that the seller is honest. When a payment is
 stopped, nothing is signed; `refusal(error)` gets the guard's text out of
 the client's `PaymentError`. Then your code passes the person's reply to
-`guard.answer(...)`.
+`guard.answer(...)`. `tests/test_x402_e2e.py` runs this over HTTP with x402's
+own httpx client and EVM signer against a local 402 server (needs
+`x402[httpx,evm]`): the right payment is signed, a forged address and an
+overpay are not.
 
 ```python
 from asasked.integrations.x402 import X402Guard, refusal

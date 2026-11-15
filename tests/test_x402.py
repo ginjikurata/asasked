@@ -54,9 +54,9 @@ def make_guard(**kwargs):
                  today=TODAY, extract=facts_for, **kwargs)
 
 
-def required(amount, asset=USDC_DEVNET_ADDRESS, pay_to=API, network=DEVNET):
+def required(amount, asset=USDC_DEVNET_ADDRESS, pay_to=API, network=DEVNET, extensions=None):
     return PaymentRequired(
-        x402_version=2,
+        x402_version=2, extensions=extensions,
         resource=ResourceInfo(url="https://api.example/weather", description="Lisbon forecast"),
         accepts=[PaymentRequirements(scheme="exact", network=network, asset=asset,
                                      amount=str(amount), pay_to=pay_to,
@@ -240,8 +240,8 @@ def site_says(outcome, reason):
     from asasked.payee_binding import Binding
     asked = []
 
-    def check(origin, network, pay_to):
-        asked.append((origin, network, pay_to))
+    def check(origin, network, pay_to, **extra):
+        asked.append((origin, network, pay_to, *extra.values()))
         return Binding(outcome, reason, origin, network, pay_to)
     check.asked = asked
     return check
@@ -278,3 +278,13 @@ def test_check_payee_needs_an_https_origin():
         X402Guard(make_guard(), check_payee=True)
     with pytest.raises(ValueError):
         X402Guard(make_guard(), origin="http://weather.example", check_payee=True)
+
+
+def test_the_declared_ens_name_goes_to_the_check_with_the_402s_lifetime():
+    check = site_says("excluded", "payto-not-listed")
+    client, x = sync_client(make_guard(), origin="https://weather.example", check_payee=check)
+    with pytest.raises(PaymentAbortedError):
+        client.create_payment_payload(required(
+            10_000, pay_to=THIEF,
+            extensions={"payee-name": {"info": {"name": "pay.weather.eth"}, "schema": {}}}))
+    assert check.asked == [("https://weather.example", DEVNET, THIEF, "pay.weather.eth", 60)]
