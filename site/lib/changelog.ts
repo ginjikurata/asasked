@@ -6,6 +6,35 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-15",
+    changes: [
+      {
+        area: "guard",
+        text:
+          "Version 0.1.12: the payee is checked against the ENS name an x402 402 declares (asasked.payee_name, wg-identity#36). The name's records on Ethereum list the origins allowed to declare it and its payout addresses per chain; an origin it lists with a payTo it leaves out is excluded, and the payment is refused. Expired names, names in grace, unlisted origins and failed reads are inconclusive, a warning. Plain lowercase .eth names only; CCIP-Read is not followed. Checked live on test.402api.eth: its own address bound, another excluded. MCP check_order takes payment origin, chain and payee_name, and checks the address itself. Recipients may be CAIP-10. tests/test_x402_e2e.py runs x402's own httpx client and EVM signer against a local 402 server.",
+        commit: "f4036d6",
+      },
+      {
+        area: "guard",
+        text:
+          "Version 0.1.12: the site the agent contacted is asked which addresses are its own, through the signed x402 discovery manifest with its key in DNS (asasked.payee_binding, wg-identity#16), with the identity group's three outcomes bound, excluded and inconclusive (#42). X402Guard(origin=..., check_payee=True).",
+        commit: "7f662e3",
+      },
+      {
+        area: "guard",
+        text:
+          "Version 0.1.12: X402Guard checks each x402 API payment before the client signs it: token, network, amount and address against the person's words, with their limit counting every payment of the request.",
+        commit: "ff0e02f",
+      },
+      {
+        area: "guard",
+        text:
+          "Version 0.1.12: the shop's payment address is pinned to what the person approved: Guard(payees=[...]), the CAIP-10 payees of a signed VI mandate, or ASASKED_PAYEES for the MCP server. A payment anywhere else is refused, even when the shop's request names it.",
+        commit: "9c6cd11",
+      },
+    ],
+  },
+  {
     date: "2026-11-14",
     changes: [
       {
