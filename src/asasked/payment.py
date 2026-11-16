@@ -24,7 +24,10 @@ fetches over the network, so it runs outside the guard and its answer comes
 in as payment["binding"]: {"outcome": "bound" | "excluded" | "inconclusive",
 "reason": ...}. excluded is refused; inconclusive, which is what almost every
 site gives today, is a warning; bound stands in for an approved address. An
-approved address still wins: bound never lets a payment past payees.
+approved address still wins: bound never lets a payment past payees. bound
+still gets a note (pay-seller-unverified): it says the site controls the
+address, not that the site is a genuine seller. No public register of
+verified sellers exists to check that against (2026-11).
 Take the binding from your own check, never from the agent.
 
 The payment, next to the cart in Guard.check(cart, payment=...):
@@ -50,6 +53,9 @@ MAX_SLIPPAGE_BPS = 100
 REFUSED_CODES = frozenset({"pay-recipient", "pay-excluded", "pay-amount", "pay-slippage",
                            "pay-swap-short"})
 BINDING_OUTCOMES = ("bound", "excluded", "inconclusive")
+# What vouched for a bound address, by Binding.method.
+BINDING_VIA = {"x402-signed-manifest": " (signed list, key in its DNS)",
+               "x402-payee-name": " (through the ENS name the payment request gave)"}
 
 
 def refused(finding: Finding) -> bool:
@@ -85,7 +91,8 @@ def _binding(value) -> dict | None:
     return {"outcome": value["outcome"],
             "reason": reason.strip() if isinstance(reason, str) and reason.strip() else None,
             "origin": value.get("origin") if isinstance(value.get("origin"), str) else None,
-            "detail": value.get("detail") if isinstance(value.get("detail"), str) else None}
+            "detail": value.get("detail") if isinstance(value.get("detail"), str) else None,
+            "method": value.get("method") if isinstance(value.get("method"), str) else None}
 
 
 def parse_payment(value) -> dict | None:
@@ -214,7 +221,13 @@ def check_payment(facts: IntentFacts, payment: dict | None, total_cents: int,
             f"The payment goes to {payment['to']}, not to the shop's address "
             f"{payment['merchant']}."))
     elif outcome == "bound":
-        pass                    # the site's key, apart from the 402, names this address
+        # The site's key, apart from the 402, names this address. That ties the
+        # money to the site; it says nothing of who runs the site.
+        found.append(Finding(
+            "pay-seller-unverified", WARN,
+            f"{site} lists {payment['to']} as its own address{BINDING_VIA.get(binding['method'], '')}, "
+            f"so the money goes to that site. Whether {site} is a genuine seller that "
+            "will deliver was not checked."))
     elif outcome == "inconclusive":
         found.append(Finding(
             "pay-unbound", WARN,

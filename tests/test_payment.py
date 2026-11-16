@@ -410,8 +410,27 @@ def recipient_findings(binding, payees=(), payment=USDC):
     return [(f.code, f.severity) for f in found]
 
 
-def test_bound_address_needs_no_approval_note():
-    assert recipient_findings({"outcome": "bound", "reason": "payee-bound", "origin": SITE}) == []
+def test_bound_address_needs_no_approval_but_the_seller_is_unverified():
+    binding = {"outcome": "bound", "reason": "payee-bound", "origin": SITE,
+               "method": "x402-signed-manifest"}
+    assert recipient_findings(binding) == [("pay-seller-unverified", WARN)]
+    found = check_payment(FACTS, parse_payment({**USDC, "binding": binding}), 12999)
+    assert SITE in found[0].text and "DNS" in found[0].text and "genuine" in found[0].text
+    result = guard().check([SHOES], payment={**USDC, "binding": binding})
+    assert result["decision"] == "proceed" and any("genuine" in n for n in result["notes"])
+
+
+def test_ens_bound_says_the_name_vouched():
+    binding = {"outcome": "bound", "reason": "payee-bound", "origin": SITE,
+               "method": "x402-payee-name"}
+    found = check_payment(FACTS, parse_payment({**USDC, "binding": binding}), 12999)
+    assert "ENS" in found[0].text
+
+
+def test_approved_address_gets_no_seller_note():
+    # The person approved the address themselves; bound adds nothing to say.
+    binding = {"outcome": "bound", "reason": "payee-bound", "origin": SITE}
+    assert recipient_findings(binding, payees=(SHOP,)) == []
 
 
 def test_inconclusive_is_a_warning_with_its_reason():
@@ -445,7 +464,7 @@ def test_binding_speaks_for_the_address_when_the_shops_isnt_given():
     # The site's answer is about this very address; "wasn't given" would be wrong.
     no_merchant = {**USDC, "merchant": None}
     bound = {"outcome": "bound", "reason": "payee-bound", "origin": SITE}
-    assert recipient_findings(bound, payment=no_merchant) == []
+    assert recipient_findings(bound, payment=no_merchant) == [("pay-seller-unverified", WARN)]
     unsigned = {"outcome": "inconclusive", "reason": "unsigned", "origin": SITE}
     assert recipient_findings(unsigned, payment=no_merchant) == [("pay-unbound", WARN)]
     assert recipient_findings(None, payment=no_merchant) == [("unchecked", WARN)]
@@ -454,7 +473,7 @@ def test_binding_speaks_for_the_address_when_the_shops_isnt_given():
 def test_binding_object_is_accepted():
     from asasked.payee_binding import Binding
     binding = Binding("bound", "payee-bound", SITE, "solana:x", SHOP)
-    assert recipient_findings(binding) == []
+    assert recipient_findings(binding) == [("pay-seller-unverified", WARN)]
 
 
 @pytest.mark.parametrize("binding", ["bound", {"outcome": "maybe"}, {"reason": "x"}])

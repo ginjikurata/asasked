@@ -165,7 +165,9 @@ is *not* the site's. The records are read through a public Ethereum node,
 which then sees the name; pass your own with `PayeeChecker(rpc=...)`.
 `bound` passes, `excluded` is refused, and `inconclusive`, which is what almost
 every site gives today, is a warning. `bound` means the address is the site's,
-not that the seller is honest. When a payment is
+not that the seller is honest, so it passes with a note saying so
+(`pay-seller-unverified`); no public register of verified sellers exists yet
+to check that against. When a payment is
 stopped, nothing is signed; `refusal(error)` gets the guard's text out of
 the client's `PaymentError`. Then your code passes the person's reply to
 `guard.answer(...)`. `tests/test_x402_e2e.py` runs this over HTTP with x402's
