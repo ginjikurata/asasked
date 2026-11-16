@@ -1,0 +1,33 @@
+{
+  "name": "asasked",
+  "version": "0.1.0",
+  "description": "A guard before an AI agent pays: does this cart match what the person asked for?",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ginjikurata/asasked.git",
+    "directory": "ts"
+  },
+  "homepage": "https://asasked.dev",
+  "keywords": ["ai-agents", "agentic-commerce", "verifiable-intent", "ap2", "x402", "guard"],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node --test test/*.test.js",
+    "prepack": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "@types/node": "^26.6.6"
+  }
+}
