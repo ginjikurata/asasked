@@ -6,6 +6,28 @@ export type Day = { date: string; changes: Change[] };
 
 export const CHANGELOG: Day[] = [
   {
+    date: "2026-11-17",
+    changes: [
+      {
+        area: "guard",
+        text:
+          "Version 0.1.13: a bound payee says the address is the site's, not that the seller is genuine. Without approved addresses, bound now passes with a pay-seller-unverified warning naming what vouched (the signed list with its key in DNS, or the ENS name). No public register of verified sellers exists yet to check against.",
+        commit: "5e05897",
+      },
+    ],
+  },
+  {
+    date: "2026-11-16",
+    changes: [
+      {
+        area: "guard",
+        text:
+          "A TypeScript port of the guard is on npm as asasked 0.1.0: the cart check, the payment check (with a binding the caller supplies), extraction with the same prompt, model agreement, and the async Guard. Its tests replay 535 recorded cases from the Python checks and agree down to the text of each reason. Not ported yet: mandates, claimed requests, DNS and ENS payee checks, x402.",
+        commit: "a0607f4",
+      },
+    ],
+  },
+  {
     date: "2026-11-15",
     changes: [
       {
