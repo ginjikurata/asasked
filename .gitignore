@@ -16,3 +16,4 @@ drafts/
 CLAUDE.local.md
 node_modules/
 /.devnet/
+ts/*.tgz
