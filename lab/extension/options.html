@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AsAsked Lab: delivery details</title>
+<style>
+  body{font:14px/1.45 system-ui,-apple-system,sans-serif;color:#1d1b18;background:#faf8f4;margin:0;padding:16px;min-width:320px;max-width:520px}
+  h1{font-size:16px;margin:0 0 4px} p{margin:4px 0 12px;color:#6b655c}
+  form{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+  label{display:flex;flex-direction:column;font-size:12px;color:#6b655c;gap:2px}
+  label.w{grid-column:1/-1}
+  input{font:inherit;color:#1d1b18;border:1px solid #d9d3c7;border-radius:8px;padding:6px 8px;background:#fff}
+  .row{grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-top:4px}
+  button{font:inherit;border:1px solid #1d1b18;background:#1d1b18;color:#faf8f4;border-radius:999px;padding:6px 14px;cursor:pointer}
+  button.s{background:transparent;color:#1d1b18}
+  #msg{font-size:12px;color:#2f7a4a}
+</style>
+</head>
+<body>
+<h1>Delivery details</h1>
+<p>Kept only in this browser's extension storage. The helper types them into the store's checkout when you ask it to. They are never sent to AsAsked. No passwords or card numbers here.</p>
+<form id="f" autocomplete="on">
+  <label>First name<input name="first" autocomplete="given-name" required></label>
+  <label>Last name<input name="last" autocomplete="family-name" required></label>
+  <label class="w">Email<input name="email" type="email" autocomplete="email" required></label>
+  <label class="w">Phone<input name="phone" type="tel" autocomplete="tel" required></label>
+  <label class="w">Street and house number<input name="address1" autocomplete="address-line1" required></label>
+  <label class="w">Apartment, suite (optional)<input name="address2" autocomplete="address-line2"></label>
+  <label>City<input name="city" autocomplete="address-level2" required></label>
+  <label>Postcode<input name="postcode" autocomplete="postal-code" required></label>
+  <label>Country code (e.g. IT, DE, US)<input name="country" maxlength="2" autocomplete="country" required pattern="[A-Za-z]{2}"></label>
+  <label>State or province<input name="state" autocomplete="address-level1"></label>
+  <div class="row"><button type="submit">Save</button><button type="button" class="s" id="clear">Delete saved details</button><span id="msg" role="status"></span></div>
+</form>
+<script src="options.js"></script>
+</body>
+</html>

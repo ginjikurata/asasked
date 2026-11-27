@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Monthly re-check of published stores: the 1st of every month at 10:00 (local time).
+     If the Mac is asleep then, launchd runs it after wake. Install: see "Перепроверка опубликованных" in DISCOVERY.md. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.asasked.lab.recheck</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>/path/to/AsAsked/lab/scripts/recheck-monthly.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Day</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>10</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/path/to/AsAsked/research/recheck-logs/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/path/to/AsAsked/research/recheck-logs/launchd.log</string>
+</dict>
+</plist>

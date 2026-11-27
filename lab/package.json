@@ -1,0 +1,32 @@
+{
+  "name": "asasked-lab",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "data": "node scripts/merchants-to-json.mjs",
+    "predev": "npm run data && npm run products",
+    "prebuild": "npm run data && npm run products",
+    "dev": "next dev --port 3100",
+    "build": "next build",
+    "start": "next start --port 3100",
+    "products": "node scripts/products-to-json.mjs",
+    "products:fetch": "node scripts/products-fetch.mjs",
+    "server": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON server/main.mjs"
+  },
+  "dependencies": {
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
