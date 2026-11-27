@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────────────── */
+/* A lab notebook: ink on white, pixel art in the margins, one signal red for "ask". */
+@theme {
+  /* Warm paper page, white cards, one signal red-orange for "ask". Light only. */
+  --color-paper: #faf8f4;
+  --color-panel: #ffffff;
+  --color-ink: #1b1a17;
+  --color-muted: #625d54;
+  --color-faint: #6f6a60; /* 4.5:1 or more on paper, panel, the photo tile and signal-soft */
+  --color-line: #e9e4da;
+  --color-signal: #e0371f;
+  --color-signal-soft: #fde9e5;
+  --color-signal-ink: #c22a14; /* the signal red for small text: 4.9:1 on signal-soft, 5.5:1 on paper */
+  --color-pass: #1f7a3a;
+
+  --font-sans: var(--font-inter-tight), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+
+:root {
+  color-scheme: light;
+  --gutter: clamp(16px, 4vw, 48px);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 72px;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-signal-soft);
+}
+
+/* ── Reusable pieces ───────────────────────────────────────────── */
+/* The reading column, set left of centre so the pixel field has room on both sides. */
+@utility column {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+@utility meta {
+  font: 400 12px/1.5 var(--font-mono);
+  color: var(--color-faint);
+}
+
+@utility link {
+  text-decoration: underline;
+  text-decoration-color: var(--color-faint);
+  text-underline-offset: 4px;
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* The catalog needs more width than the reading column. */
+@utility wide {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}

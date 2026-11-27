@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "AsAsked Lab checkout helper",
+  "version": "0.2.0",
+  "description": "Fills a store's checkout with delivery details kept in this browser and checks the cart and the crypto invoice before you pay. It never pays, signs or places an order for you.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://lab.asasked.dev/*",
+    "https://www.bottegasenatore.com/*",
+    "https://satoshitcg.com/*",
+    "https://bitpay.com/*"
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "AsAsked Lab: delivery details",
+    "default_popup": "options.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://lab.asasked.dev/*"
+      ],
+      "js": [
+        "lab.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.bottegasenatore.com/checkout/*",
+        "https://www.bottegasenatore.com/checkout-2/*",
+        "https://satoshitcg.com/checkout/*"
+      ],
+      "js": [
+        "guard.js",
+        "panel.js",
+        "checkout.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bitpay.com/i/*",
+        "https://bitpay.com/invoice*"
+      ],
+      "js": [
+        "guard.js",
+        "panel.js",
+        "invoice.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

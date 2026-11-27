@@ -1,0 +1,52 @@
+# Caddy block for lab.asasked.dev: what the live block should hold, for reference and for a fresh server.
+# The live block in /etc/caddy is changed in place by the scripts next to this file (run as root):
+#   api-remote.sh (via api-install.sh)  /api and /mcp to the Node server
+#   caddy-lab-extras.sh                 redirects and the 404 page
+#   caddy-lab-headers.sh                caching, and the same headers on the 404 page
+#   caddy-lab-launch.sh                 launch: removes the X-Robots-Tag (noindex) line
+# There is no basic_auth. Launched 2026-11-28: the X-Robots-Tag line is removed by caddy-lab-launch.sh.
+lab.asasked.dev {
+	root * /var/www/lab.asasked.dev
+	encode zstd gzip
+
+	# AsAsked Lab server (sign-in, profile, MCP)
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3103
+	}
+	handle /mcp {
+		reverse_proxy 127.0.0.1:3103
+	}
+
+	redir /products /search permanent
+	# /stores/ and other addresses with a slash at the end go to the address without it.
+	@slash path_regexp slash ^(/.+)/$
+	redir @slash {re.slash.1} permanent
+
+	header /_next/static/* Cache-Control "public, max-age=31536000, immutable"
+	header /products.json Cache-Control "public, max-age=300"
+	header {
+		Content-Security-Policy "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+
+	try_files {path} {path}.html {path}/
+	file_server
+
+	handle_errors 404 {
+		# The header block above is not applied on this path, so the 404 page gets its own copy.
+		header {
+			Content-Security-Policy "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+			Referrer-Policy strict-origin-when-cross-origin
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
+			X-Content-Type-Options nosniff
+			-Server
+		}
+		rewrite * /404.html
+		file_server
+	}
+}
